@@ -1,0 +1,28 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {actorSource,addDocument,safeImage} from '../src/adapter.mjs';
+import {auditCatalog,BOOK_CONTENT} from '../src/coverage.mjs';
+import {Catalog} from '../src/catalog.mjs';
+test('Actor usa t/p/k, proprietário explícito, token vinculado e texto escapado',()=>{
+  const source=actorSource({name:'Teste',attributes:{str:0,dex:1,con:2,int:3,wis:0,cha:-1},cash:1027,spellcasting:'int',biography:'<script>1</script>',selections:{}},'player1');
+  assert.deepEqual(source.system.currency,{k:1,p:2,t:7});assert.equal(source.system.currency.gp,undefined);assert.deepEqual(source.ownership,{default:0,player1:3});assert.equal(source.prototypeToken.actorLink,true);assert.equal(source.system.biography,'&lt;script&gt;1&lt;/script&gt;');
+});
+test('inclusão conserva efeitos e imagem sem modificar o compêndio',async()=>{
+  const raw={_id:'original',name:'Combatente',type:'class',img:'art/class.webp',system:{level:5,hitDie:{die:'1d10',value:0}},effects:[{name:'Benefício'}]};
+  let sent;
+  const actor={isOwner:true,items:[],createEmbeddedDocuments:async(type,data)=>{sent=data[0];return data;}};
+  await addDocument(actor,{type:'class',uuid:'Compendium.test.classes.Item.a',toObject:()=>structuredClone(raw)});
+  assert.equal(sent._id,undefined);assert.equal(sent.img,raw.img);assert.deepEqual(sent.effects,raw.effects);assert.equal(sent.system.level,1);assert.equal(sent.system.initial,true);assert.equal(sent.system.hitDie.value,1);assert.equal(raw.system.level,5);
+});
+test('conteúdo ausente é reportado, universos alternativos incluídos',()=>{
+  const items=Object.entries(BOOK_CONTENT).flatMap(([type,names])=>names.map(name=>({type,name,img:'art.webp'})));
+  assert.equal(auditCatalog(items).missing.length,0);assert.equal(auditCatalog(items.filter(i=>i.name!=='Naga')).missing[0].name,'Naga');assert.equal(BOOK_CONTENT.legacy.length,16);
+});
+test('falha de pack e documento invisível não somem silenciosamente',async()=>{
+  const game={items:[],packs:[{collection:'hidden',documentName:'Item',visible:false},{collection:'broken',documentName:'Item',visible:true,metadata:{system:'skyfall'},getIndex:async()=>{throw Error('offline')}},{collection:'ok',documentName:'Item',visible:true,metadata:{system:'skyfall',label:'Livro'},getIndex:async()=>[{_id:'1',type:'legacy',name:'Humani',img:'art.webp'}]}]};
+  const catalog=await new Catalog(game).load();assert.equal(catalog.failures.length,2);assert.equal(catalog.items.length,1);assert.equal(catalog.items[0].uuid,'Compendium.ok.Item.1');
+  await assert.rejects(()=>catalog.document('Compendium.other.Item.secret'));
+});
+test('caminhos de imagem recusam protocolos executáveis e locais',()=>{
+  assert.equal(safeImage('javascript:alert(1)'),'icons/svg/mystery-man.svg');assert.equal(safeImage('modules/art/portrait.webp'),'modules/art/portrait.webp');
+});
