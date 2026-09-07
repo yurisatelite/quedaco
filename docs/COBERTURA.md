@@ -21,11 +21,14 @@ Este arquivo distingue catálogo, texto de regras, escolhas variáveis e ficha j
 - Dinheiro dos 20 antecedentes e das 3 classes. Aristocrata usa 3d10+30; Devedor tem dívida; Viajante Intrépido tem verba de exploração, sem convertê-la indevidamente em dinheiro livre.
 - Adapter de criação de rascunho com proprietário explícito, `Actor.character`, token vinculado, `system.currency.t/p/k`, modificadores de atributos e origem do conteúdo.
 - Inclusão dos documentos preservando seus efeitos, imagens e metadados; o sistema abre suas escolhas nativas.
+- Resolução integrada dos benefícios de nível 1: talento de legado/maldição, estilo e façanha correspondente do Combatente, especialidade e duas artimanhas do Especialista, tradição e três truques do Ocultista. As 48 combinações de 16 legados com 3 classes foram auditadas sem grupos vazios.
+- Treinamento das 3 classes e dos 20 antecedentes: armas, armaduras, proteções, perícias, aptidões e idiomas são validados e gravados no esquema nativo da ficha. Escolhas repetidas são recusadas.
+- Bônus de INT da página 155 como escolha de perícia ou truque para cada dois pontos positivos, sem permitir truques duplicados.
 
 ## Pendente antes de liberar como criador completo
 
 - Resolver a herança `Corte do Crepúsculo`, presente no compêndio mas sem vínculo com qualquer legado. Ela fica fora das opções até haver fonte segura para atribuí-la.
-- Reconhecer e apresentar as escolhas obrigatórias de proficiências, perícias, idiomas, tamanho, deslocamento, heranças, talentos, trilhas, bênçãos e maldições.
+- Completar escolhas variáveis contidas apenas em prosa dentro de alguns legados e talentos, incluindo tamanho, deslocamento, bênçãos e outras decisões internas.
 - Requisitos, quantidade de magias, bônus de INT, fragmentação, aprimoramentos e outras variáveis derivadas.
 - Equipamentos iniciais de cada classe e antecedente; alternativas, quantidade, orçamento, inventário, volume e venda por metade do preço.
 - Prévia final com efeitos realmente calculados pelo sistema e verificação de recursos/proteções.
@@ -33,6 +36,7 @@ Este arquivo distingue catálogo, texto de regras, escolhas variáveis e ficha j
 - Teste real com usuário jogador, permissões de criação/compêndios e eventual mediação do mestre.
 - Imagens ausentes, retratos e tokens adequados às escolhas. Nenhuma arte genérica é considerada cobertura concluída.
 - Instalação online e teste integrado com os módulos da mesa.
+- O antecedente Estudioso Feérico concede o idioma Feérico, mas esse idioma não existe no esquema fechado de idiomas do Skyfall 1.0.1. Até a integração ser corrigida no sistema, o módulo preserva essa concessão nas notas de criação e aplica Élfico normalmente.
 
 ## Diferença encontrada no sistema
 

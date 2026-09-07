@@ -1,7 +1,9 @@
 import {Catalog} from './catalog.mjs';
 import {ABILITIES,classRules,backgroundRules,startingMoney,conventionalRoll,validateAttributes,hitPoints} from './rules.mjs';
-import {MODULE_ID,escapeHTML as e,safeImage,createDraft,addDocument,refillResources} from './adapter.mjs';
-const STEPS=['Conceito','Legado','Herança','Maldição','Antecedente','Classe','Atributos','Dinheiro','Catálogo','Retrato','Revisão'];
+import {buildLevelOnePlan,validateBenefitChoices,resolvedPlanItems} from './benefits.mjs';
+import {buildTrainingPlan,resolveTraining,actorTrainingUpdate} from './training.mjs';
+import {MODULE_ID,escapeHTML as e,safeImage,createDraft,addResolvedPlan,refillResources} from './adapter.mjs';
+const STEPS=['Conceito','Legado','Herança','Maldição','Antecedente','Classe','Benefícios','Atributos','Treinamento','Dinheiro','Catálogo','Retrato','Revisão'];
 const TYPES={1:'legacy',2:'heritage',3:'curse',4:'background',5:'class'};
 const LABELS={legacy:'Legados',heritage:'Heranças',curse:'Maldições',background:'Antecedentes',class:'Classes',path:'Trilhas',feature:'Características',feat:'Talentos',ability:'Habilidades',spell:'Magias',weapon:'Armas',armor:'Armaduras',clothing:'Vestimentas',equipment:'Equipamentos',consumable:'Consumíveis',loot:'Outros itens',sigil:'Sigilos',seal:'Selos'};
 const number=(n)=>n==null?'—':n;
@@ -11,7 +13,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     super(options);this.catalog=new Catalog(game);this.step=0;this.query='';this.type='spell';this.loading=true;this.busy=false;this.detail=null;this.actor=null;
     this.draft={name:'',biography:'',selections:{},attributes:{str:1,dex:1,con:2,int:3,wis:0,cha:0},method:'fixed',slots:[2,3,1,0,4,5],boost:5,spellcasting:'int',portrait:'',token:'',cash:0};
     this.heritageOptions=[];
-    this.sums={class:null,background:null};this.rolls=[];this.rollSlots=[0,1,2,3,4,5];this.swap=[0,1];this.extra=new Set();
+    this.sums={class:null,background:null};this.rolls=[];this.rollSlots=[0,1,2,3,4,5];this.swap=[0,1];this.extra=new Set();this.benefitChoices={};this.benefitPlan=null;this.trainingChoices={};this.trainingPlan=null;this.trainingResolved=null;this._cantrips=null;
   }
   async start(){await this.render(true);try{await this.catalog.load();}catch(err){this.message=err.message;}this.loading=false;return this.render(true);}
   selected(type){return this.catalog.items.find(i=>i.uuid===this.draft.selections[type]);}
@@ -32,11 +34,38 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     const d=this.draft;
     if(this.step===0)return `<label>Nome<input name="name" value="${e(d.name)}" maxlength="100"></label><label>Conceito e história<textarea name="biography" rows="7">${e(d.biography)}</textarea></label><label>Atributo-chave de conjuração<select name="spellcasting">${['int','wis','cha'].map(k=>`<option value="${k}" ${d.spellcasting===k?'selected':''}>${ABILITIES[k]}</option>`).join('')}</select></label><p>O nível inicial é 1. A evolução será conferida antes de habilitar níveis superiores.</p>`;
     if(TYPES[this.step])return this.renderCatalog(TYPES[this.step]);
-    if(this.step===6)return this.renderAttributes();
-    if(this.step===7)return this.renderMoney();
-    if(this.step===8)return `<label>Tipo de conteúdo<select name="catalogType">${Object.entries(LABELS).map(([k,v])=>`<option value="${k}" ${this.type===k?'selected':''}>${v}</option>`).join('')}</select></label>${await this.renderCatalog(this.type,true)}`;
-    if(this.step===9)return `<p>Escolha imagens que já estejam no armazenamento da sua mesa.</p><div class="sy-row"><button data-op="portrait">Escolher retrato</button><button data-op="token">Escolher token</button></div>${d.portrait?`<img class="sy-large-portrait" src="${e(safeImage(d.portrait))}" alt="Retrato escolhido">`:''}${d.token?`<img class="sy-large-portrait" src="${e(safeImage(d.token))}" alt="Token escolhido">`:''}`;
+    if(this.step===6)return this.renderBenefits();
+    if(this.step===7)return this.renderAttributes();
+    if(this.step===8)return this.renderTraining();
+    if(this.step===9)return this.renderMoney();
+    if(this.step===10)return `<label>Tipo de conteúdo<select name="catalogType">${Object.entries(LABELS).map(([k,v])=>`<option value="${k}" ${this.type===k?'selected':''}>${v}</option>`).join('')}</select></label>${await this.renderCatalog(this.type,true)}`;
+    if(this.step===11)return `<p>Escolha imagens que já estejam no armazenamento da sua mesa.</p><div class="sy-row"><button data-op="portrait">Escolher retrato</button><button data-op="token">Escolher token</button></div>${d.portrait?`<img class="sy-large-portrait" src="${e(safeImage(d.portrait))}" alt="Retrato escolhido">`:''}${d.token?`<img class="sy-large-portrait" src="${e(safeImage(d.token))}" alt="Token escolhido">`:''}`;
     return this.renderReview();
+  }
+  async prepareBenefitPlan(){this.benefitPlan=await buildLevelOnePlan(this.catalog,this.draft.selections);return this.benefitPlan;}
+  async renderBenefits(){
+    if(!this.selected('legacy')||!this.selected('heritage')||!this.selected('background')||!this.selected('class'))return '<p>Escolha legado, herança, antecedente e classe para montar os benefícios de nível 1.</p>';
+    const plan=await this.prepareBenefitPlan();
+    const fixed=plan.included.map(item=>`<li><img src="${e(safeImage(item.entry.img))}" alt=""> <span>${e(item.entry.name)}</span><button data-op="detail" data-uuid="${e(item.entry.uuid)}">Descrição</button></li>`).join('');
+    const groups=plan.groups.map(group=>`<section class="sy-choice"><h3>${e(group.title)}</h3><small>${group.granting==='spell'?'Truque mágico':group.granting==='path'?'Trilha':'Escolha de talento'} · ${group.count} ${group.count===1?'opção':'opções'}</small>${Array.from({length:group.count},(_,index)=>`<label>Escolha ${index+1}<select name="benefit" data-group="${e(group.id)}" data-choice-index="${index}"><option value="">Selecione…</option>${group.options.map(option=>`<option value="${e(option.uuid)}" ${this.benefitChoices[group.id]?.[index]===option.uuid?'selected':''}>${e(option.name)}</option>`).join('')}</select></label>`).join('')}<div class="sy-row">${group.options.map(option=>`<button data-op="detail" data-uuid="${e(option.uuid)}">${e(option.name)}</button>`).join('')}</div></section>`).join('');
+    const errors=validateBenefitChoices(plan,this.benefitChoices);
+    return `<p>As características fixas entram automaticamente. Complete abaixo apenas as escolhas variáveis registradas pelo sistema.</p><h3>Recebidos automaticamente</h3><ul class="sy-benefit-list">${fixed||'<li>Nenhum benefício fixo registrado.</li>'}</ul>${groups||'<p>Nenhuma escolha variável registrada.</p>'}${errors.map(error=>`<p class="sy-alert">${e(error)}</p>`).join('')}`;
+  }
+  async cantrips(){
+    if(this._cantrips)return this._cantrips;
+    const result=[];for(const entry of this.catalog.list('spell')){const document=await this.catalog.document(entry.uuid);if(Array.from(document.system?.descriptors??[]).includes('cantrip'))result.push(entry);}
+    this._cantrips=result;return result;
+  }
+  async prepareTrainingPlan(){
+    this.trainingPlan=buildTrainingPlan(this.selected('class')?.name,this.selected('background')?.name,this.draft.spellcasting,this.trainingChoices,this.draft.attributes.int,await this.cantrips());
+    this.trainingResolved=resolveTraining(this.trainingPlan,this.trainingChoices);return this.trainingPlan;
+  }
+  async renderTraining(){
+    if(!this.selected('class')||!this.selected('background'))return '<p>Escolha classe e antecedente para montar as proficiências.</p>';
+    const plan=await this.prepareTrainingPlan(),resolved=this.trainingResolved;
+    const fixed=[...plan.fixed.proficiencies.map(value=>`Equipamento: ${value}`),...plan.fixed.skills.map(value=>`Perícia: ${value}`),...plan.fixed.protections.map(value=>`Proteção: ${value.toUpperCase()}`),...plan.fixed.languages.map(value=>`Idioma: ${value}`)];
+    const groups=plan.groups.map(g=>`<fieldset class="sy-choice"><legend>${e(g.title)} · escolha ${g.count}</legend><div class="sy-check-grid">${g.options.map(option=>`<label><input type="checkbox" name="training" data-group="${e(g.id)}" data-option="${e(option.id)}" ${this.trainingChoices[g.id]?.includes(option.id)?'checked':''}>${e(option.label)}</label>`).join('')}</div></fieldset>`).join('');
+    return `<p>Estas escolhas são gravadas nos campos nativos de perícias, proteções, idiomas e proficiências da ficha.</p><small>${e(fixed.join(' · '))}</small>${plan.fixed.notes.map(note=>`<p class="sy-alert">O idioma ${e(note)} aparece no antecedente, mas não existe na lista nativa do Skyfall 1.0.1; ele será preservado nas notas da criação.</p>`).join('')}${groups}${resolved.errors.map(error=>`<p class="sy-alert">${e(error)}</p>`).join('')}`;
   }
   async renderCatalog(type,extra=false){
     let list=this.catalog.list(type,this.query);
@@ -60,17 +89,18 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     if(!rules.class||!rules.background)return '<p>Escolha classe e antecedente com regras de dinheiro conhecidas.</p>';
     return Object.entries(rules).map(([key,r])=>`<section><h3>${key==='class'?'Classe':'Antecedente'} · ${r.dice}d${r.sides??6}${r.bonus?` + ${r.bonus}`:''}</h3><label>Soma dos dados, sem o bônus<input name="money-${key}" type="number" min="${r.dice}" max="${r.dice*(r.sides??6)}" value="${this.sums[key]??''}"></label><button data-op="rollMoney" data-kind="${key}">Rolar ${r.dice}d${r.sides??6}</button>${r.budgetOnly?'<p>Esta quantia é verba para equipamentos de exploração, não dinheiro livre.</p>':''}${r.debt?'<p>A dívida equivale a dez vezes o valor recebido pelo antecedente.</p>':''}</section>`).join('')+'<p>1 Pilar = 10 Trocados · 1 K = 1.000 Trocados.</p><small>Campos aceitam resultados de dados físicos. O bônus é somado uma única vez.</small>';
   }
-  errors(){const errors=[];if(!this.draft.name.trim())errors.push('Nome não informado.');for(const t of ['legacy','heritage','background','class'])if(!this.selected(t))errors.push(`${LABELS[t]}: escolha pendente.`);errors.push(...this.attrErrors());if(!this.money())errors.push('Dinheiro inicial ainda não foi determinado.');if(!this.draft.portrait)errors.push('Retrato não selecionado.');return errors;}
-  renderReview(){
+  errors(){const errors=[];if(!this.draft.name.trim())errors.push('Nome não informado.');for(const t of ['legacy','heritage','background','class'])if(!this.selected(t))errors.push(`${LABELS[t]}: escolha pendente.`);if(this.benefitPlan){if(!this.benefitPlan.included.some(item=>item.entry.uuid===this.draft.selections.heritage))errors.push('A herança escolhida não pertence ao legado selecionado.');errors.push(...validateBenefitChoices(this.benefitPlan,this.benefitChoices));}else errors.push('Benefícios de nível 1 ainda não foram conferidos.');if(this.trainingResolved){errors.push(...this.trainingResolved.errors);const benefitUuids=new Set(Object.values(this.benefitChoices).flat());if(this.trainingResolved.spells.some(uuid=>benefitUuids.has(uuid)))errors.push('O bônus de INT não pode repetir um truque já escolhido como benefício de classe.');}else errors.push('Treinamento de classe e antecedente ainda não foi conferido.');errors.push(...this.attrErrors());if(!this.money())errors.push('Dinheiro inicial ainda não foi determinado.');if(!this.draft.portrait)errors.push('Retrato não selecionado.');return errors;}
+  async renderReview(){
+    if(this.selected('legacy')&&this.selected('heritage')&&this.selected('background')&&this.selected('class')){await this.prepareBenefitPlan();await this.prepareTrainingPlan();}
     const errors=this.errors();
-    return `<p class="sy-alert">Versão de desenvolvimento: o catálogo completo pode ser consultado, mas a cobertura de todas as escolhas e automações ainda depende da auditoria online. A criação abaixo é de um rascunho, não de uma ficha validada para jogar.</p>${errors.map(t=>`<p>${e(t)}</p>`).join('')}${!this.actor?`<button class="sy-primary" data-op="createDraft" ${errors.length?'disabled':''}>Criar rascunho na mesa</button>`:`<button data-op="openActor">Abrir rascunho</button><h3>Adicionar conteúdo ao rascunho</h3><p>Adicione uma origem por vez e conclua as escolhas que o Skyfall abrir. Imagens, efeitos e vínculos são preservados.</p>${[...Object.values(this.draft.selections),...this.extra].filter(Boolean).map(uuid=>{const item=this.catalog.items.find(i=>i.uuid===uuid);return item?`<div class="sy-row"><span>${e(item.name)}</span><button data-op="add" data-uuid="${e(uuid)}" ${this.actor.items.some(i=>i._stats?.compendiumSource===uuid)?'disabled':''}>Adicionar e escolher benefícios</button></div>`:''}).join('')}<button data-op="refill">Preencher PV e PE calculados pelo sistema</button>`}`;
+    return `<p class="sy-alert">Versão de desenvolvimento: benefícios de nível 1 já são resolvidos pelo módulo. Proficiências e equipamentos iniciais ainda estão em auditoria antes da liberação aos jogadores.</p>${errors.map(t=>`<p>${e(t)}</p>`).join('')}${!this.actor?`<button class="sy-primary" data-op="createCharacter" ${errors.length?'disabled':''}>Criar ficha de nível 1 na mesa</button>`:`<button data-op="openActor">Abrir ficha criada</button><p>Legado, herança, antecedente, classe, características fixas e escolhas variáveis foram copiados dos compêndios com seus efeitos e imagens.</p>`}`;
   }
   async handleClick(event){
     const button=event.target.closest('button[data-op]');if(!button||button.disabled||this.busy)return;
     this.busy=true;button.disabled=true;this.message='';
     try{const {op,uuid,type,kind}=button.dataset;
       if(op==='step'||op==='previous'||op==='next'){this.step=op==='step'?Number(button.dataset.index):this.step+(op==='next'?1:-1);this.query='';this.detail=null;}
-      if(op==='select'){this.draft.selections[type]=uuid;if(type==='class'||type==='background')this.sums[type]=null;if(type==='legacy'){delete this.draft.selections.heritage;this.heritageOptions=await this.catalog.linkedItems(uuid,{type:'heritage',level:0});}this.detail=uuid;}
+      if(op==='select'){this.draft.selections[type]=uuid;this.benefitPlan=null;this.benefitChoices={};this.trainingPlan=null;this.trainingChoices={};if(type==='class'||type==='background')this.sums[type]=null;if(type==='legacy'){delete this.draft.selections.heritage;this.heritageOptions=await this.catalog.linkedItems(uuid,{type:'heritage',level:0});}this.detail=uuid;}
       if(op==='noCurse'){delete this.draft.selections.curse;this.detail=null;}
       if(op==='extra'){if(this.extra.has(uuid))this.extra.delete(uuid);else this.extra.add(uuid);}
       if(op==='detail')this.detail=uuid;
@@ -81,8 +111,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
       if(op==='swap'){const order=[0,1,2,3,4,5];[order[this.swap[0]],order[this.swap[1]]]=[order[this.swap[1]],order[this.swap[0]]];this.rollSlots=order;this.applyRolled();}
       if(op==='rollMoney'){const rule=kind==='class'?classRules(this.selected('class')?.name).money:backgroundRules(this.selected('background')?.name);const roll=await new Roll(`${rule.dice}d${rule.sides??6}`).evaluate();await roll.toMessage({flavor:'Dinheiro inicial — soma dos dados, antes do bônus'},{rollMode:game.settings.get('core','rollMode')});this.sums[kind]=roll.total;}
       if(op==='portrait'||op==='token'){const FP=foundry.applications.apps.FilePicker.implementation;new FP({type:'image',current:this.draft[op],callback:path=>{this.draft[op]=path;this.render(true);}}).render(true);}
-      if(op==='createDraft'){if(this.actor)throw Error('O rascunho já foi criado.');const errors=this.errors();if(errors.length)throw Error(errors.join(' '));const money=this.money();this.actor=await createDraft({...this.draft,...money});this.message='Rascunho criado. Complete as escolhas nativas antes de jogar.';}
-      if(op==='add')await addDocument(this.actor,await this.catalog.document(uuid));
+      if(op==='createCharacter'){if(this.actor)throw Error('A ficha já foi criada.');await this.prepareBenefitPlan();await this.prepareTrainingPlan();const errors=this.errors();if(errors.length)throw Error(errors.join(' '));const money=this.money();this.actor=await createDraft({...this.draft,...money});const planItems=resolvedPlanItems(this.benefitPlan,this.benefitChoices);for(const spell of this.trainingResolved.spells){const entry=this.catalog.items.find(item=>item.uuid===spell);if(entry)planItems.push({entry,originId:'yuri-intelligence'});}await addResolvedPlan(this.actor,planItems,this.catalog);await this.actor.update({...actorTrainingUpdate(this.trainingResolved),[`flags.${MODULE_ID}.trainingNotes`]:this.trainingResolved.notes});await refillResources(this.actor);this.message='Ficha criada com benefícios, treinamento e recursos de nível 1.';}
       if(op==='openActor')this.actor.sheet.render(true);
       if(op==='refill'){await refillResources(this.actor);this.message='Recursos preenchidos com os totais calculados pelo Skyfall.';}
     }catch(err){this.message=err.message;console.error(MODULE_ID,err);}finally{this.busy=false;this.render(true);}
@@ -101,6 +130,8 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     if(name.startsWith('money-'))this.sums[name.slice(6)]=value===''?null:Number(value);
     if(name==='query')this.query=value;
     if(name==='catalogType'){this.type=value;this.query='';this.detail=null;}
+    if(name==='benefit'){const group=event.target.dataset.group,index=Number(event.target.dataset.choiceIndex);const selected=[...(this.benefitChoices[group]??[])];selected[index]=value;this.benefitChoices[group]=selected;}
+    if(name==='training'){const group=event.target.dataset.group,option=event.target.dataset.option,definition=this.trainingPlan?.groups.find(item=>item.id===group);let selected=[...(this.trainingChoices[group]??[])].filter(value=>value!==option);if(event.target.checked){if(definition?.count===1)selected=[];selected.push(option);}this.trainingChoices[group]=selected;}
     this.render(true);
   }
 }

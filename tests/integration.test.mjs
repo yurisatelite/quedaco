@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {actorSource,addDocument,safeImage} from '../src/adapter.mjs';
+import {actorSource,addDocument,addResolvedPlan,safeImage} from '../src/adapter.mjs';
 import {auditCatalog,BOOK_CONTENT} from '../src/coverage.mjs';
 import {Catalog} from '../src/catalog.mjs';
 test('Actor usa t/p/k, proprietário explícito, token vinculado e texto escapado',()=>{
@@ -51,4 +51,16 @@ test('auditoria do grafo acusa herança solta e não confunde grant sem UUID',as
     const audit=await catalog.auditBenefits(['legacy','heritage']);
     assert.equal(audit.missing.length,0);assert.deepEqual(audit.unlinkedHeritages.map(i=>i.name),['Solta']);assert.equal(audit.benefits,2);
   } finally {globalThis.fromUuid=previous;}
+});
+test('plano resolvido suprime diálogos nativos apenas durante a inclusão',async()=>{
+  let prompts=0,sent;
+  const previous=globalThis.skyfall;
+  globalThis.skyfall={applications:{BenefitsDialog:{prompt:()=>{prompts+=1;}}}};
+  const document={uuid:'Compendium.book.Item.a',type:'feature',toObject:()=>({_id:'a',name:'Benefício',type:'feature',system:{origin:[]},_stats:{}})};
+  const actor={isOwner:true,items:[],createEmbeddedDocuments:async(_type,sources)=>{sent=sources;globalThis.skyfall.applications.BenefitsDialog.prompt();return sources;}};
+  try {
+    await addResolvedPlan(actor,[{entry:{uuid:document.uuid},document,originId:'origin-a'}],{document:async()=>document});
+    assert.equal(prompts,0);assert.deepEqual(sent[0].system.origin,['origin-a']);
+    globalThis.skyfall.applications.BenefitsDialog.prompt();assert.equal(prompts,1);
+  } finally {globalThis.skyfall=previous;}
 });

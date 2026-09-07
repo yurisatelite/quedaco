@@ -44,6 +44,32 @@ export async function addDocument(actor, document) {
   if (!created?.length) throw Error('O sistema não adicionou o conteúdo; revise as escolhas na ficha.');
   return created[0];
 }
+function embeddedSource(document,originId=null) {
+  const data=document.toObject();delete data._id;
+  data._stats={...data._stats,compendiumSource:document.uuid};
+  if (originId) data.system.origin=[originId];
+  if(document.type==='class') {data.system.level=1;data.system.initial=true;data.system.hitDie.value=1;}
+  return data;
+}
+export async function addResolvedPlan(actor,planItems,catalog) {
+  if (!actor.isOwner) throw Error('Você não tem acesso de edição a essa ficha.');
+  const seen=new Set(actor.items.map(item=>item._stats?.compendiumSource).filter(Boolean));
+  const sources=[];
+  for (const item of planItems) {
+    if (seen.has(item.entry.uuid)) continue;
+    const document=item.document??await catalog.document(item.entry.uuid);
+    sources.push(embeddedSource(document,item.originId));seen.add(item.entry.uuid);
+  }
+  if (!sources.length) return [];
+  const BenefitsDialog=globalThis.skyfall?.applications?.BenefitsDialog;
+  const originalPrompt=BenefitsDialog?.prompt;
+  try {
+    if (BenefitsDialog&&typeof originalPrompt==='function') BenefitsDialog.prompt=()=>null;
+    return await actor.createEmbeddedDocuments('Item',sources);
+  } finally {
+    if (BenefitsDialog&&typeof originalPrompt==='function') BenefitsDialog.prompt=originalPrompt;
+  }
+}
 export async function refillResources(actor) {
   const hp=actor.system.resources.hp.max,ep=actor.system.resources.ep.max;
   if (!Number.isFinite(hp)||hp<1||!Number.isFinite(ep)||ep<0) throw Error('O sistema ainda não calculou os recursos. Termine as escolhas de classe e benefícios.');

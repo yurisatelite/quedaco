@@ -2,7 +2,7 @@
 
 Módulo para a mesa online do Yuri. Interface Noka, azul-ciano e conteúdo proveniente dos compêndios da própria mesa. Projeto independente, sem dependências de outros aplicativos pessoais.
 
-**Estado: desenvolvimento 0.1.0. Ainda não é o criador completo.** Veja [cobertura](docs/COBERTURA.md) para as pendências específicas. A etapa final cria um rascunho explícito e permite adicionar documentos usando as escolhas nativas do Skyfall; não certifica uma ficha pronta.
+**Estado: desenvolvimento 0.1.0. Ainda não é o criador completo.** Veja [cobertura](docs/COBERTURA.md) para as pendências específicas. Benefícios e treinamento de nível 1 já são resolvidos pelo módulo; equipamento inicial e algumas decisões descritas apenas em prosa ainda impedem a liberação para jogadores.
 
 ## Ambiente alvo
 
