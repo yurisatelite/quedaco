@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {modifier,conventionalRoll,validateAttributes,hitPoints,wallet,walletTotal,startingMoney,BACKGROUNDS,backgroundRules,moneyResult} from '../src/rules.mjs';
+import {modifier,conventionalRoll,validateAttributes,hitPoints,wallet,walletTotal,startingMoney,BACKGROUNDS,backgroundRules,moneyResult,carryingCapacity} from '../src/rules.mjs';
 test('conversão inteira de todos os resultados possíveis de 3 a 18',()=>{
   assert.deepEqual(Array.from({length:16},(_,i)=>modifier(i+3)),[-4,-3,-3,-2,-2,-1,-1,0,0,1,1,2,2,3,3,4]);
   assert.throws(()=>modifier(19));assert.throws(()=>modifier(3.5));
@@ -34,3 +34,4 @@ test('20 antecedentes incluindo exceções de dados, dívida e verba',()=>{
   assert.equal(startingMoney('Combatente','Artista',3,3).cash,16);
   assert.throws(()=>startingMoney('Combatente','Militar',2,10));assert.throws(()=>startingMoney('Combatente','Militar',null,10));
 });
+test('capacidade de volume segue a tabela de FOR',()=>{assert.deepEqual([-3,-2,-1,0,1,2,3,4].map(carryingCapacity),[10,12,14,16,19,22,25,28]);});

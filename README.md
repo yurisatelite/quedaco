@@ -2,14 +2,14 @@
 
 Módulo para a mesa online do Yuri. Interface Noka, azul-ciano e conteúdo proveniente dos compêndios da própria mesa. Projeto independente, sem dependências de outros aplicativos pessoais.
 
-**Estado: desenvolvimento 0.1.0. Ainda não é o criador completo.** Veja [cobertura](docs/COBERTURA.md) para as pendências específicas. Benefícios e treinamento de nível 1 já são resolvidos pelo módulo; equipamento inicial e algumas decisões descritas apenas em prosa ainda impedem a liberação para jogadores.
+**Estado: desenvolvimento 0.1.0. Ainda não é o criador completo.** Veja [cobertura](docs/COBERTURA.md) para as pendências específicas. Benefícios, treinamento, equipamento inicial, compras, verba de exploração e volume de nível 1 já são resolvidos; o teste integrado e algumas decisões descritas apenas em prosa ainda impedem a liberação para jogadores.
 
 ## Ambiente alvo
 
 - Foundry VTT 13 build 351.
 - Sistema Skyfall 1.0.1.
 - Conteúdo do Livro Básico instalado na mesa (`skyfall-core`).
-- Usuários precisam ter acesso aos compêndios; para criar rascunhos, também precisam da permissão de criar Atores. O módulo não muda permissões nem cria acesso privilegiado por socket.
+- Usuários precisam ter acesso aos compêndios e permissão para criar Atores. O módulo não muda permissões nem cria acesso privilegiado por socket.
 
 ## Desenvolvimento
 

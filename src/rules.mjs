@@ -54,6 +54,7 @@ export function wallet(total) {
   return { k: Math.floor(total / 1000), p: Math.floor(total % 1000 / 10), t: total % 10 };
 }
 export const walletTotal = ({ k = 0, p = 0, t = 0 }) => k*1000+p*10+t;
+export function carryingCapacity(strength){if(!Number.isInteger(strength)||strength< -4||strength>10)throw Error('Força inválida para calcular volume.');if(strength<=-3)return 10;if(strength===-2)return 12;if(strength===-1)return 14;if(strength===0)return 16;return 19+(strength-1)*3;}
 export function moneyResult(rule, diceSum) {
   if (!rule || !Number.isInteger(diceSum) || diceSum < rule.dice || diceSum > rule.dice*(rule.sides??6)) throw Error('Soma dos dados fora do intervalo permitido.');
   return diceSum + rule.bonus;
