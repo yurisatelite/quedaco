@@ -26,3 +26,29 @@ test('falha de pack e documento invisível não somem silenciosamente',async()=>
 test('caminhos de imagem recusam protocolos executáveis e locais',()=>{
   assert.equal(safeImage('javascript:alert(1)'),'icons/svg/mystery-man.svg');assert.equal(safeImage('modules/art/portrait.webp'),'modules/art/portrait.webp');
 });
+test('catálogo resolve somente heranças vinculadas pelo benefício do legado',async()=>{
+  const legacyUuid='Compendium.skyfall-core.character-creation.Item.legacy';
+  const heritageUuid='Compendium.skyfall-core.character-creation.Item.heritage';
+  const legacy={uuid:legacyUuid,visible:true,system:{benefits:[{type:'heritage',level:0,uuid:heritageUuid}]}};
+  const heritage={uuid:heritageUuid,visible:true};
+  const previous=globalThis.fromUuid;
+  globalThis.fromUuid=async uuid=>uuid===legacyUuid?legacy:heritage;
+  try {
+    const catalog=new Catalog({items:[],packs:[],version:'13.351',system:{id:'skyfall',version:'1.0.1'}});
+    catalog.items=[{uuid:legacyUuid,type:'legacy',name:'Legado'},{uuid:heritageUuid,type:'heritage',name:'Herança'}];
+    assert.deepEqual((await catalog.linkedItems(legacyUuid,{type:'heritage',level:0})).map(i=>i.name),['Herança']);
+  } finally {globalThis.fromUuid=previous;}
+});
+test('auditoria do grafo acusa herança solta e não confunde grant sem UUID',async()=>{
+  const legacyUuid='Compendium.skyfall-core.character-creation.Item.legacy';
+  const linkedUuid='Compendium.skyfall-core.character-creation.Item.linked';
+  const looseUuid='Compendium.skyfall-core.character-creation.Item.loose';
+  const docs=new Map([[legacyUuid,{uuid:legacyUuid,visible:true,system:{benefits:[{type:'heritage',uuid:linkedUuid},{type:'grant',uuid:'',query:'legacy;curse'}]}}],[linkedUuid,{uuid:linkedUuid,visible:true,system:{benefits:[]}}],[looseUuid,{uuid:looseUuid,visible:true,system:{benefits:[]}}]]);
+  const previous=globalThis.fromUuid;globalThis.fromUuid=async uuid=>docs.get(uuid);
+  try {
+    const catalog=new Catalog({items:[],packs:[],version:'13.351',system:{id:'skyfall',version:'1.0.1'}});
+    catalog.items=[{uuid:legacyUuid,type:'legacy',name:'Legado'},{uuid:linkedUuid,type:'heritage',name:'Ligada'},{uuid:looseUuid,type:'heritage',name:'Solta'}];
+    const audit=await catalog.auditBenefits(['legacy','heritage']);
+    assert.equal(audit.missing.length,0);assert.deepEqual(audit.unlinkedHeritages.map(i=>i.name),['Solta']);assert.equal(audit.benefits,2);
+  } finally {globalThis.fromUuid=previous;}
+});

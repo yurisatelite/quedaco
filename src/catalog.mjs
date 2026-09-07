@@ -30,5 +30,37 @@ export class Catalog {
     }
     return this.documents.get(uuid);
   }
+  async benefits(uuid, {type, level=0}={}) {
+    const document=await this.document(uuid);
+    const benefits=Array.from(document.system?.benefits??[]);
+    return benefits.filter(benefit=>(!type||benefit.type===type)&&(level==null||Number(benefit.level??0)===Number(level)));
+  }
+  async linkedItems(uuid, options={}) {
+    const benefits=await this.benefits(uuid,options);
+    const linked=[];
+    for (const benefit of benefits) {
+      if (!benefit.uuid) continue;
+      const item=this.items.find(entry=>entry.uuid===benefit.uuid);
+      if (item) linked.push(item);
+      else this.failures.push({pack:uuid,reason:`Benefício aponta para documento inacessível: ${benefit.uuid}`});
+    }
+    return linked;
+  }
+  async auditBenefits(types=['legacy','heritage','curse','background','class','path']) {
+    const identities=this.items.filter(item=>types.includes(item.type));
+    const referencedHeritages=new Set();
+    const missing=[];
+    let benefits=0;
+    for (const identity of identities) {
+      const document=await this.document(identity.uuid);
+      for (const benefit of Array.from(document.system?.benefits??[])) {
+        benefits+=1;
+        if (benefit.type==='heritage'&&benefit.uuid) referencedHeritages.add(benefit.uuid);
+        if (benefit.uuid&&!this.items.some(item=>item.uuid===benefit.uuid)) missing.push({source:identity.name,type:benefit.type,uuid:benefit.uuid});
+      }
+    }
+    const unlinkedHeritages=this.items.filter(item=>item.type==='heritage'&&!referencedHeritages.has(item.uuid)).map(item=>({name:item.name,uuid:item.uuid}));
+    return {identities:identities.length,benefits,missing,unlinkedHeritages};
+  }
   report() {return {foundry:this.game.version,system:{id:this.game.system.id,version:this.game.system.version},packs:this.packs,failures:this.failures,...this.audit};}
 }

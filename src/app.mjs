@@ -10,6 +10,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   constructor(options={}) {
     super(options);this.catalog=new Catalog(game);this.step=0;this.query='';this.type='spell';this.loading=true;this.busy=false;this.detail=null;this.actor=null;
     this.draft={name:'',biography:'',selections:{},attributes:{str:1,dex:1,con:2,int:3,wis:0,cha:0},method:'fixed',slots:[2,3,1,0,4,5],boost:5,spellcasting:'int',portrait:'',token:'',cash:0};
+    this.heritageOptions=[];
     this.sums={class:null,background:null};this.rolls=[];this.rollSlots=[0,1,2,3,4,5];this.swap=[0,1];this.extra=new Set();
   }
   async start(){await this.render(true);try{await this.catalog.load();}catch(err){this.message=err.message;}this.loading=false;return this.render(true);}
@@ -38,11 +39,16 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     return this.renderReview();
   }
   async renderCatalog(type,extra=false){
-    const list=this.catalog.list(type,this.query);
+    let list=this.catalog.list(type,this.query);
+    if(type==='heritage') {
+      if(!this.selected('legacy')) return '<p>Escolha primeiro um legado. As heranças serão mostradas conforme os vínculos oficiais do compêndio.</p>';
+      const allowed=new Set(this.heritageOptions.map(item=>item.uuid));
+      list=list.filter(item=>allowed.has(item.uuid));
+    }
     const cards=list.map(i=>`<article class="sy-card"><img src="${e(safeImage(i.img))}" alt="${e(i.name)}" loading="lazy"><div><h3>${e(i.name)}</h3><small>${e(i.source)}</small><div class="sy-row"><button data-op="detail" data-uuid="${e(i.uuid)}">Descrição</button><button data-op="${extra?'extra':'select'}" data-type="${type}" data-uuid="${e(i.uuid)}" aria-pressed="${extra?this.extra.has(i.uuid):this.draft.selections[type]===i.uuid}">${extra?(this.extra.has(i.uuid)?'Remover':'Separar'):(this.draft.selections[type]===i.uuid?'✓ Escolhido':'Escolher')}</button></div></div></article>`).join('');
     let detail='';
     if(this.detail){try{const doc=await this.catalog.document(this.detail);const fragments=[doc.system.description?.value,doc.system.effect?.descriptive,doc.system.attack?.hit,doc.system.attack?.miss,doc.system.special?.descriptive].filter(Boolean);detail=`<section class="sy-detail"><div class="sy-row"><h3>${e(doc.name)}</h3><button data-op="closeDetail">Fechar descrição</button></div>${await foundry.applications.ux.TextEditor.implementation.enrichHTML(fragments.join('<hr>'),{secrets:false,relativeTo:doc})}<button data-op="openSheet" data-uuid="${e(doc.uuid)}">Abrir ficha original completa</button></section>`;}catch(err){detail=`<p class="sy-alert">${e(err.message)}</p>`;}}
-    return `${type==='curse'?'<button data-op="noCurse">Sem maldição</button>':''}<label>Buscar em ${e(LABELS[type])}<input name="query" value="${e(this.query)}" placeholder="Digite e pressione Tab"></label><small>${list.length} documentos · sem limite de opções</small>${extra?'<p>Separar um item não valida pré-requisitos nem concede o item automaticamente. A integração dos benefícios está em conferência.</p>':''}${detail}<div class="sy-grid">${cards||'<p>Nenhum documento encontrado. Confira os compêndios e suas permissões.</p>'}</div>`;
+    return `${type==='curse'?'<button data-op="noCurse">Sem maldição</button>':''}<label>Buscar em ${e(LABELS[type])}<input name="query" value="${e(this.query)}" placeholder="Digite e pressione Tab"></label><small>${list.length} documentos${type==='heritage'?' ligados ao legado escolhido':' · sem limite de opções'}</small>${extra?'<p>Separar um item não valida pré-requisitos nem concede o item automaticamente. A integração dos benefícios está em conferência.</p>':''}${detail}<div class="sy-grid">${cards||'<p>Nenhum documento encontrado. Confira os compêndios e suas permissões.</p>'}</div>`;
   }
   renderAttributes(){
     const d=this.draft,keys=Object.keys(ABILITIES),base=[3,2,1,1,0,-1];
@@ -54,7 +60,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     if(!rules.class||!rules.background)return '<p>Escolha classe e antecedente com regras de dinheiro conhecidas.</p>';
     return Object.entries(rules).map(([key,r])=>`<section><h3>${key==='class'?'Classe':'Antecedente'} · ${r.dice}d${r.sides??6}${r.bonus?` + ${r.bonus}`:''}</h3><label>Soma dos dados, sem o bônus<input name="money-${key}" type="number" min="${r.dice}" max="${r.dice*(r.sides??6)}" value="${this.sums[key]??''}"></label><button data-op="rollMoney" data-kind="${key}">Rolar ${r.dice}d${r.sides??6}</button>${r.budgetOnly?'<p>Esta quantia é verba para equipamentos de exploração, não dinheiro livre.</p>':''}${r.debt?'<p>A dívida equivale a dez vezes o valor recebido pelo antecedente.</p>':''}</section>`).join('')+'<p>1 Pilar = 10 Trocados · 1 K = 1.000 Trocados.</p><small>Campos aceitam resultados de dados físicos. O bônus é somado uma única vez.</small>';
   }
-  errors(){const errors=[];if(!this.draft.name.trim())errors.push('Nome não informado.');for(const t of ['legacy','background','class'])if(!this.selected(t))errors.push(`${LABELS[t]}: escolha pendente.`);errors.push(...this.attrErrors());if(!this.money())errors.push('Dinheiro inicial ainda não foi determinado.');if(!this.draft.portrait)errors.push('Retrato não selecionado.');return errors;}
+  errors(){const errors=[];if(!this.draft.name.trim())errors.push('Nome não informado.');for(const t of ['legacy','heritage','background','class'])if(!this.selected(t))errors.push(`${LABELS[t]}: escolha pendente.`);errors.push(...this.attrErrors());if(!this.money())errors.push('Dinheiro inicial ainda não foi determinado.');if(!this.draft.portrait)errors.push('Retrato não selecionado.');return errors;}
   renderReview(){
     const errors=this.errors();
     return `<p class="sy-alert">Versão de desenvolvimento: o catálogo completo pode ser consultado, mas a cobertura de todas as escolhas e automações ainda depende da auditoria online. A criação abaixo é de um rascunho, não de uma ficha validada para jogar.</p>${errors.map(t=>`<p>${e(t)}</p>`).join('')}${!this.actor?`<button class="sy-primary" data-op="createDraft" ${errors.length?'disabled':''}>Criar rascunho na mesa</button>`:`<button data-op="openActor">Abrir rascunho</button><h3>Adicionar conteúdo ao rascunho</h3><p>Adicione uma origem por vez e conclua as escolhas que o Skyfall abrir. Imagens, efeitos e vínculos são preservados.</p>${[...Object.values(this.draft.selections),...this.extra].filter(Boolean).map(uuid=>{const item=this.catalog.items.find(i=>i.uuid===uuid);return item?`<div class="sy-row"><span>${e(item.name)}</span><button data-op="add" data-uuid="${e(uuid)}" ${this.actor.items.some(i=>i._stats?.compendiumSource===uuid)?'disabled':''}>Adicionar e escolher benefícios</button></div>`:''}).join('')}<button data-op="refill">Preencher PV e PE calculados pelo sistema</button>`}`;
@@ -64,13 +70,13 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     this.busy=true;button.disabled=true;this.message='';
     try{const {op,uuid,type,kind}=button.dataset;
       if(op==='step'||op==='previous'||op==='next'){this.step=op==='step'?Number(button.dataset.index):this.step+(op==='next'?1:-1);this.query='';this.detail=null;}
-      if(op==='select'){this.draft.selections[type]=uuid;if(type==='class'||type==='background')this.sums[type]=null;this.detail=uuid;}
+      if(op==='select'){this.draft.selections[type]=uuid;if(type==='class'||type==='background')this.sums[type]=null;if(type==='legacy'){delete this.draft.selections.heritage;this.heritageOptions=await this.catalog.linkedItems(uuid,{type:'heritage',level:0});}this.detail=uuid;}
       if(op==='noCurse'){delete this.draft.selections.curse;this.detail=null;}
       if(op==='extra'){if(this.extra.has(uuid))this.extra.delete(uuid);else this.extra.add(uuid);}
       if(op==='detail')this.detail=uuid;
       if(op==='closeDetail')this.detail=null;
       if(op==='openSheet')(await this.catalog.document(uuid)).sheet.render(true);
-      if(op==='audit'){const report=this.catalog.report();saveDataToFile(JSON.stringify(report,null,2),'application/json','skyfall-auditoria-catalogo.json');this.message=`Auditoria exportada: ${report.missing.length} nomes do livro não localizados; ${report.failures.length} compêndios com falha. A presença dos nomes não comprova a cobertura das regras.`;}
+      if(op==='audit'){const report={...this.catalog.report(),benefitGraph:await this.catalog.auditBenefits()};saveDataToFile(JSON.stringify(report,null,2),'application/json','skyfall-auditoria-catalogo.json');this.message=`Auditoria exportada: ${report.missing.length} nomes do livro não localizados; ${report.benefitGraph.missing.length} vínculos quebrados; ${report.benefitGraph.unlinkedHeritages.length} heranças sem legado vinculado.`;}
       if(op==='rollAttributes'||op==='rerollLowest'){const rollOne=async()=>{const roll=await new Roll('4d6').evaluate();await roll.toMessage({flavor:'Criação de atributos — descarte o menor d6'},{rollMode:game.settings.get('core','rollMode')});return conventionalRoll(roll.dice[0].results.map(d=>d.result));};if(op==='rollAttributes'){this.rolls=[];for(let i=0;i<6;i++)this.rolls.push(await rollOne());this.rollSlots=[0,1,2,3,4,5];}else{const i=this.rolls.findIndex(r=>r.total===Math.min(...this.rolls.map(r=>r.total)));this.rolls[i]=await rollOne();}this.applyRolled();}
       if(op==='swap'){const order=[0,1,2,3,4,5];[order[this.swap[0]],order[this.swap[1]]]=[order[this.swap[1]],order[this.swap[0]]];this.rollSlots=order;this.applyRolled();}
       if(op==='rollMoney'){const rule=kind==='class'?classRules(this.selected('class')?.name).money:backgroundRules(this.selected('background')?.name);const roll=await new Roll(`${rule.dice}d${rule.sides??6}`).evaluate();await roll.toMessage({flavor:'Dinheiro inicial — soma dos dados, antes do bônus'},{rollMode:game.settings.get('core','rollMode')});this.sums[kind]=roll.total;}

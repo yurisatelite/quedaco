@@ -8,12 +8,14 @@ Este arquivo distingue catálogo, texto de regras, escolhas variáveis e ficha j
 - Instalação local: Skyfall 1.0.1, compatível com Foundry 13.
 - Mesa online: Foundry 13 build 351, Skyfall 1.0.1, 57 módulos ativos, constatado na interface em 07/09/2026.
 - Compêndios online do `skyfall-core`: Criação de Personagem, Equipamentos, Magias, Regras e demais coleções do Livro Básico. Constatadas pastas de legados tradicionais e dos universos 12:34 e 37:34.
+- Diagnóstico online completo: 1.284 Itens lidos sem falhas (909 de Criação de Personagem, 201 de Equipamentos, 99 documentos no compêndio de Magias, 46 de Guildas e 29 de Criação de Ameaça). O compêndio de Magias contém 98 documentos do tipo `spell`.
 
 ## Implementado
 
 - Leitura de todos os índices de Itens acessíveis de Skyfall, sem lista curta ou limite artificial.
 - Identificação de falhas/permissões de leitura; relatório de nomes ausentes e imagens genéricas.
 - Checklist inicial: 16 legados (11 principais e 5 alternativos), 20 antecedentes, 3 classes, 4 maldições, 18 trilhas.
+- Grafo oficial dos legados: 44 heranças vinculadas às opções corretas e nenhum UUID de benefício quebrado. A interface filtra as heranças pelo legado escolhido.
 - Interface Noka e ciano; detalhes extraídos do documento real, com acesso à ficha original completa.
 - Atributos fixos, convencionais, em ordem ou manuais; dados usando `Roll` do Foundry.
 - Dinheiro dos 20 antecedentes e das 3 classes. Aristocrata usa 3d10+30; Devedor tem dívida; Viajante Intrépido tem verba de exploração, sem convertê-la indevidamente em dinheiro livre.
@@ -22,7 +24,7 @@ Este arquivo distingue catálogo, texto de regras, escolhas variáveis e ficha j
 
 ## Pendente antes de liberar como criador completo
 
-- Auditar todas as heranças e cada vínculo de benefício nos documentos online, não apenas a presença dos nomes principais.
+- Resolver a herança `Corte do Crepúsculo`, presente no compêndio mas sem vínculo com qualquer legado. Ela fica fora das opções até haver fonte segura para atribuí-la.
 - Reconhecer e apresentar as escolhas obrigatórias de proficiências, perícias, idiomas, tamanho, deslocamento, heranças, talentos, trilhas, bênçãos e maldições.
 - Requisitos, quantidade de magias, bônus de INT, fragmentação, aprimoramentos e outras variáveis derivadas.
 - Equipamentos iniciais de cada classe e antecedente; alternativas, quantidade, orçamento, inventário, volume e venda por metade do preço.
