@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {actorSource,addDocument,addResolvedPlan,safeImage} from '../src/adapter.mjs';
+import {actorSource,addDocument,addResolvedPlan,addInventory,safeImage} from '../src/adapter.mjs';
 import {auditCatalog,BOOK_CONTENT} from '../src/coverage.mjs';
 import {Catalog} from '../src/catalog.mjs';
 test('Actor usa t/p/k, proprietário explícito, token vinculado e texto escapado',()=>{
@@ -63,4 +63,11 @@ test('plano resolvido suprime diálogos nativos apenas durante a inclusão',asyn
     assert.equal(prompts,0);assert.deepEqual(sent[0].system.origin,['origin-a']);
     globalThis.skyfall.applications.BenefitsDialog.prompt();assert.equal(prompts,1);
   } finally {globalThis.skyfall=previous;}
+});
+test('inventário aplica a quantidade do conjunto sem alterar o compêndio',async()=>{
+  const raw={_id:'source',name:'Adaga',type:'weapon',system:{quantity:1},_stats:{}};let sent;
+  const document={uuid:'Compendium.book.Item.dagger',toObject:()=>structuredClone(raw)};
+  const actor={isOwner:true,createEmbeddedDocuments:async(_type,data)=>{sent=data;return data;}};
+  await addInventory(actor,[{entry:{uuid:document.uuid},quantity:2}],{document:async()=>document});
+  assert.equal(sent[0]._id,undefined);assert.equal(sent[0].system.quantity,2);assert.equal(raw.system.quantity,1);
 });

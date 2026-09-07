@@ -24,13 +24,14 @@ Este arquivo distingue catálogo, texto de regras, escolhas variáveis e ficha j
 - Resolução integrada dos benefícios de nível 1: talento de legado/maldição, estilo e façanha correspondente do Combatente, especialidade e duas artimanhas do Especialista, tradição e três truques do Ocultista. As 48 combinações de 16 legados com 3 classes foram auditadas sem grupos vazios.
 - Treinamento das 3 classes e dos 20 antecedentes: armas, armaduras, proteções, perícias, aptidões e idiomas são validados e gravados no esquema nativo da ficha. Escolhas repetidas são recusadas.
 - Bônus de INT da página 155 como escolha de perícia ou truque para cada dois pontos positivos, sem permitir truques duplicados.
+- Equipamento inicial das três classes com todas as alternativas do livro, quantidades e munição adequada. Foram confirmados no compêndio online 18 modelos de armas simples, 16 marciais e todos os itens fixos usados pelos conjuntos.
 
 ## Pendente antes de liberar como criador completo
 
 - Resolver a herança `Corte do Crepúsculo`, presente no compêndio mas sem vínculo com qualquer legado. Ela fica fora das opções até haver fonte segura para atribuí-la.
 - Completar escolhas variáveis contidas apenas em prosa dentro de alguns legados e talentos, incluindo tamanho, deslocamento, bênçãos e outras decisões internas.
 - Requisitos, quantidade de magias, bônus de INT, fragmentação, aprimoramentos e outras variáveis derivadas.
-- Equipamentos iniciais de cada classe e antecedente; alternativas, quantidade, orçamento, inventário, volume e venda por metade do preço.
+- Equipamentos dos 20 antecedentes; alternativas narrativas, limites de preço e objetos que não possuem documento pronto no compêndio. Também faltam compras com orçamento, volume e venda por metade do preço.
 - Prévia final com efeitos realmente calculados pelo sistema e verificação de recursos/proteções.
 - Conclusão automática com validação completa; estado atual cria somente rascunho explícito.
 - Teste real com usuário jogador, permissões de criação/compêndios e eventual mediação do mestre.

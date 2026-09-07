@@ -70,6 +70,12 @@ export async function addResolvedPlan(actor,planItems,catalog) {
     if (BenefitsDialog&&typeof originalPrompt==='function') BenefitsDialog.prompt=originalPrompt;
   }
 }
+export async function addInventory(actor,items,catalog) {
+  if (!actor.isOwner) throw Error('Você não tem acesso de edição a essa ficha.');
+  const sources=[];
+  for(const item of items){const document=await catalog.document(item.entry.uuid);const data=embeddedSource(document);data.system.quantity=Math.max(1,Number(data.system.quantity)||1)*item.quantity;sources.push(data);}
+  return sources.length?actor.createEmbeddedDocuments('Item',sources):[];
+}
 export async function refillResources(actor) {
   const hp=actor.system.resources.hp.max,ep=actor.system.resources.ep.max;
   if (!Number.isFinite(hp)||hp<1||!Number.isFinite(ep)||ep<0) throw Error('O sistema ainda não calculou os recursos. Termine as escolhas de classe e benefícios.');
