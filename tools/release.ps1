@@ -1,5 +1,6 @@
 param(
-  [switch]$SkipTests
+  [switch]$SkipTests,
+  [switch]$Public
 )
 
 $ErrorActionPreference = 'Stop'
@@ -14,13 +15,15 @@ if (-not $SkipTests) {
 }
 
 Push-Location $projectRoot
-try { npm run package } finally { Pop-Location }
+try { if ($Public) { node tools/package.mjs --public } else { npm run package } } finally { Pop-Location }
 if ($LASTEXITCODE -ne 0) { throw 'O empacotamento falhou.' }
 
-$packagePath = Join-Path $projectRoot "dist\$($manifest.id)-$($manifest.version)\$($manifest.id)"
-$zipPath = Join-Path $projectRoot "dist\$($manifest.id)-$($manifest.version).zip"
+$suffix = if ($Public) { '-public' } else { '' }
+$packagePath = Join-Path $projectRoot "dist\$($manifest.id)-$($manifest.version)$suffix\$($manifest.id)"
+$zipPath = if ($Public) { Join-Path $projectRoot 'dist\quedaco.zip' } else { Join-Path $projectRoot "dist\$($manifest.id)-$($manifest.version).zip" }
 if (Test-Path -LiteralPath $zipPath) { Remove-Item -LiteralPath $zipPath }
 Compress-Archive -Path (Join-Path $packagePath '*') -DestinationPath $zipPath -CompressionLevel Optimal
 
 $zip = Get-Item -LiteralPath $zipPath
+Copy-Item -LiteralPath $manifestPath -Destination (Join-Path $projectRoot 'dist\module.json') -Force
 Write-Host "Release pronta: $($zip.FullName) ($($zip.Length) bytes)"

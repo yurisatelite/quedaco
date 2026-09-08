@@ -1,8 +1,10 @@
 # QUEDAÇO
 
-Módulo de criação de personagens e controle de campanha para Skyfall RPG. A interface usa Noka Semibold, azul-ciano e um símbolo vetorial original de dragão prateado em queda.
+Módulo de criação de personagens e controle de campanha para Skyfall RPG. A interface usa azul-ciano, fonte Outfit distribuída com licença OFL e Noka opcional na pasta privada da mesa. Títulos usam Semibold e textos usam Medium.
 
-## Estado da versão 0.3.0
+## Estado da versão 0.3.2
+
+O canal de atualização está publicado no GitHub e a atualização de 0.3.1 para 0.3.2 foi confirmada pela interface do Foundry no servidor oficial. Consulte [`docs/ATUALIZACOES.md`](docs/ATUALIZACOES.md) para instalar, atualizar e publicar novas versões. A validação integrada das regras de criação e progressão continua pendente; os testes automatizados não comprovam todos os comportamentos da ficha nativa.
 
 O criador usa os compêndios autorizados da própria mesa para preservar descrições, imagens e efeitos do sistema. Ele elimina cópias equivalentes do catálogo, prioriza o compêndio **Criação de Personagem** e não oferece documentos soltos de **Mundo** como opções.
 
@@ -28,7 +30,7 @@ npm test
 npm run package
 ```
 
-O pacote é gerado em `dist/quedaco-0.3.0/quedaco`. Após instalar e habilitar o módulo, use **QUEDAÇO · Criar personagem** na aba Atores. A API de abertura é `game.modules.get('quedaco').api.open()`.
+O pacote privado é gerado em `dist/quedaco-<versão>/quedaco`. Para distribuição pública, execute `npm run release -- -Public` e use `dist/quedaco.zip` e `dist/module.json`. Após instalar e habilitar o módulo, use **QUEDAÇO · Criar personagem** na aba Atores. A API de abertura é `game.modules.get('quedaco').api.open()`.
 
 O projeto inclui [`CLAUDE.md`](CLAUDE.md) para uso com Claude Code. O fluxo local e o modelo de atualizações estão documentados em [`docs/CLAUDE-E-ATUALIZACOES.md`](docs/CLAUDE-E-ATUALIZACOES.md).
 

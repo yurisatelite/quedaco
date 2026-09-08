@@ -1,10 +1,19 @@
-import {mkdir,cp,readFile,writeFile,stat} from 'node:fs/promises';
+import {mkdir,cp,readFile,writeFile,stat,rm} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
 const root=resolve(import.meta.dirname,'..');
 const manifest=JSON.parse(await readFile(join(root,'module.json'),'utf8'));
-const target=join(root,'dist',`${manifest.id}-${manifest.version}`,manifest.id);
+if(!/^[a-z0-9-]+$/.test(manifest.id)||!/^\d+\.\d+\.\d+$/.test(manifest.version))throw Error('ID ou versão inválida para empacotamento.');
+const publicBuild=process.argv.includes('--public');
+const target=join(root,'dist',`${manifest.id}-${manifest.version}${publicBuild?'-public':''}`,manifest.id);
+// Only the exact generated package directory is replaced; stale assets must not leak into releases.
+await rm(target,{recursive:true,force:true});
 await mkdir(target,{recursive:true});
-for(const entry of ['module.json','src','styles','assets'])await cp(join(root,entry),join(target,entry),{recursive:true});
-for(const entry of [...manifest.esmodules,...manifest.styles,'assets/fonts/Noka-Medium.woff2','assets/fonts/Noka-Semibold.woff2'])await stat(join(target,entry));
+for(const entry of ['module.json','src','styles','assets'])await cp(join(root,entry),join(target,entry),{recursive:true,filter:path=>!publicBuild||!path.replaceAll('\\','/').includes('/assets/fonts/Noka-')});
+for(const entry of [...manifest.esmodules,...manifest.styles,'assets/fonts/Outfit-Variable.ttf','assets/fonts/OFL-Outfit.txt',...(publicBuild?[]:['assets/fonts/Noka-Medium.woff2','assets/fonts/Noka-Semibold.woff2'])])await stat(join(target,entry));
+if(publicBuild){
+  const cssPath=join(target,'styles','creator.css');
+  const css=await readFile(cssPath,'utf8');
+  await writeFile(cssPath,css.replace(/@font-face\{font-family:NokaYuri;[^}]+\}\r?\n/g,''));
+}
 await writeFile(join(root,'dist','LAST-PACKAGE.txt'),target+'\n');
 console.log(`Pacote de desenvolvimento: ${target}`);

@@ -46,11 +46,11 @@ O pacote resultante fica em `dist/quedaco-<versão>/quedaco`. `npm run release` 
 
 ## Estado funcional
 
-- QUEDAÇO 0.2.0 está instalado e ativo no mundo oficial.
+- QUEDAÇO 0.3.2 está instalado no servidor oficial; atualização de 0.3.1 confirmada pela interface do Foundry em 08/09/2026.
 - O módulo antigo está desativado no mundo oficial.
 - Jogadores veem Criação de Personagens; a Mestra também vê NPCs, Mapa, Monstros e Quests.
 - A progressão 1–12 usa os benefícios registrados nos documentos do sistema. Escolhas descritas apenas em prosa ainda exigem implementação e conferência individual.
-- Atualizações automáticas ainda precisam de um repositório público com manifesto e ZIP versionados.
+- Canal de atualização publicado em `https://github.com/yurisatelite/quedaco`. Siga `docs/ATUALIZACOES.md`: pacote público inclui Outfit/OFL e exclui Noka. Não substitua arquivos de versões publicadas; aumente a versão e publique nova release.
 
 ## Entrega de uma mudança
 
