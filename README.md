@@ -28,6 +28,8 @@ npm run package
 
 O pacote é gerado em `dist/quedaco-0.2.0/quedaco`. Após instalar e habilitar o módulo, use **QUEDAÇO · Criar personagem** na aba Atores. A API de abertura é `game.modules.get('quedaco').api.open()`.
 
+O projeto inclui [`CLAUDE.md`](CLAUDE.md) para uso com Claude Code. O fluxo local e o modelo de atualizações estão documentados em [`docs/CLAUDE-E-ATUALIZACOES.md`](docs/CLAUDE-E-ATUALIZACOES.md).
+
 **Conferir conteúdo** exporta um diagnóstico de catálogo com versões, compêndios, documentos ausentes, vínculos quebrados e número de duplicações removidas. Ele não exporta credenciais, macros ou conversas.
 
 ## Conteúdo
