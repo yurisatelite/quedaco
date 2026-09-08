@@ -1,6 +1,8 @@
 import {normalize} from './rules.mjs';
 
 const find=(catalog,name)=>catalog.items.find(item=>normalize(item.name)===normalize(name));
+const NATURAL_WEAPONS=new Set(['ataque desarmado','cauda']);
+const isNaturalWeapon=entry=>NATURAL_WEAPONS.has(normalize(entry?.name));
 export const itemVolume=entry=>{
   const raw=entry?.system?.capacity;
   const value=typeof raw==='object'&&raw!==null?raw.value:raw;
@@ -15,7 +17,7 @@ function required(catalog,name,quantity=1){const entry=find(catalog,name);if(!en
 
 export async function buildClassEquipmentPlan(catalog,className,choices={}) {
   const weapons=[];
-  for(const entry of catalog.list('weapon')){const system=entry.system?.category?entry.system:(await catalog.document(entry.uuid)).system;if(['simple','martial'].includes(system?.category))weapons.push({entry,system});}
+  for(const entry of catalog.list('weapon')){if(isNaturalWeapon(entry))continue;const system=entry.system?.category?entry.system:(await catalog.document(entry.uuid)).system;if(['simple','martial'].includes(system?.category))weapons.push({entry,system});}
   const simple=weapons.filter(item=>item.system.category==='simple').map(item=>itemOption(item.entry));
   const martial=weapons.filter(item=>item.system.category==='martial').map(item=>itemOption(item.entry));
   const fixed=[];const groups=[];const key=normalize(className);
@@ -98,7 +100,7 @@ export async function buildBackgroundEquipmentPlan(catalog,backgroundName,profic
 export function mergeEquipmentResults(...results){const merged=new Map(),errors=[];for(const result of results){errors.push(...result.errors);for(const item of result.items){const key=`${item.entry.type}|${normalize(item.entry.name)}`,current=merged.get(key)??{entry:item.entry,quantity:0};current.quantity+=item.quantity;merged.set(key,current);}}return{errors,items:[...merged.values()]};}
 
 export function shopItems(catalog,query=''){
-  const needle=normalize(query);return catalog.items.filter(entry=>['weapon','armor','equipment','consumable','loot'].includes(entry.type)&&Number.isFinite(entry.system?.price)&&entry.system.price>0&&(!needle||normalize(entry.name).includes(needle))).sort((a,b)=>a.system.price-b.system.price||a.name.localeCompare(b.name,'pt-BR'));
+  const needle=normalize(query);return catalog.items.filter(entry=>['weapon','armor','equipment','consumable','loot'].includes(entry.type)&&!isNaturalWeapon(entry)&&Number.isFinite(entry.system?.price)&&entry.system.price>0&&(!needle||normalize(entry.name).includes(needle))).sort((a,b)=>a.system.price-b.system.price||a.name.localeCompare(b.name,'pt-BR'));
 }
 export function resolvePurchases(catalog,cash,equipmentBudget,cashCart=new Map(),budgetCart=new Map()){
   const errors=[],items=[];let cashSpent=0,budgetSpent=0;

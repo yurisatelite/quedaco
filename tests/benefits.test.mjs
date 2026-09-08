@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildLevelOnePlan,validateBenefitChoices,resolvedPlanItems} from '../src/benefits.mjs';
+import {buildCharacterPlan,buildLevelOnePlan,validateBenefitChoices,resolvedPlanItems} from '../src/benefits.mjs';
 
 const makeDoc=(uuid,name,type,system={})=>({uuid,name,type,system:{benefits:[],feats:[],...system}});
 function mockCatalog(documents) {
@@ -41,4 +41,21 @@ test('três grants de magia exigem três truques diferentes',async()=>{
   const plan=await buildLevelOnePlan(catalog,{legacy:'legacy',heritage:'heritage',class:'class',background:'bg'});
   const group=plan.groups[0];assert.equal(group.count,3);assert.deepEqual(group.options.map(option=>option.name),['Luz']);
   assert.match(validateBenefitChoices(plan,{[group.id]:['cantrip','cantrip','cantrip']})[0],/não repita/);
+});
+
+test('trilha escolhida entra no plano e abre seus benefícios próprios',async()=>{
+  const cls=makeDoc('class','Especialista','class',{benefits:[{_id:'class-02',type:'grant',granting:'path',query:'',level:2}]});
+  const pathFeature=makeDoc('path-feature','Ação Ardilosa','feature');
+  const path=makeDoc('path','Trilha Ladina','path',{benefits:[{_id:'path-01',type:'feature',uuid:'path-feature',level:1}]});
+  const bg=makeDoc('bg','Artista','background');
+  const legacy=makeDoc('legacy','Humani','legacy',{benefits:[{_id:'heritage-origin',type:'heritage',uuid:'heritage',level:0}]});
+  const heritage=makeDoc('heritage','Herança','heritage');
+  const catalog=mockCatalog([cls,path,pathFeature,bg,legacy,heritage]);
+  const first=await buildLevelOnePlan(catalog,{legacy:'legacy',heritage:'heritage',class:'class',background:'bg'});
+  assert.equal(first.groups.length,0);
+  const levelTwo=await buildCharacterPlan(catalog,{legacy:'legacy',heritage:'heritage',class:'class',background:'bg'},{},2);
+  const trail=levelTwo.groups.find(group=>group.granting==='path');
+  assert.deepEqual(trail.options.map(option=>option.name),['Trilha Ladina']);
+  const expanded=await buildCharacterPlan(catalog,{legacy:'legacy',heritage:'heritage',class:'class',background:'bg'},{[trail.id]:['path']},2);
+  assert.ok(expanded.included.some(item=>item.entry.name==='Ação Ardilosa'));
 });

@@ -26,6 +26,7 @@ export function safeImage(path) {
   if (!value || /^(?:javascript|data|file):/i.test(value) || value.startsWith('//')) return 'icons/svg/mystery-man.svg';
   return value;
 }
+export const classOrigins=level=>Array.from({length:Math.max(1,Math.min(12,Number(level)||1))},(_,index)=>`class-${String(index+1).padStart(2,'0')}`);
 export async function createDraft(draft) {
   assertCompatible(game);
   if (!game.user.can('ACTOR_CREATE')) throw Error('Seu usuário não tem permissão para criar personagens. Peça ao mestre para habilitar a criação de Atores.');
@@ -38,7 +39,7 @@ export async function addDocument(actor, document) {
   if (actor.items.some(i=>i._stats?.compendiumSource===document.uuid)) throw Error('Este conteúdo já está na ficha.');
   const data=document.toObject();delete data._id;
   data._stats={...data._stats,compendiumSource:document.uuid};
-  if(document.type==='class') {data.system.level=1;data.system.initial=true;data.system.hitDie.value=1;}
+  if(document.type==='class') {data.system.level=1;data.system.initial=true;data.system.origin=classOrigins(1);data.system.hitDie.value=1;}
   // Native lifecycle opens Skyfall's choices and applies its own origins/effects.
   const created=await actor.createEmbeddedDocuments('Item',[data]);
   if (!created?.length) throw Error('O sistema não adicionou o conteúdo; revise as escolhas na ficha.');
@@ -48,7 +49,7 @@ function embeddedSource(document,originId=null,level=null) {
   const data=document.toObject();delete data._id;
   data._stats={...data._stats,compendiumSource:document.uuid};
   if (originId) data.system.origin=[originId];
-  if(document.type==='class') {const target=Math.max(1,Math.min(12,Number(level)||1));data.system.level=target;data.system.initial=true;data.system.hitDie.value=target;}
+  if(document.type==='class') {const target=Math.max(1,Math.min(12,Number(level)||1));data.system.level=target;data.system.initial=true;data.system.origin=classOrigins(target);data.system.hitDie.value=target;}
   return data;
 }
 export async function addResolvedPlan(actor,planItems,catalog) {

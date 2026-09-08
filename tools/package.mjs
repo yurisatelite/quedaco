@@ -5,6 +5,6 @@ const manifest=JSON.parse(await readFile(join(root,'module.json'),'utf8'));
 const target=join(root,'dist',`${manifest.id}-${manifest.version}`,manifest.id);
 await mkdir(target,{recursive:true});
 for(const entry of ['module.json','src','styles','assets'])await cp(join(root,entry),join(target,entry),{recursive:true});
-for(const entry of [...manifest.esmodules,...manifest.styles,'assets/fonts/Noka-Semibold.woff2'])await stat(join(target,entry));
+for(const entry of [...manifest.esmodules,...manifest.styles,'assets/fonts/Noka-Medium.woff2','assets/fonts/Noka-Semibold.woff2'])await stat(join(target,entry));
 await writeFile(join(root,'dist','LAST-PACKAGE.txt'),target+'\n');
 console.log(`Pacote de desenvolvimento: ${target}`);

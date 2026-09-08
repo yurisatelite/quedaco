@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {actorSource,addDocument,addResolvedPlan,addInventory,safeImage,applyHitPointProgression} from '../src/adapter.mjs';
+import {actorSource,addDocument,addResolvedPlan,addInventory,safeImage,applyHitPointProgression,classOrigins} from '../src/adapter.mjs';
 import {auditCatalog,BOOK_CONTENT} from '../src/coverage.mjs';
 import {Catalog} from '../src/catalog.mjs';
 test('Actor usa t/p/k, proprietário explícito, token vinculado e texto escapado',()=>{
@@ -89,4 +89,9 @@ test('progressão corrige a média do Skyfall sem apagar outros bônus de vida',
   await applyHitPointProgression(actor,{level:4,hpMethod:'fixed',hpRolls:[]});
   assert.deepEqual(update['system.modifiers.hp.levelRoll'].slice(0,4),[0,6,6,6]);
   assert.deepEqual(update['system.modifiers.hp.totalExtra'],['2','3']);
+});
+
+test('níveis de classe usam as origens nativas que a ficha Skyfall exibe manualmente',()=>{
+  assert.deepEqual(classOrigins(4),['class-01','class-02','class-03','class-04']);
+  assert.deepEqual(classOrigins(99).slice(-1),['class-12']);
 });

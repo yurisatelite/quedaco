@@ -2,7 +2,7 @@
   "id": "quedaco",
   "title": "QUEDAÇO",
   "description": "Criação guiada de personagens e controle de campanha para Skyfall RPG.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "authors": [{ "name": "Yuri" }],
   "compatibility": { "minimum": "13", "maximum": "13" },
   "relationships": { "systems": [{ "id": "skyfall", "type": "system", "compatibility": { "minimum": "1.0.1" } }] },

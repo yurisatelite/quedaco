@@ -21,28 +21,31 @@ export async function buildCharacterPlan(catalog,selections={},choices={},target
   const roots=[],included=[],includedByUuid=new Map(),groups=new Map(),queue=[],queued=new Set();
   const enqueue=(entry,document,atLevel=1,selected=false)=>{const key=`${document.uuid}|${atLevel}|${selected}`;if(queued.has(key))return;queued.add(key);queue.push({entry,document,atLevel,selected});};
   for(const entry of rootEntries){const document=await catalog.document(entry.uuid);roots.push({entry,document});enqueue(entry,document,entry.type==='class'?1:0);}
-  for(const uuid of Object.values(choices).flat().filter(Boolean)){const entry=catalog.entry?.(uuid)??catalog.items.find(item=>item.uuid===uuid);if(entry){const document=await catalog.document(entry.uuid);enqueue(entry,document,1,true);}}
   const curse=roots.find(root=>root.entry.type==='curse')?.document;
-  while(queue.length){
-    const {document,atLevel}=queue.shift();
-    for(const benefit of array(document.system?.benefits).filter(item=>allowedBenefit(document,item,level))){
-      const benefitLevel=Number(benefit.level??0)||atLevel||1;
-      if(benefit.uuid){
-        const linked=catalog.entry?.(benefit.uuid)??catalog.items.find(item=>item.uuid===benefit.uuid);
-        if(benefit.type==='heritage'&&linked?.uuid!==(catalog.entry?.(selections.heritage)?.uuid??selections.heritage))continue;
-        if(!linked)throw Error(`Benefício inacessível no catálogo: ${benefit.uuid}`);
-        const child=await catalog.document(linked.uuid);
-        if(!includedByUuid.has(linked.uuid)){const node={entry:linked,document:child,originId:benefit._id,parentUuid:document.uuid,atLevel:benefitLevel};included.push(node);includedByUuid.set(linked.uuid,node);}
-        enqueue(linked,child,benefitLevel);
-        continue;
+  const processQueue=async()=>{
+    while(queue.length){
+      const {document,atLevel}=queue.shift();
+      for(const benefit of array(document.system?.benefits).filter(item=>allowedBenefit(document,item,level))){
+        const benefitLevel=Number(benefit.level??0)||atLevel||1;
+        if(benefit.uuid){
+          const linked=catalog.entry?.(benefit.uuid)??catalog.items.find(item=>item.uuid===benefit.uuid);
+          if(benefit.type==='heritage'&&linked?.uuid!==(catalog.entry?.(selections.heritage)?.uuid??selections.heritage))continue;
+          if(!linked)throw Error(`Benefício inacessível no catálogo: ${benefit.uuid}`);
+          const child=await catalog.document(linked.uuid);
+          if(!includedByUuid.has(linked.uuid)){
+            const node={entry:linked,document:child,originId:benefit._id,parentUuid:document.uuid,atLevel:benefitLevel};
+            included.push(node);includedByUuid.set(linked.uuid,node);
+          }
+          enqueue(linked,child,benefitLevel);continue;
+        }
+        if(benefit.type!=='grant')continue;
+        const key=`${document.uuid}|${benefit.granting}|${benefit.query??''}|${benefitLevel}`;
+        const group=groups.get(key)??{id:key,title:document.name,owner:document,granting:benefit.granting,query:benefit.query??'',originIds:[],options:[],count:0,atLevel:benefitLevel,populated:false};
+        group.originIds.push(benefit._id);group.count+=Math.max(1,Number(benefit.quantity)||1);groups.set(key,group);
       }
-      if(benefit.type!=='grant')continue;
-      const key=`${document.uuid}|${benefit.granting}|${benefit.query??''}|${benefitLevel}`;
-      const group=groups.get(key)??{id:key,title:document.name,owner:document,granting:benefit.granting,query:benefit.query??'',originIds:[],options:[],atLevel:benefitLevel};
-      group.originIds.push(benefit._id);groups.set(key,group);
     }
-  }
-  for(const group of groups.values()){
+  };
+  const populate=async group=>{
     let uuids=[];
     if(group.granting==='feat'){
       uuids.push(...array(group.owner.system?.feats));
@@ -58,8 +61,14 @@ export async function buildCharacterPlan(catalog,selections={},choices={},target
         uuids.push(spell.uuid);
       }
     }
-    group.options=await entriesFromUuids(catalog,uuids);group.count=group.originIds.length;
-  }
+    group.options=await entriesFromUuids(catalog,uuids);group.populated=true;
+    for(const uuid of array(choices[group.id]).filter(Boolean)){
+      const entry=catalog.entry?.(uuid)??catalog.items.find(item=>item.uuid===uuid);
+      if(entry)enqueue(entry,await catalog.document(entry.uuid),group.atLevel,true);
+    }
+  };
+  await processQueue();
+  while(true){const pending=[...groups.values()].filter(group=>!group.populated);if(!pending.length&&!queue.length)break;for(const group of pending)await populate(group);await processQueue();}
   return {level,roots,included,groups:[...groups.values()].sort((a,b)=>a.atLevel-b.atLevel||a.title.localeCompare(b.title,'pt-BR'))};
 }
 
