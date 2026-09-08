@@ -1,31 +1,35 @@
-# Skyfall — Criador de Personagens do Yuri
+# QUEDAÇO
 
-Módulo para a mesa online do Yuri. Interface Noka, azul-ciano e conteúdo proveniente dos compêndios da própria mesa. Projeto independente, sem dependências de outros aplicativos pessoais.
+Módulo de criação de personagens e controle de campanha para Skyfall RPG. A interface usa Noka Semibold, azul-ciano e um símbolo vetorial original de dragão prateado em queda.
 
-**Estado: desenvolvimento 0.1.0. Ainda não é o criador completo.** Veja [cobertura](docs/COBERTURA.md) para as pendências específicas. Benefícios, treinamento, equipamento inicial, compras, verba de exploração e volume de nível 1 já são resolvidos; o teste integrado e algumas decisões descritas apenas em prosa ainda impedem a liberação para jogadores.
+## Estado da versão 0.2.0
+
+O criador usa os compêndios autorizados da própria mesa para preservar descrições, imagens e efeitos do sistema. Ele elimina cópias equivalentes do catálogo, prioriza o compêndio **Criação de Personagem** e não oferece documentos soltos de **Mundo** como opções.
+
+O fluxo permite escolher níveis de 1 a 12. Ele reúne os benefícios fixos registrados na classe até o nível escolhido, separa decisões por nível, configura a classe no nível de destino, calcula vida e ênfase e permite usar o valor fixo ou rolar os dados de vida dos níveis adicionais. As escolhas dependem dos vínculos existentes no sistema Skyfall instalado.
+
+Jogadores veem somente **Criação de Personagens**. A Mestra também vê as estruturas iniciais de **NPCs**, **Mapa**, **Monstros** e **Quests**, ainda sem cadastros nesta versão.
 
 ## Ambiente alvo
 
 - Foundry VTT 13 build 351.
 - Sistema Skyfall 1.0.1.
 - Conteúdo do Livro Básico instalado na mesa (`skyfall-core`).
-- Usuários precisam ter acesso aos compêndios e permissão para criar Atores. O módulo não muda permissões nem cria acesso privilegiado por socket.
+- Permissão de criação de Atores para quem usar o criador.
 
 ## Desenvolvimento
 
-Node.js 22 ou superior, sem dependências externas de execução.
+Node.js 22 ou superior, sem dependências externas em execução.
 
 ```sh
 npm test
 npm run package
 ```
 
-O empacotamento gera a pasta do módulo em `dist/skyfall-yuri-criador-0.1.0/skyfall-yuri-criador`. Não publica nem instala nada. A fonte Noka fornecida pelo Yuri é incluída localmente; a ferramenta não faz requisições a uma API de IA.
+O pacote é gerado em `dist/quedaco-0.2.0/quedaco`. Após instalar e habilitar o módulo, use **QUEDAÇO · Criar personagem** na aba Atores. A API de abertura é `game.modules.get('quedaco').api.open()`.
 
-Após instalação em um ambiente de teste, habilite o módulo e use **Criar personagem · Yuri** na aba Atores. A API de abertura também é `game.modules.get('skyfall-yuri-criador').api.open()`.
+**Conferir conteúdo** exporta um diagnóstico de catálogo com versões, compêndios, documentos ausentes, vínculos quebrados e número de duplicações removidas. Ele não exporta credenciais, macros ou conversas.
 
-Use **Conferir conteúdo** para baixar um diagnóstico de catálogo. Esse diagnóstico contém apenas versão do sistema, compêndios, tipos/nomes/UUIDs ausentes ou sem imagem; não exporta macros, credenciais ou conteúdo de chats.
+## Conteúdo
 
-## Fontes
-
-Regras baseadas no PDF fornecido pelo usuário. Descrições, imagens e efeitos são carregados dos documentos autorizados do Foundry, sem incluir o livro ou os compêndios dentro deste repositório. A fonte foi copiada do acervo de identidade visual indicado pelo Yuri, sem dependência de caminho externo em execução.
+As regras foram conferidas no Livro Básico DIGITAL 1.25 fornecido pelo usuário. O repositório não redistribui textos, ilustrações nem compêndios do livro; esses materiais são lidos no Foundry conforme as permissões da mesa.

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {actorSource,addDocument,addResolvedPlan,addInventory,safeImage} from '../src/adapter.mjs';
+import {actorSource,addDocument,addResolvedPlan,addInventory,safeImage,applyHitPointProgression} from '../src/adapter.mjs';
 import {auditCatalog,BOOK_CONTENT} from '../src/coverage.mjs';
 import {Catalog} from '../src/catalog.mjs';
 test('Actor usa t/p/k, proprietário explícito, token vinculado e texto escapado',()=>{
@@ -22,6 +22,16 @@ test('falha de pack e documento invisível não somem silenciosamente',async()=>
   const game={items:[],packs:[{collection:'hidden',documentName:'Item',visible:false},{collection:'broken',documentName:'Item',visible:true,metadata:{system:'skyfall'},getIndex:async()=>{throw Error('offline')}},{collection:'ok',documentName:'Item',visible:true,metadata:{system:'skyfall',label:'Livro'},getIndex:async()=>[{_id:'1',type:'legacy',name:'Humani',img:'art.webp'}]}]};
   const catalog=await new Catalog(game).load();assert.equal(catalog.failures.length,2);assert.equal(catalog.items.length,1);assert.equal(catalog.items[0].uuid,'Compendium.ok.Item.1');
   await assert.rejects(()=>catalog.document('Compendium.other.Item.secret'));
+});
+
+test('catálogo ignora Mundo e escolhe a cópia de criação de personagem',async()=>{
+  const makePack=(collection,label,id)=>({collection,documentName:'Item',visible:true,metadata:{system:'skyfall',label},getIndex:async()=>[{_id:id,type:'legacy',name:'Anuro',img:'anuro.webp',uuid:`Compendium.${collection}.Item.${id}`,system:{identifier:'anuro'}}]});
+  const game={version:'13.351',system:{id:'skyfall',version:'1.0.1'},items:[{type:'legacy',name:'Anuro',uuid:'Item.world'}],packs:[makePack('world-copy','Mundo','1'),makePack('creation','Criação de Personagem','2')]};
+  const catalog=await new Catalog(game).load();
+  assert.equal(catalog.items.length,1);
+  assert.equal(catalog.items[0].source,'Criação de Personagem');
+  assert.equal(catalog.entry('Compendium.world-copy.Item.1').uuid,'Compendium.creation.Item.2');
+  assert.equal(catalog.report().duplicatesRemoved,1);
 });
 test('caminhos de imagem recusam protocolos executáveis e locais',()=>{
   assert.equal(safeImage('javascript:alert(1)'),'icons/svg/mystery-man.svg');assert.equal(safeImage('modules/art/portrait.webp'),'modules/art/portrait.webp');
@@ -70,4 +80,13 @@ test('inventário aplica a quantidade do conjunto sem alterar o compêndio',asyn
   const actor={isOwner:true,createEmbeddedDocuments:async(_type,data)=>{sent=data;return data;}};
   await addInventory(actor,[{entry:{uuid:document.uuid},quantity:2}],{document:async()=>document});
   assert.equal(sent[0]._id,undefined);assert.equal(sent[0].system.quantity,2);assert.equal(raw.system.quantity,1);
+});
+
+test('progressão corrige a média do Skyfall sem apagar outros bônus de vida',async()=>{
+  globalThis.game={settings:{get:()=> 'mean'}};
+  let update;
+  const actor={items:[{type:'class',system:{initial:true,hitDie:{die:'1d10'}}}],system:{modifiers:{hp:{totalExtra:['2']}}},update:async data=>{update=data;}};
+  await applyHitPointProgression(actor,{level:4,hpMethod:'fixed',hpRolls:[]});
+  assert.deepEqual(update['system.modifiers.hp.levelRoll'].slice(0,4),[0,6,6,6]);
+  assert.deepEqual(update['system.modifiers.hp.totalExtra'],['2','3']);
 });

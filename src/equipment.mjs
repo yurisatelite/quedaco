@@ -1,6 +1,12 @@
 import {normalize} from './rules.mjs';
 
 const find=(catalog,name)=>catalog.items.find(item=>normalize(item.name)===normalize(name));
+export const itemVolume=entry=>{
+  const raw=entry?.system?.capacity;
+  const value=typeof raw==='object'&&raw!==null?raw.value:raw;
+  const parsed=Number(value);
+  return Number.isFinite(parsed)&&parsed>=0?parsed:0;
+};
 const itemOption=entry=>({id:`item:${entry.uuid}`,label:entry.name,items:[{entry,quantity:1}]});
 const bundle=(id,label,items)=>({id:`bundle:${id}`,label,items});
 const group=(id,title,count,options,autoAmmo=false)=>({id,title,count,options,autoAmmo});
@@ -35,7 +41,7 @@ export async function resolveEquipmentPlan(catalog,plan,choices={}) {
   const errors=[];const items=[];
   items.push(...plan.fixed);
   for(const g of plan.groups){const selected=(choices[g.id]??[]).filter(Boolean);if(selected.length!==g.count)errors.push(`${g.title}: escolha ${g.count===1?'uma opção':`${g.count} opções`}.`);for(const id of selected){const option=g.options.find(value=>value.id===id);if(!option){errors.push(`${g.title}: opção inválida.`);continue;}items.push(...option.items);if(g.autoAmmo){for(const owned of option.items){const system=owned.entry.system?.purpose?owned.entry.system:(await catalog.document(owned.entry.uuid)).system;if(system?.purpose!=='ranged')continue;const ammo=ammoName(owned.entry);if(ammo)items.push(required(catalog,ammo));}}}}
-  const merged=new Map();for(const item of items){const current=merged.get(item.entry.uuid)??{entry:item.entry,quantity:0};current.quantity+=item.quantity;merged.set(item.entry.uuid,current);}
+  const merged=new Map();for(const item of items){const key=`${item.entry.type}|${normalize(item.entry.name)}`,current=merged.get(key)??{entry:item.entry,quantity:0};current.quantity+=item.quantity;merged.set(key,current);}
   return {errors,items:[...merged.values()]};
 }
 export const resolveClassEquipment=resolveEquipmentPlan;
@@ -89,7 +95,7 @@ export async function buildBackgroundEquipmentPlan(catalog,backgroundName,profic
   return {fixed,groups,notes};
 }
 
-export function mergeEquipmentResults(...results){const merged=new Map(),errors=[];for(const result of results){errors.push(...result.errors);for(const item of result.items){const current=merged.get(item.entry.uuid)??{entry:item.entry,quantity:0};current.quantity+=item.quantity;merged.set(item.entry.uuid,current);}}return{errors,items:[...merged.values()]};}
+export function mergeEquipmentResults(...results){const merged=new Map(),errors=[];for(const result of results){errors.push(...result.errors);for(const item of result.items){const key=`${item.entry.type}|${normalize(item.entry.name)}`,current=merged.get(key)??{entry:item.entry,quantity:0};current.quantity+=item.quantity;merged.set(key,current);}}return{errors,items:[...merged.values()]};}
 
 export function shopItems(catalog,query=''){
   const needle=normalize(query);return catalog.items.filter(entry=>['weapon','armor','equipment','consumable','loot'].includes(entry.type)&&Number.isFinite(entry.system?.price)&&entry.system.price>0&&(!needle||normalize(entry.name).includes(needle))).sort((a,b)=>a.system.price-b.system.price||a.name.localeCompare(b.name,'pt-BR'));
@@ -101,4 +107,4 @@ export function resolvePurchases(catalog,cash,equipmentBudget,cashCart=new Map()
   if(cashSpent>cash)errors.push(`Compras excedem a bolsa em T$ ${cashSpent-cash}.`);if(budgetSpent>equipmentBudget)errors.push(`Compras de exploração excedem a verba em T$ ${budgetSpent-equipmentBudget}.`);
   return{errors,items,cashSpent,budgetSpent,cashRemaining:cash-cashSpent,budgetRemaining:equipmentBudget-budgetSpent};
 }
-export function totalVolume(items=[]){return items.reduce((total,item)=>total+(Number(item.entry.system?.capacity)||0)*item.quantity,0);}
+export function totalVolume(items=[]){return items.reduce((total,item)=>total+itemVolume(item.entry)*item.quantity,0);}

@@ -1,8 +1,8 @@
 {
-  "id": "skyfall-yuri-criador",
-  "title": "Skyfall — Criador de Personagens do Yuri",
-  "description": "Criação guiada com o catálogo da mesa, imagens, regras de atributos e dinheiro de Opath.",
-  "version": "0.1.0",
+  "id": "quedaco",
+  "title": "QUEDAÇO",
+  "description": "Criação guiada de personagens e controle de campanha para Skyfall RPG.",
+  "version": "0.2.0",
   "authors": [{ "name": "Yuri" }],
   "compatibility": { "minimum": "13", "maximum": "13" },
   "relationships": { "systems": [{ "id": "skyfall", "type": "system", "compatibility": { "minimum": "1.0.1" } }] },

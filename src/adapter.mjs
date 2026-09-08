@@ -1,5 +1,5 @@
 import { ABILITIES, wallet } from './rules.mjs';
-export const MODULE_ID='skyfall-yuri-criador';
+export const MODULE_ID='quedaco';
 /** Adapter for the inspected Skyfall 1.0.1 schema. Never reimplements its effects. */
 export function assertCompatible(game) {
   if (game.system.id !== 'skyfall') throw Error('Este criador requer o sistema Skyfall.');
@@ -14,10 +14,10 @@ export function actorSource(draft, userId) {
     ownership:{default:0,[userId]:3},
     prototypeToken:{name:draft.name.trim(),actorLink:true,texture:{src:draft.token||draft.portrait||'icons/svg/mystery-man.svg'}},
     system:{abilities:Object.fromEntries(Object.entries(draft.attributes).map(([k,value])=>[k,{value}])),
-      currency:wallet(draft.cash),spellcasting:draft.spellcasting,
+      currency:wallet(draft.cash),...(draft.spellcasting?{spellcasting:draft.spellcasting}:{}),
       biography:escapeHTML(draft.biography??'').replace(/\n/g,'<br>'),
       resources:{hp:{value:0},ep:{value:0},shadow:{value:5},catharsis:{value:0}}},
-    flags:{[MODULE_ID]:{state:'draft',draftVersion:1,creator:userId,plan:draft.selections,notes:{debt:draft.debt??0,equipmentBudget:draft.equipmentBudget??0}}}
+    flags:{[MODULE_ID]:{state:'draft',draftVersion:2,creator:userId,targetLevel:draft.level??1,plan:draft.selections,notes:{debt:draft.debt??0,equipmentBudget:draft.equipmentBudget??0,hpRolls:draft.hpRolls??[]}}}
   };
 }
 export function escapeHTML(value) {return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -44,11 +44,11 @@ export async function addDocument(actor, document) {
   if (!created?.length) throw Error('O sistema não adicionou o conteúdo; revise as escolhas na ficha.');
   return created[0];
 }
-function embeddedSource(document,originId=null) {
+function embeddedSource(document,originId=null,level=null) {
   const data=document.toObject();delete data._id;
   data._stats={...data._stats,compendiumSource:document.uuid};
   if (originId) data.system.origin=[originId];
-  if(document.type==='class') {data.system.level=1;data.system.initial=true;data.system.hitDie.value=1;}
+  if(document.type==='class') {const target=Math.max(1,Math.min(12,Number(level)||1));data.system.level=target;data.system.initial=true;data.system.hitDie.value=target;}
   return data;
 }
 export async function addResolvedPlan(actor,planItems,catalog) {
@@ -58,7 +58,7 @@ export async function addResolvedPlan(actor,planItems,catalog) {
   for (const item of planItems) {
     if (seen.has(item.entry.uuid)) continue;
     const document=item.document??await catalog.document(item.entry.uuid);
-    sources.push(embeddedSource(document,item.originId));seen.add(item.entry.uuid);
+    sources.push(embeddedSource(document,item.originId,item.level));seen.add(item.entry.uuid);
   }
   if (!sources.length) return [];
   const BenefitsDialog=globalThis.skyfall?.applications?.BenefitsDialog;
@@ -80,4 +80,25 @@ export async function refillResources(actor) {
   const hp=actor.system.resources.hp.max,ep=actor.system.resources.ep.max;
   if (!Number.isFinite(hp)||hp<1||!Number.isFinite(ep)||ep<0) throw Error('O sistema ainda não calculou os recursos. Termine as escolhas de classe e benefícios.');
   await actor.update({'system.resources.hp.value':hp,'system.resources.ep.value':ep});
+}
+export async function applyHitPointProgression(actor,draft) {
+  const level=Math.max(1,Math.min(12,Number(draft.level)||1));
+  if(level===1)return;
+  const classItem=actor.items.find(item=>item.type==='class'&&item.system?.initial)??actor.items.find(item=>item.type==='class');
+  const die=Number(String(classItem?.system?.hitDie?.die??'').match(/d(\d+)/i)?.[1]);
+  if(!die)throw Error('O dado de vida da classe criada não pôde ser identificado.');
+  const fixed=Math.floor(die/2)+1,values=draft.hpMethod==='rolled'?draft.hpRolls:Array(level-1).fill(fixed);
+  if(values.length!==level-1)throw Error('Faltam resultados dos dados de vida.');
+  const stored=[0,...values,...Array(Math.max(0,12-level)).fill(0)];
+  const worldMethod=game.settings.get('skyfall','hpPerLevelMethod');
+  const effectiveMethod=worldMethod==='user'?draft.hpMethod:worldMethod;
+  const updates={'system.modifiers.hp.levelRoll':stored};
+  if(worldMethod==='user')updates['flags.skyfall.hpPerLevelMethod']=draft.hpMethod==='rolled'?'roll':'mean';
+  if(effectiveMethod==='mean'){
+    const systemMean=Math.floor((die+1)/2),adjustment=values.reduce((sum,value)=>sum+value,0)-systemMean*(level-1);
+    const extras=Array.from(actor.system.modifiers?.hp?.totalExtra??[]).map(String).filter(Boolean);
+    if(adjustment)extras.push(String(adjustment));
+    updates['system.modifiers.hp.totalExtra']=extras;
+  }
+  await actor.update(updates);
 }

@@ -13,6 +13,7 @@ Este arquivo distingue catálogo, texto de regras, escolhas variáveis e ficha j
 ## Implementado
 
 - Leitura de todos os índices de Itens acessíveis de Skyfall, sem lista curta ou limite artificial.
+- Catálogo canônico por tipo e identificador, com prioridade para Criação de Personagem, Equipamentos e Magias. Documentos soltos de Mundo não entram no seletor.
 - Identificação de falhas/permissões de leitura; relatório de nomes ausentes e imagens genéricas.
 - Checklist inicial: 16 legados (11 principais e 5 alternativos), 20 antecedentes, 3 classes, 4 maldições, 18 trilhas.
 - Grafo oficial dos legados: 44 heranças vinculadas às opções corretas e nenhum UUID de benefício quebrado. A interface filtra as heranças pelo legado escolhido.
@@ -20,8 +21,9 @@ Este arquivo distingue catálogo, texto de regras, escolhas variáveis e ficha j
 - Atributos fixos, convencionais, em ordem ou manuais; dados usando `Roll` do Foundry.
 - Dinheiro dos 20 antecedentes e das 3 classes. Aristocrata usa 3d10+30; Devedor tem dívida; Viajante Intrépido tem verba de exploração, sem convertê-la indevidamente em dinheiro livre.
 - Criação de `Actor.character` com proprietário explícito, token vinculado, `system.currency.t/p/k`, modificadores de atributos e origem rastreável do conteúdo.
-- Inclusão dos documentos preservando seus efeitos, imagens e metadados; o sistema abre suas escolhas nativas.
-- Resolução integrada dos benefícios de nível 1: talento de legado/maldição, estilo e façanha correspondente do Combatente, especialidade e duas artimanhas do Especialista, tradição e três truques do Ocultista. As 48 combinações de 16 legados com 3 classes foram auditadas sem grupos vazios.
+- Inclusão dos documentos preservando seus efeitos, imagens e metadados, depois das escolhas feitas no QUEDAÇO.
+- Resolução integrada dos benefícios registrados nos documentos até o nível escolhido, entre 1 e 12. A interface apresenta os marcos de Combatente, Especialista e Ocultista e separa as escolhas por nível.
+- Classe gravada no nível de destino, 3 PE por nível e vida calculada com máximo no primeiro nível e valor fixo ou dados rolados nos níveis posteriores.
 - Treinamento das 3 classes e dos 20 antecedentes: armas, armaduras, proteções, perícias, aptidões e idiomas são validados e gravados no esquema nativo da ficha. Escolhas repetidas são recusadas.
 - Bônus de INT da página 155 como escolha de perícia ou truque para cada dois pontos positivos, sem permitir truques duplicados.
 - Equipamento inicial das três classes com todas as alternativas do livro, quantidades e munição adequada. Foram confirmados no compêndio online 18 modelos de armas simples, 16 marciais e todos os itens fixos usados pelos conjuntos.
@@ -37,14 +39,15 @@ Este arquivo distingue catálogo, texto de regras, escolhas variáveis e ficha j
 - Prévia final com efeitos realmente calculados pelo sistema e verificação de recursos/proteções.
 - Testar a conclusão automática completa dentro do Foundry e confirmar o resultado com usuário jogador.
 - Teste real com usuário jogador, permissões de criação/compêndios e eventual mediação do mestre.
+- Conferir no Foundry cada trilha e talento de níveis 2–12, especialmente escolhas descritas somente em prosa e as variações da Tradição Ocultista.
 - Imagens ausentes, retratos e tokens adequados às escolhas. Nenhuma arte genérica é considerada cobertura concluída.
 - Instalação online e teste integrado com os módulos da mesa.
 - O antecedente Estudioso Feérico concede o idioma Feérico, mas esse idioma não existe no esquema fechado de idiomas do Skyfall 1.0.1. Até a integração ser corrigida no sistema, o módulo preserva essa concessão nas notas de criação e aplica Élfico normalmente.
 
 ## Diferença encontrada no sistema
 
-O método `prepareMaxHPMean` do Skyfall 1.0.1 local usa `Math.floor((die + 1) / 2)`. O livro informa 6/5/4 como valores fixos após o primeiro nível para d10/d8/d6. Isso produziria uma diferença de 1 PV por nível adicional. O módulo não altera o código do sistema; a criação permanece no nível 1 até resolver e testar a regra de evolução com a mesa.
+O método `prepareMaxHPMean` do Skyfall 1.0.1 local usa `Math.floor((die + 1) / 2)`. O livro informa 6/5/4 como valores fixos após o primeiro nível para d10/d8/d6. O QUEDAÇO calcula esses valores conforme o livro e ainda precisa de teste integrado para confirmar como o total calculado pelo sistema reage ao item de classe no nível de destino.
 
 ## Limite atual
 
-Versão 0.1.0 de desenvolvimento. Os testes automatizados verificam regras e contratos com mocks; não substituem o teste dentro do Foundry. O módulo não está declarado pronto para todos os jogadores.
+Versão 0.2.0 de desenvolvimento. Os testes automatizados verificam regras e contratos com mocks; não substituem o teste dentro do Foundry. A progressão de níveis 2–12 precisa da rodada de testes integrada antes da publicação comunitária.

@@ -4,6 +4,7 @@ export const SKILLS={pres:'Apresentação',apti:'Aptidão',arca:'Arcanismo',cult
 export const APTITUDES={forg:'Forja',pois:'Veneno',fish:'Pescaria',alch:'Alquimia',dist:'Destilação',cart:'Cartografia',tail:'Alfaiataria',cook:'Culinária',pain:'Pintura',craf:'Artesanato',navi:'Navegação',inst:'Instrumentos'};
 export const LANGUAGES={abyssal:'Abissal',anuri:'Anuri',bo:'Bo',celestial:'Celestial',draconic:'Dracônico',toranio:'Tôranio',elvish:'Élfico',kia:'Kia',kishi:'Kishi',vampy:'Vampy'};
 const skillOptions=(ids=Object.keys(SKILLS))=>ids.map(id=>({id:`skill:${id}`,label:SKILLS[id],kind:'skill',value:id}));
+const expertiseOptions=()=>Object.entries(SKILLS).map(([id,label])=>({id:`expertise:${id}`,label,kind:'expertise',value:id}));
 const aptitudeOptions=()=>Object.entries(APTITUDES).map(([id,label])=>({id:`skill:${id}`,label:`Aptidão: ${label}`,kind:'skill',value:id}));
 const languageOptions=()=>Object.entries(LANGUAGES).map(([id,label])=>({id:`language:${id}`,label,kind:'language',value:id}));
 const protectionOptions=(ids=['str','dex','con','int','wis','cha'])=>ids.map(id=>({id:`protection:${id}`,label:id.toUpperCase(),kind:'protection',value:id}));
@@ -25,11 +26,11 @@ const BACKGROUND={
   'proletario':[['fitn','apti'],1],'viajante intrepido':[['natu','perc'],2,['bo']]
 };
 
-export function buildTrainingPlan(className,backgroundName,spellcasting='int',choices={},intelligence=0,spells=[]) {
+export function buildTrainingPlan(className,backgroundName,spellcasting='',choices={},intelligence=0,spells=[]) {
   const cls=CLASS[normalize(className)];if(!cls)throw Error('Classe sem treinamento mapeado.');
   const bg=BACKGROUND[normalize(backgroundName)];if(!bg)throw Error('Antecedente sem treinamento mapeado.');
   const fixed={proficiencies:[...cls.proficiencies],skills:[...cls.skills],protections:[...cls.protections],languages:['common',...(bg[2]??[])],notes:[...(bg[4]??[])]};
-  if(normalize(className)==='ocultista')fixed.protections.push(spellcasting);
+  if(normalize(className)==='ocultista'&&spellcasting)fixed.protections.push(spellcasting);
   const groups=cls.groups.map(item=>({...item,options:[...item.options]}));
   if(normalize(className)==='especialista') {
     const mode=choices['specialist-mode']?.[0];
@@ -40,11 +41,12 @@ export function buildTrainingPlan(className,backgroundName,spellcasting='int',ch
   if(bg[1])groups.push(group('background-languages',`Idiomas de ${backgroundName}`,bg[1],languageOptions()));
   const extras=Math.floor(Math.max(0,intelligence)/2);
   if(extras)groups.push(group('intelligence-bonus','Bônus de INT',extras,[...skillOptions(),...spells.map(item=>({id:`spell:${item.uuid}`,label:`Truque: ${item.name}`,kind:'spell',value:item.uuid}))]));
+  if(normalize(className)==='especialista')groups.push(group('specialist-expertise','Especialidade: perícia expert',1,expertiseOptions()));
   return {fixed,groups};
 }
 
 export function resolveTraining(plan,choices={}) {
-  const result={proficiencies:new Set(plan.fixed.proficiencies),skills:new Set(plan.fixed.skills),protections:new Set(plan.fixed.protections),languages:new Set(plan.fixed.languages),spells:[],notes:[...plan.fixed.notes]};
+  const result={proficiencies:new Set(plan.fixed.proficiencies),skills:new Set(plan.fixed.skills),expertise:new Set(),protections:new Set(plan.fixed.protections),languages:new Set(plan.fixed.languages),spells:[],notes:[...plan.fixed.notes]};
   const errors=[];const seen={skill:new Set(result.skills),protection:new Set(result.protections),language:new Set(result.languages),spell:new Set()};
   for(const group of plan.groups) {
     const selected=(choices[group.id]??[]).filter(Boolean);
@@ -54,18 +56,20 @@ export function resolveTraining(plan,choices={}) {
       const option=group.options.find(item=>item.id===id);
       if(!option){errors.push(`${group.title}: opção inválida.`);continue;}
       if(option.kind==='mode')continue;
+      if(option.kind==='expertise'){if(!result.skills.has(option.value)){errors.push(`${group.title}: “${option.label}” precisa ser uma perícia treinada.`);continue;}result.expertise.add(option.value);continue;}
       if(seen[option.kind]?.has(option.value)){errors.push(`${group.title}: “${option.label}” já foi concedido por outra escolha.`);continue;}
       seen[option.kind]?.add(option.value);
       if(option.kind==='spell')result.spells.push(option.value);else result[`${option.kind}s`].add(option.value);
     }
   }
-  return {errors,proficiencies:[...result.proficiencies],skills:[...result.skills],protections:[...result.protections],languages:[...result.languages],spells:result.spells,notes:result.notes};
+  return {errors,proficiencies:[...result.proficiencies],skills:[...result.skills],expertise:[...result.expertise],protections:[...result.protections],languages:[...result.languages],spells:result.spells,notes:result.notes};
 }
 
 export function actorTrainingUpdate(resolved) {
   if(resolved.errors.length)throw Error(resolved.errors.join(' '));
   const update={'system.proficiencies':resolved.proficiencies,'system.languages':resolved.languages};
   for(const id of resolved.skills)update[`system.skills.${id}.value`]=1;
+  for(const id of resolved.expertise??[])update[`system.skills.${id}.value`]=2;
   for(const id of resolved.protections)update[`system.abilities.${id}.proficient`]=true;
   return update;
 }
