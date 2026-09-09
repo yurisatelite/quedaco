@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {clampPan,focusRegion,zoomToPoint} from '../src/map-view.mjs';
+import {clampPan,focusRegion,resolveHotspot,zoomToPoint} from '../src/map-view.mjs';
 
 const close=(actual,expected)=>assert.ok(Math.abs(actual-expected)<1e-9,`${actual} deveria ser ${expected}`);
 
@@ -26,4 +26,10 @@ test('focusRegion centraliza o hotspot e mantém escala dentro dos limites',()=>
   close(state.ty+600*.75*state.scale,300);
   assert.ok(state.scale>=1&&state.scale<=6);
   assert.equal(focusRegion('ausente',regions,800,600),null);
+});
+
+test('resolveHotspot usa override válido e preserva fallback',()=>{
+ assert.deepEqual(resolveHotspot({regions:{mirmir:[12,34]}},'regions','mirmir',[1,2]),[12,34]);
+ assert.deepEqual(resolveHotspot({regions:{mirmir:['x',34]}},'regions','mirmir',[1,2]),[1,2]);
+ assert.deepEqual(resolveHotspot({places:{foice:[-4,130]}},'places','foice',[1,2]),[0,100]);
 });

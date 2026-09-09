@@ -5,7 +5,7 @@ import {MONSTERS} from './book-monsters.mjs';
 import {MODULE_ID,purchaseItem} from './adapter.mjs';
 import {NPC_LINK_TYPES,NPC_ROLES,NPC_ROLE_STYLE,adoptNpcFlag,inferPlaceId,inferRegionId,isGeneratedNpc,linksFromBio,itemTypeForCategory,normalizeNpcLinks,npcFlag,npcLinkSummary,npcVisibility} from './npcs.mjs';
 import {modifiedItemSheet} from './item-mod.mjs';
-import {clampPan,focusRegion,zoomToPoint} from './map-view.mjs';
+import {clampPan,focusRegion,resolveHotspot,zoomToPoint} from './map-view.mjs';
 import {regionColor} from './regions.mjs';
 import {ForienQuestIntegration,QUEST_STATUSES,questCounts} from './forien-quests.mjs';
 
@@ -17,6 +17,7 @@ export const SCENES_KEY='placeScenes';
 export const PLACE_IMG_KEY='placeImages';
 export const REGION_IMG_KEY='regionImages';
 export const MAP_IMAGE_KEY='opathMapImage';
+export const MAP_HOTSPOTS_KEY='mapHotspots';
 export const ITEM_COMPENDIUM_KEY='itemCompendium';
 export const NPC_LINKS_KEY='npcLinks';
 export const NPC_GRAPH_KEY='npcGraph';
@@ -29,6 +30,7 @@ export function registerLibrarySettings(game,onChange){
   game.settings.register(MODULE_ID,SCENES_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
   game.settings.register(MODULE_ID,PLACE_IMG_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
   game.settings.register(MODULE_ID,REGION_IMG_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
+  game.settings.register(MODULE_ID,MAP_HOTSPOTS_KEY,{scope:'world',config:false,type:Object,default:{regions:{},places:{}},onChange});
   game.settings.register(MODULE_ID,MAP_IMAGE_KEY,{scope:'world',config:true,type:String,default:'',filePicker:'image',
     name:'Imagem do mapa de Opath',hint:'Arquivo no armazenamento da mesa (não acompanha o módulo). Aparece no topo do índice do Mapa.',onChange});
   game.settings.register(MODULE_ID,ITEM_COMPENDIUM_KEY,{scope:'world',config:true,type:String,default:'',
@@ -82,12 +84,14 @@ export function monsterMatches(entry,filters={}){
 export function monsterCategory(entry){return Object.entries(monsterFacetValues(entry)).flatMap(([facet,values])=>values.map(value=>`${facet}:${value}`)).join('|');}
 
 export class CampaignLibrary {
-  constructor(game,catalog){this.game=game;this.catalog=catalog;this.quests=new ForienQuestIntegration(game);this.actors=[];this.failures=[];this.loaded=false;this.state={mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null},npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcActor:null,npcSaved:null,monsterFacets:{},questStatus:'all'};this.modBuilder={baseId:'',materialId:'',sigils:[]};}
+  constructor(game,catalog){this.game=game;this.catalog=catalog;this.quests=new ForienQuestIntegration(game);this.actors=[];this.failures=[];this.loaded=false;this.state={mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null,layer:'auto',movingPins:false},npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcActor:null,npcSaved:null,monsterFacets:{},questStatus:'all'};this.modBuilder={baseId:'',materialId:'',sigils:[]};}
   assertGM(){if(!this.game.user?.isGM)throw Error('Esta área está disponível somente para o mestre.');}
   get shared(){try{return {...emptyShare(),...(this.game.settings?.get(MODULE_ID,SHARED_KEY)||{})};}catch{return emptyShare();}}
   get placeScenes(){try{return {...(this.game.settings?.get(MODULE_ID,SCENES_KEY)||{})};}catch{return {};}}
   get placeImages(){try{return {...(this.game.settings?.get(MODULE_ID,PLACE_IMG_KEY)||{})};}catch{return {};}}
   get regionImages(){try{return {...(this.game.settings?.get(MODULE_ID,REGION_IMG_KEY)||{})};}catch{return {};}}
+  get mapHotspots(){try{return {...(this.game.settings?.get(MODULE_ID,MAP_HOTSPOTS_KEY)||{regions:{},places:{}})};}catch{return {regions:{},places:{}};}}
+  async setMapHotspot(kind,id,point){this.assertGM();if(!['regions','places'].includes(kind)||!id)return;const current={regions:{...(this.mapHotspots.regions??{})},places:{...(this.mapHotspots.places??{})}};if(point)current[kind][id]=point;else delete current[kind][id];await this.game.settings.set(MODULE_ID,MAP_HOTSPOTS_KEY,current);}
   get mapImage(){try{const value=this.game.settings?.get(MODULE_ID,MAP_IMAGE_KEY);return typeof value==='string'?value:'';}catch{return '';}}
   regionColor(id){return regionColor(id,this.game.folders,REGIONS);}
   get npcLinks(){try{return normalizeNpcLinks(this.game.settings?.get(MODULE_ID,NPC_LINKS_KEY)||[]);}catch{return [];}}
@@ -158,7 +162,9 @@ export class CampaignLibrary {
       const factor=id==='in'?1.2:1/1.2,point=data.point??{x:(data.viewW??800)/2,y:(data.viewH??500)/2};
       this.state.map=clampPan(zoomToPoint(this.state.map,point,factor),data.imgW??data.viewW??800,data.imgH??data.viewH??500,data.viewW??800,data.viewH??500);
     }
-    if(op==='lib-map-reset'){this.state.map={scale:1,tx:0,ty:0,focus:null};this.state.mapView='regions';this.state.region=null;this.state.place=null;}
+    if(op==='lib-map-reset'){this.state.map={...this.state.map,scale:1,tx:0,ty:0,focus:null};this.state.mapView='regions';this.state.region=null;this.state.place=null;}
+    if(op==='lib-map-pins')this.state.map={...this.state.map,movingPins:!this.state.map.movingPins};
+    if(op==='lib-map-hotspot-reset'){const [kind,pinId]=String(id).split(':');await this.setMapHotspot(kind,pinId,null);}
     if(op==='lib-place'){const place=[...PLACES,...BEYOND].find(i=>i.id===id);if(!place||(!this.game.user?.isGM&&!this.sharedPlaceIds().has(id)))return;this.state.mapView=place.regionId?'regions':'beyond';this.state.region=place.regionId??null;this.state.place=id;}
     if(op==='lib-open')await this.open(id);
     if(op==='lib-refresh')await this.loadActors(true);
@@ -337,12 +343,12 @@ export class CampaignLibrary {
     const focus=REGIONS.find(region=>region.id===state.focus),place=[...PLACES,...BEYOND].find(entry=>entry.id===this.state.place);
     const regions=(readonly?REGIONS.filter(region=>shared.includes(region.id)):REGIONS).filter(region=>Array.isArray(region.hotspot));
     const places=focus?(readonly?PLACES.filter(entry=>entry.regionId===focus.id&&placeIds.has(entry.id)):PLACES.filter(entry=>entry.regionId===focus.id)):[];
-    const regionPins=!focus?regions.map(region=>`<button class="sy-map-marker" data-op="lib-map-focus" data-id="${e(region.id)}" style="--sy-region:${e(this.regionColor(region.id))};left:${region.hotspot[0]}%;top:${region.hotspot[1]}%" title="Explorar ${e(region.name)}"><span>${e(region.name)}</span></button>`).join(''):'';
-    const placePins=focus?places.map((entry,index)=>{const [x,y]=this.placeMarkerPosition(entry,index,places.length);return `<button class="sy-map-marker sy-map-marker-place ${this.state.place===entry.id?'is-current':''}" data-op="lib-place" data-id="${e(entry.id)}" style="--sy-region:${e(this.regionColor(entry.regionId))};left:${x}%;top:${y}%" title="Abrir ${e(entry.name)}"><span>${e(entry.name)}</span></button>`;}).join(''):'';
+    const regionPins=!focus?regions.map(region=>{const point=resolveHotspot(this.mapHotspots,'regions',region.id,region.hotspot);return `<button class="sy-map-marker ${state.movingPins?'is-movable':''}" data-pin-kind="regions" data-pin-id="${e(region.id)}" data-op="lib-map-focus" data-id="${e(region.id)}" style="--sy-region:${e(this.regionColor(region.id))};left:${point[0]}%;top:${point[1]}%" title="${state.movingPins?'Arraste para reposicionar':`Explorar ${e(region.name)}`}"><span>${e(region.name)}</span></button>`;}).join(''):'';
+    const placePins=focus?places.map((entry,index)=>{const [x,y]=resolveHotspot(this.mapHotspots,'places',entry.id,this.placeMarkerPosition(entry,index,places.length));return `<button class="sy-map-marker sy-map-marker-place ${state.movingPins?'is-movable':''} ${this.state.place===entry.id?'is-current':''}" data-pin-kind="places" data-pin-id="${e(entry.id)}" data-op="lib-place" data-id="${e(entry.id)}" style="--sy-region:${e(this.regionColor(entry.regionId))};left:${x}%;top:${y}%" title="Abrir ${e(entry.name)}"><span>${e(entry.name)}</span></button>`;}).join(''):'';
     const regionImage=focus?this.regionImages[focus.id]:null;
     const images=`<img class="sy-map-image sy-map-image-base ${regionImage?'is-faded':''}" src="${e(this.mapImage)}" alt="Mapa de Opath" draggable="false">${regionImage?`<img class="sy-map-image sy-map-image-region" src="${e(regionImage)}" alt="Mapa de ${e(focus.name)}" draggable="false">`:''}`;
     const transform=`translate(${Number(state.tx)||0}px,${Number(state.ty)||0}px) scale(${Number(state.scale)||1})`;
-    const controls=`<div class="sy-map-controls"><div class="sy-map-zoom" aria-label="Controles do mapa">${button('map-zoom','in','+')} ${button('map-zoom','out','−')} ${button('map-reset','','Reenquadrar')}</div><div class="sy-map-breadcrumb" aria-label="Localização no mapa">${button('map-reset','','Opath')}${focus?`<span aria-hidden="true">›</span><strong>${e(focus.name)}</strong>`:''}${place?`<span aria-hidden="true">›</span><strong>${e(place.name)}</strong>`:''}</div></div>`;
+    const controls=`<div class="sy-map-controls"><div class="sy-map-zoom" aria-label="Controles do mapa">${button('map-zoom','in','+')} ${button('map-zoom','out','−')} ${button('map-reset','','Reenquadrar')}${readonly?'':button('map-pins','',state.movingPins?'✓ Movendo pinos':'Mover pinos')}</div><div class="sy-map-breadcrumb" aria-label="Localização no mapa">${button('map-reset','','Opath')}${focus?`<span aria-hidden="true">›</span><strong>${e(focus.name)}</strong>`:''}${place?`<span aria-hidden="true">›</span><strong>${e(place.name)}</strong>`:''}</div></div>`;
     const viewport=`<div class="sy-map-viewport" data-map-viewport><div class="sy-map-world" style="transform:${e(transform)}">${images}${regionPins}${placePins}</div>${controls}</div>`;
     let detail='';
     if(place&&(!readonly||placeIds.has(place.id))){const scene=this.placeScenes[place.id];detail=`<div class="sy-map-drawer">${this.placeDetail(place,!readonly)}${readonly?(scene?`<div class="sy-library-share-row">${button('open-scene',scene,'Abrir cena vinculada')}</div>`:''):this.scenePicker(place)}</div>`;}
@@ -387,12 +393,12 @@ export class CampaignLibrary {
   regionDetail(region,gm=false){
     const img=this.regionImages[region.id],capital=PLACES.find(i=>i.id===region.capital);
     const controls=gm?`<div class="sy-library-share-row">${button('region-img',region.id,img?'Trocar imagem':'Definir imagem')}${img?button('region-img',`${region.id}:`,'Remover imagem'):''}</div>`:'';
-    return `<section class="sy-library-detail">${gm?this.shareButton('map',region.id,'✓ Liberado','Liberar'):''}${cardFigure(img,region.name)}<small>${page(region)}</small><h3>${e(region.name)}</h3><p>${e(region.summary)}</p><h4>Governo</h4><p>${e(region.government)}</p><h4>Comércio</h4><p>${e(region.trade)}</p><h4>Destaques</h4>${chips(region.highlights)}${capital?button('place',capital.id,`Ir à capital: ${capital.name}`):''}${this.npcsForLocation(region.id,null,!gm)}${controls}</section>`;
+    return `<section class="sy-library-detail">${gm?this.shareButton('map',region.id,'✓ Liberado','Liberar'):''}${cardFigure(img,region.name)}<small>${page(region)}</small><h3>${e(region.name)}</h3><p>${e(region.summary)}</p><h4>Governo</h4><p>${e(region.government)}</p><h4>Comércio</h4><p>${e(region.trade)}</p><h4>Destaques</h4>${chips(region.highlights)}${capital?button('place',capital.id,`Ir à capital: ${capital.name}`):''}${this.npcsForLocation(region.id,null,!gm)}${gm&&this.mapHotspots.regions?.[region.id]?button('map-hotspot-reset',`regions:${region.id}`,'Voltar ao padrão do livro'):''}${controls}</section>`;
   }
   placeDetail(place,gm=false){
     const img=this.placeImages[place.id];
     const controls=gm?`<div class="sy-library-share-row">${button('place-img',place.id,img?'Trocar imagem':'Definir imagem')}${img?button('place-img',`${place.id}:`,'Remover imagem'):''}</div>`:'';
-    return `<section class="sy-library-detail">${gm?this.shareButton('map',place.id,'✓ Liberado','Liberar'):''}${cardFigure(img,place.name)}<small>${page(place)} · ${e(place.kind??'Local')}</small><h3>${e(place.name)}</h3><p>${e(place.summary)}</p>${place.highlights?.length?`<h4>Destaques</h4>${chips(place.highlights)}`:''}${this.npcsForLocation(place.regionId,place.id,!gm)}${controls}</section>`;
+    return `<section class="sy-library-detail">${gm?this.shareButton('map',place.id,'✓ Liberado','Liberar'):''}${cardFigure(img,place.name)}<small>${page(place)} · ${e(place.kind??'Local')}</small><h3>${e(place.name)}</h3><p>${e(place.summary)}</p>${place.highlights?.length?`<h4>Destaques</h4>${chips(place.highlights)}`:''}${this.npcsForLocation(place.regionId,place.id,!gm)}${gm&&this.mapHotspots.places?.[place.id]?button('map-hotspot-reset',`places:${place.id}`,'Voltar ao padrão do livro'):''}${controls}</section>`;
   }
   filters(categories,label='Buscar por nome ou descrição',groups=null){
     const opts=groups?groups.filter(g=>g.items.length).map(g=>`<optgroup label="${e(g.label)}">${g.items.map(([id,name])=>`<option value="${e(id)}">${e(name)}</option>`).join('')}</optgroup>`).join(''):categories.map(([id,name])=>`<option value="${e(id)}">${e(name)}</option>`).join('');

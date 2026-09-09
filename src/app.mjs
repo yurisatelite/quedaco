@@ -49,10 +49,18 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     const apply=()=>{const width=image.clientWidth||viewport.clientWidth,height=image.clientHeight||viewport.clientHeight,viewW=viewport.clientWidth,viewH=viewport.clientHeight;this.library.state.map=clampPan(this.library.state.map,width,height,viewW,viewH);const {tx,ty,scale}=this.library.state.map;world.style.transform=`translate(${tx}px,${ty}px) scale(${scale})`;};
     if(image.complete)requestAnimationFrame(apply);else image.addEventListener('load',apply,{once:true});
     if(globalThis.ResizeObserver){this._mapObserver=new ResizeObserver(apply);this._mapObserver.observe(viewport);}
-    let dragging=false,last=null;
-    viewport.addEventListener('pointerdown',event=>{if(event.target.closest('button,a,input,select,textarea'))return;dragging=true;last={x:event.clientX,y:event.clientY};viewport.classList.add('is-panning');viewport.setPointerCapture?.(event.pointerId);});
-    viewport.addEventListener('pointermove',event=>{if(!dragging||!last)return;const dx=event.clientX-last.x,dy=event.clientY-last.y;last={x:event.clientX,y:event.clientY};const state=this.library.state.map;this.library.state.map={...state,tx:state.tx+dx,ty:state.ty+dy};apply();});
-    const stop=event=>{if(!dragging)return;dragging=false;last=null;viewport.classList.remove('is-panning');if(viewport.hasPointerCapture?.(event.pointerId))viewport.releasePointerCapture(event.pointerId);};viewport.addEventListener('pointerup',stop);viewport.addEventListener('pointercancel',stop);
+    let dragging=false,last=null,pin=null;
+    viewport.addEventListener('click',event=>{if(this.library.state.map.movingPins&&event.target.closest('.sy-map-marker')){event.preventDefault();event.stopImmediatePropagation();}},true);
+    viewport.addEventListener('pointerdown',event=>{
+      const marker=event.target.closest('.sy-map-marker');
+      if(this.library.state.map.movingPins&&marker){event.preventDefault();pin=marker;viewport.setPointerCapture?.(event.pointerId);return;}
+      if(event.target.closest('button,a,input,select,textarea'))return;dragging=true;last={x:event.clientX,y:event.clientY};viewport.classList.add('is-panning');viewport.setPointerCapture?.(event.pointerId);
+    });
+    viewport.addEventListener('pointermove',event=>{
+      if(pin){const rect=image.getBoundingClientRect(),x=Math.max(0,Math.min(100,(event.clientX-rect.left)/rect.width*100)),y=Math.max(0,Math.min(100,(event.clientY-rect.top)/rect.height*100));pin.style.left=`${x}%`;pin.style.top=`${y}%`;pin.dataset.pinX=String(x);pin.dataset.pinY=String(y);return;}
+      if(!dragging||!last)return;const dx=event.clientX-last.x,dy=event.clientY-last.y;last={x:event.clientX,y:event.clientY};const state=this.library.state.map;this.library.state.map={...state,tx:state.tx+dx,ty:state.ty+dy};apply();
+    });
+    const stop=event=>{if(pin){const moved=pin;pin=null;if(moved.dataset.pinX)this.library.setMapHotspot(moved.dataset.pinKind,moved.dataset.pinId,[Number(moved.dataset.pinX),Number(moved.dataset.pinY)]);if(viewport.hasPointerCapture?.(event.pointerId))viewport.releasePointerCapture(event.pointerId);return;}if(!dragging)return;dragging=false;last=null;viewport.classList.remove('is-panning');if(viewport.hasPointerCapture?.(event.pointerId))viewport.releasePointerCapture(event.pointerId);};viewport.addEventListener('pointerup',stop);viewport.addEventListener('pointercancel',stop);
     viewport.addEventListener('wheel',event=>{if(event.target.closest('.sy-map-controls'))return;event.preventDefault();const rect=viewport.getBoundingClientRect(),point={x:event.clientX-rect.left,y:event.clientY-rect.top},factor=event.deltaY<0?1.15:1/1.15;this.library.state.map=zoomToPoint(this.library.state.map,point,factor);apply();},{passive:false});
   }
   stepIssues(i){

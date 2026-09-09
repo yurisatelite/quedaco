@@ -26,3 +26,8 @@ export function focusRegion(regionId,regions,viewW,viewH,imgW=viewW,imgH=viewH){
   const x=imageWidth*finite(region.hotspot[0])/100,y=imageHeight*finite(region.hotspot[1])/100;
   return clampPan({scale,tx:width/2-x*scale,ty:height/2-y*scale,focus:regionId},imageWidth,imageHeight,width,height);
 }
+
+export function resolveHotspot(overrides,kind,id,fallback){
+ const value=overrides?.[kind]?.[id];
+ return Array.isArray(value)&&value.length===2&&value.every(Number.isFinite)?[Math.max(0,Math.min(100,value[0])),Math.max(0,Math.min(100,value[1]))]:fallback;
+}
