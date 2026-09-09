@@ -72,3 +72,12 @@ export const BEYOND=[
  {id:'lapis',name:'Lápis — Lua Ciano',kind:'Lua',page:390,summary:'Prisão criada pel’A Ordem e administrada pelos seraphs. O Labirinto é moldado por seus cantos; Palácios Celestes flutuantes abrigam os Coros.',highlights:['Labirinto','Palácios Celestes','Corifeus e Maestros','Dissonantes','Acordo secreto com a DIPS']},
  {id:'walsh',name:'Walsh — Pequeno Planeta Verde',kind:'Planeta',page:392,summary:'Planeta dos walshies, ampliado internamente por Bolsões Celestes. Clãs disputam as Colinas Verdes e enfrentam os tunches vindos do Lado-De-Lá.',highlights:['Colinas Verdes','Bolsões Celestes','Lado-De-Lá','Tunches','Proibição de assobiar']}
 ];
+
+export const LOCALITY_GOODS={
+ porto:{label:'Porto',categories:['Armas simples','Consumíveis','Equipamentos'],keywords:['corda','rede','arpão','lanterna','ração','barco']},
+ deserto:{label:'Deserto',categories:['Consumíveis','Vestimentas','Equipamentos'],keywords:['água','odre','manto','ração','alquimia']},
+ capital:{label:'Capital',categories:['Armas marciais','Armaduras e escudos','Vestimentas','Consumíveis','Equipamentos','Sigilos'],keywords:[]},
+ montanha:{label:'Montanha',categories:['Armas marciais','Armaduras e escudos','Equipamentos'],keywords:['picareta','corda','escalada','metal']},
+ pantano:{label:'Pântano',categories:['Consumíveis','Equipamentos'],keywords:['antídoto','erva','rede','bota']},
+ selvagem:{label:'Região selvagem',categories:['Armas simples','Consumíveis','Equipamentos'],keywords:['arco','flecha','ração','armadilha','corda']}
+};

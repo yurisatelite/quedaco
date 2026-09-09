@@ -6,6 +6,7 @@ import {MODULE_ID,purchaseItem} from './adapter.mjs';
 import {NPC_LINK_TYPES,NPC_ROLES,NPC_ROLE_STYLE,adoptNpcFlag,inferPlaceId,inferRegionId,isGeneratedNpc,linksFromBio,itemTypeForCategory,npcCoverage,normalizeNpcLinks,npcFlag,npcLinkSummary,npcVisibility} from './npcs.mjs';
 import {modifiedItemSheet} from './item-mod.mjs';
 import {clampPan,focusRegion,resolveHotspot,zoomToPoint} from './map-view.mjs';
+import {localityStock} from './locality.mjs';
 import {ImageResolver} from './images.mjs';
 import {regionColor} from './regions.mjs';
 import {ForienQuestIntegration,QUEST_STATUSES,questCounts} from './forien-quests.mjs';
@@ -220,6 +221,7 @@ export class CampaignLibrary {
     if(op==='lib-mod-remove')this.modBuilder.sigils.splice(Number(id),1);
     if(op==='lib-mod-imbue'){const index=Number(id);if(this.modBuilder.sigils[index])this.modBuilder.sigils[index]={...this.modBuilder.sigils[index],imbue:!this.modBuilder.sigils[index].imbue};}
     if(op==='lib-mod-copy'){const sheet=this.modSheet();if(globalThis.navigator?.clipboard)await navigator.clipboard.writeText(sheet.text);}
+    if(op==='lib-create-merchant')await this.createTypicalMerchant(id);
     if(op==='lib-generate-npc'){
       const [regionId,archetype]=String(id).split('|'),name=generatorMacroName(this.game.settings),macro=this.game.macros?.getName?.(name);
       if(macro)await macro.execute({quedaco:{kind:'npc',regionId,archetype}});else ui.notifications.warn(`Macro '${name}' não encontrada. Configure o nome em Configurações do Módulo → QUEDAÇO.`);
@@ -264,6 +266,13 @@ export class CampaignLibrary {
     const document=await Item.create({name,type:itemTypeForCategory(data.category),img:itemFallback({category:data.category}),system:{price,quantity:1,capacity}},{pack:collection});
     if(!document?.uuid)throw Error('O Foundry não criou o item no compêndio.');
     await this.updateStock(actorId,{uuid:document.uuid,price:null,qty:null,note:''});return document;
+  }
+  async createTypicalMerchant(targetId){
+    this.assertGM();const itinerant=String(targetId).startsWith('region:'),id=itinerant?String(targetId).slice(7):targetId,place=itinerant?null:PLACES.find(entry=>entry.id===id),region=REGIONS.find(entry=>entry.id===(place?.regionId??id));
+    if(!region||(!itinerant&&!place))throw Error('Localidade inválida para o mercador.');
+    const stock=localityStock(place??{kind:'selvagem'},this.catalog?.items??[],{markup:itinerant?1.25:1.15});if(!stock.length)throw Error('Nenhum item de compêndio compatível foi encontrado. Carregue os compêndios de itens primeiro.');
+    const name=itinerant?`Mercador itinerante de ${region.name}`:`Mercador de ${place.name}`,flag={role:'merchant',regionId:region.id,placeId:place?.id??'',note:itinerant?'Viaja pela região.':'Estoque sugerido pela localidade.',shop:{markup:itinerant?1.25:1.15,note:'Estoque inicial sugerido pelo QUEDAÇO; revise antes de liberar.',stock}};
+    const actor=await Actor.create({name,type:'character',img:this.image('npc',name,'','icons/svg/mystery-man.svg').src,flags:{[MODULE_ID]:{npc:flag}},prototypeToken:{actorLink:true}});if(actor)this.state.npcActor=actor.id;return actor;
   }
   async addNpcLink(actorId,data){
     this.assertGM();const actor=this.actorById(actorId),target=String(data.target||data.text&&`txt:${data.text}`||'');if(!actor||!target)throw Error('Escolha ou informe o outro NPC.');
@@ -418,12 +427,12 @@ export class CampaignLibrary {
   regionDetail(region,gm=false){
     const resolved=this.image('region',region.id,'','icons/svg/mountain.svg'),img=this.regionImages[region.id]||resolved.src,capital=PLACES.find(i=>i.id===region.capital);
     const controls=gm?`<div class="sy-library-share-row">${button('region-img',region.id,this.regionImages[region.id]?'Trocar imagem':'Definir imagem')}${this.regionImages[region.id]?button('region-img',`${region.id}:`,'Remover imagem'):''}</div>`:'';
-    return `<section class="sy-library-detail">${gm?this.shareButton('map',region.id,'✓ Liberado','Liberar'):''}${cardFigure(img,region.name,'wide',resolved.fallbacks)}<small>${page(region)}</small><h3>${e(region.name)}</h3><p>${e(region.summary)}</p><h4>Governo</h4><p>${e(region.government)}</p><h4>Comércio</h4><p>${e(region.trade)}</p><h4>Destaques</h4>${chips(region.highlights)}${capital?button('place',capital.id,`Ir à capital: ${capital.name}`):''}${this.npcsForLocation(region.id,null,!gm)}${gm&&this.mapHotspots.regions?.[region.id]?button('map-hotspot-reset',`regions:${region.id}`,'Voltar ao padrão do livro'):''}${controls}</section>`;
+    return `<section class="sy-library-detail">${gm?this.shareButton('map',region.id,'✓ Liberado','Liberar'):''}${cardFigure(img,region.name,'wide',resolved.fallbacks)}<small>${page(region)}</small><h3>${e(region.name)}</h3><p>${e(region.summary)}</p><h4>Governo</h4><p>${e(region.government)}</p><h4>Comércio</h4><p>${e(region.trade)}</p><h4>Destaques</h4>${chips(region.highlights)}${capital?button('place',capital.id,`Ir à capital: ${capital.name}`):''}${gm?button('create-merchant',`region:${region.id}`,'Criar mercador itinerante'):''}${this.npcsForLocation(region.id,null,!gm)}${gm&&this.mapHotspots.regions?.[region.id]?button('map-hotspot-reset',`regions:${region.id}`,'Voltar ao padrão do livro'):''}${controls}</section>`;
   }
   placeDetail(place,gm=false){
     const resolved=this.image('place',place.id,'','icons/svg/village.svg'),img=this.placeImages[place.id]||resolved.src;
     const controls=gm?`<div class="sy-library-share-row">${button('place-img',place.id,this.placeImages[place.id]?'Trocar imagem':'Definir imagem')}${this.placeImages[place.id]?button('place-img',`${place.id}:`,'Remover imagem'):''}</div>`:'';
-    return `<section class="sy-library-detail">${gm?this.shareButton('map',place.id,'✓ Liberado','Liberar'):''}${cardFigure(img,place.name,'wide',resolved.fallbacks)}<small>${page(place)} · ${e(place.kind??'Local')}</small><h3>${e(place.name)}</h3><p>${e(place.summary)}</p>${place.highlights?.length?`<h4>Destaques</h4>${chips(place.highlights)}`:''}${this.npcsForLocation(place.regionId,place.id,!gm)}${gm&&this.mapHotspots.places?.[place.id]?button('map-hotspot-reset',`places:${place.id}`,'Voltar ao padrão do livro'):''}${controls}</section>`;
+    return `<section class="sy-library-detail">${gm?this.shareButton('map',place.id,'✓ Liberado','Liberar'):''}${cardFigure(img,place.name,'wide',resolved.fallbacks)}<small>${page(place)} · ${e(place.kind??'Local')}</small><h3>${e(place.name)}</h3><p>${e(place.summary)}</p>${place.highlights?.length?`<h4>Destaques</h4>${chips(place.highlights)}`:''}${gm?button('create-merchant',place.id,'Criar mercador típico'):''}${this.npcsForLocation(place.regionId,place.id,!gm)}${gm&&this.mapHotspots.places?.[place.id]?button('map-hotspot-reset',`places:${place.id}`,'Voltar ao padrão do livro'):''}${controls}</section>`;
   }
   filters(categories,label='Buscar por nome ou descrição',groups=null){
     const opts=groups?groups.filter(g=>g.items.length).map(g=>`<optgroup label="${e(g.label)}">${g.items.map(([id,name])=>`<option value="${e(id)}">${e(name)}</option>`).join('')}</optgroup>`).join(''):categories.map(([id,name])=>`<option value="${e(id)}">${e(name)}</option>`).join('');
