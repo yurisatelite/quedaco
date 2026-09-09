@@ -92,6 +92,33 @@ export function normalizeNpcLinks(links){
   }
   return result;
 }
+
+const BIO_RELATIONS=[
+ ['filho','filho de'],['filho','filha de'],['irmão','irmão de'],['irmão','irmã de'],['mãe','mãe de'],['pai','pai de'],
+ ['aliado','casado com'],['aliado','casada com'],['aliado','aliado de'],['aliado','aliada de'],['inimigo','rival de'],['inimigo','inimigo de'],['inimigo','inimiga de']
+];
+export function resolveLinkTarget(name,allNpcs=[]){
+  const matches=Array.from(allNpcs).filter(actor=>normalize(actor?.name)===normalize(name));
+  if(matches.length===1)return {match:matches[0]};
+  if(matches.length>1)return {ambiguous:matches};
+  return {match:null};
+}
+export function linksFromBio(actor,allNpcs=[]){
+  const bio=stripTags(actor?.system?.details?.description??actor?.system?.biography??''),from=actor?.uuid??actor?.id;
+  if(!from||!bio)return [];
+  const results=[],seen=new Set();
+  for(const candidate of allNpcs){
+    if(candidate===actor||candidate?.uuid===from||!candidate?.name)continue;
+    for(const [type,phrase] of BIO_RELATIONS){
+      if(!hasWord(bio,`${phrase} ${candidate.name}`))continue;
+      const key=`${type}|${normalize(candidate.name)}`;if(seen.has(key))continue;seen.add(key);
+      const resolution=resolveLinkTarget(candidate.name,allNpcs.filter(item=>item?.uuid!==from));
+      results.push({type,from,targetName:candidate.name,to:resolution.match?.uuid??null,note:'da bio',...(resolution.ambiguous?{ambiguous:resolution.ambiguous}:{} )});
+    }
+  }
+  return results;
+}
+
 export function npcLinkSummary(key,links,nameFor=value=>value.replace(/^txt:/,'')){
   const inverse={pai:'Filho de',mãe:'Filho de',filho:'Responsável por',irmão:'Irmão de',aliado:'Aliado de',conhecido:'Conhecido de',inimigo:'Inimigo de'};
   return normalizeNpcLinks(links).filter(link=>link.from===key||link.to===key).map(link=>{

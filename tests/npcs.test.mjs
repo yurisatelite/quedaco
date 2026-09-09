@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {PLACES} from '../src/book-world.mjs';
-import {NPC_ROLE_STYLE,adoptNpcFlag,folderPath,inferPlaceId,inferRegionId,isGeneratedNpc,itemTypeForCategory,npcVisibility,placeIdFromFolderPath,regionIdFromFolderPath,stripTags} from '../src/npcs.mjs';
+import {NPC_ROLE_STYLE,adoptNpcFlag,folderPath,inferPlaceId,inferRegionId,isGeneratedNpc,linksFromBio,itemTypeForCategory,npcVisibility,placeIdFromFolderPath,regionIdFromFolderPath,resolveLinkTarget,stripTags} from '../src/npcs.mjs';
 
 test('pasta regional da macro resolve a capital do índice do QUEDAÇO',()=>{
   assert.equal(placeIdFromFolderPath(['🤖 NPCs por Região','Deserto de Mirmir','Kravokia'],PLACES),'kravokia');
@@ -71,4 +71,14 @@ test('NPC pode pertencer à região mesmo sem cidade',()=>{
   assert.equal(inferRegionId({name:'Peregrino do Deserto de Mirmir'}),'mirmir');
   const flag=adoptNpcFlag({name:'Peregrino',type:'character',folder:{name:'Deserto de Mirmir',folder:{name:'🤖 NPCs por Região'}}});
   assert.equal(flag.regionId,'mirmir');assert.equal(flag.placeId,'');
+});
+
+test('bio sugere parentesco e nome repetido permanece ambíguo',()=>{
+ const source={uuid:'Actor.a',name:'Ayla',system:{biography:'Ayla é filho de Barra Brasa-Fria e rival de Vozz.'}};
+ const barra={uuid:'Actor.b',name:'Barra Brasa-Fria'},vozz1={uuid:'Actor.v1',name:'Vozz'},vozz2={uuid:'Actor.v2',name:'Vozz'};
+ const links=linksFromBio(source,[source,barra,vozz1,vozz2]);
+ assert.equal(links.find(link=>link.targetName==='Barra Brasa-Fria').type,'filho');
+ assert.equal(links.find(link=>link.targetName==='Barra Brasa-Fria').to,'Actor.b');
+ assert.equal(links.find(link=>link.targetName==='Vozz').ambiguous.length,2);
+ assert.equal(resolveLinkTarget('Vozz',[vozz1,vozz2]).ambiguous.length,2);
 });
