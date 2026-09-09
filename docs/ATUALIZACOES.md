@@ -18,6 +18,18 @@ Uma instalação manual antiga precisa ser vinculada a esse manifesto uma vez. E
 
 Os arquivos licenciados Noka-Medium.woff2 e Noka-Semibold.woff2 podem permanecer em uma pasta da própria mesa, por exemplo `quedaco-brand`. Em Configurações do módulo, informe essa pasta em “Pasta de fontes da mesa”. Como fica fora de `modules/quedaco`, a pasta sobrevive às atualizações. O pacote público utiliza Outfit quando nenhuma pasta estiver configurada. A Outfit acompanha o módulo e funciona sem serviços externos, em peso Medium (500) no texto e Semibold (600) nos títulos. Sua licença SIL Open Font License 1.1 está incluída em `assets/fonts/OFL-Outfit.txt`.
 
+## Versão 0.4.2
+
+Correções sobre a 0.4.1 já publicada, sem mudança de escopo:
+
+- Trilha (nível 2+) passa a entrar no slot `path-01` / `path-02` da ficha nativa.
+  A criação dos itens de trilha saiu do lote único para uma criação individual, e
+  `finalizePathProgression` força o `system.origin` por `update`.
+- Imagem opcional por local, definida pelo mestre (`quedaco.placeImages`).
+- Logo do dragão em queda e pinos clicáveis por região sobre a imagem do mapa.
+
+Não substitua o ZIP da 0.4.1; publique a 0.4.2 como release mais recente.
+
 ## Versão 0.4.1
 
 Corrige a compatibilidade do manifesto: adiciona `verified` ao bloco `compatibility`
