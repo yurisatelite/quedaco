@@ -1,4 +1,4 @@
-export const IMAGE_KINDS={region:'regioes',place:'locais',npc:'npcs',monster:'monstros',item:'itens',quest:'quests',map:'mapas'};
+export const IMAGE_KINDS={region:'regioes',place:'locais',npc:'npcs',monster:'monstros',item:'itens',quest:'quests',map:'mapas',token:'tokens'};
 export function imageSlug(value){return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
 export function imageCandidates(root,kind,idOrName){
  const base=String(root??'').replace(/[\/]+$/,''),folder=IMAGE_KINDS[kind]??imageSlug(kind),slug=imageSlug(idOrName);
@@ -7,7 +7,8 @@ export function imageCandidates(root,kind,idOrName){
 }
 export function resolveImage(kind,idOrName,{root='',manifest={},documentImg='',fallback='icons/svg/mystery-man.svg'}={}){
  const key=imageSlug(idOrName),section=manifest?.[IMAGE_KINDS[kind]]??manifest?.[kind]??{},exception=section?.[idOrName]??section?.[key];
- const sources=[exception,...imageCandidates(root,kind,idOrName),documentImg,fallback].filter(Boolean);
+ const tokenCandidates=['npc','monster'].includes(kind)?imageCandidates(root,'token',idOrName):[];
+ const sources=[exception,...imageCandidates(root,kind,idOrName),...tokenCandidates,documentImg,fallback].filter(Boolean);
  return {src:sources[0]??'',fallbacks:[...new Set(sources.slice(1))],sources:[...new Set(sources)]};
 }
 export class ImageResolver{
