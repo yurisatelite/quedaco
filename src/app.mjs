@@ -1,4 +1,5 @@
 import {Catalog} from './catalog.mjs';
+import {CampaignLibrary} from './library.mjs';
 import {ABILITIES,classRules,backgroundRules,startingMoney,conventionalRoll,validateAttributes,hitPoints,wallet,carryingCapacity} from './rules.mjs';
 import {buildCharacterPlan,validateBenefitChoices,resolvedPlanItems} from './benefits.mjs';
 import {buildTrainingPlan,resolveTraining,actorTrainingUpdate} from './training.mjs';
@@ -12,7 +13,7 @@ const number=(n)=>n==null?'—':n;
 export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   static DEFAULT_OPTIONS={id:'quedaco-control',classes:['sy-creator'],tag:'section',window:{title:'QUEDAÇO',resizable:true},position:{width:1180,height:820}};
   constructor(options={}) {
-    super(options);this.catalog=new Catalog(game);this.area='characters';this.step=0;this.query='';this.type='spell';this.loading=true;this.busy=false;this.detail=null;this.actor=null;
+    super(options);this.catalog=new Catalog(game);this.library=new CampaignLibrary(game,this.catalog);this.area='characters';this.step=0;this.query='';this.type='spell';this.loading=true;this.busy=false;this.detail=null;this.actor=null;
     this.draft={name:'',biography:'',level:1,selections:{},attributes:{str:1,dex:1,con:2,int:3,wis:0,cha:0},method:'fixed',slots:[2,3,1,0,4,5],boost:5,spellcasting:'',hpMethod:'fixed',hpRolls:[],portrait:'',token:'',cash:0};
     this.heritageOptions=[];this.attributesFinalized=false;this.equipmentFinalized=false;this._restoreScroll=null;
     this.sums={class:null,background:null};this.rolls=[];this.rollSlots=[0,1,2,3,4,5];this.swap=[0,1];this.extra=new Set();this.benefitChoices={};this.benefitPlan=null;this.trainingChoices={};this.trainingPlan=null;this.trainingResolved=null;this.equipmentChoices={};this.equipmentPlan=null;this.equipmentResolved=null;this.purchasesCash=new Map();this.purchasesBudget=new Map();this.shopQuery='';this.purchaseResolved=null;this._cantrips=null;
@@ -22,6 +23,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   money(){try{return startingMoney(this.selected('class')?.name,this.selected('background')?.name,this.sums.class,this.sums.background);}catch{return null;}}
   attrErrors(){const bases=[3,2,1,1,0,-1],values=Object.values(this.draft.attributes);const errors=validateAttributes(values,this.draft.method,this.draft.slots.map(i=>bases[i]),this.draft.boost);if(this.draft.method==='fixed'&&new Set(this.draft.slots).size!==6)errors.push('Use cada posição da distribuição uma única vez.');if(['conventional','ordered'].includes(this.draft.method)&&this.rolls.length!==6)errors.push('Role os seis conjuntos antes de continuar.');return errors;}
   async _renderHTML(){
+    if(!game.user.isGM)this.area='characters';
     const selected=this.selected('class');let hp='—';try{hp=hitPoints(selected?.name,this.draft.attributes.con,this.draft.level,this.draft.hpMethod==='rolled'?this.draft.hpRolls:null);}catch{}
     const money=this.money(),purchaseMoney=money?resolvePurchases(this.catalog,money.cash,money.equipmentBudget,this.purchasesCash,this.purchasesBudget):null,displayWallet=purchaseMoney?wallet(Math.max(0,purchaseMoney.cashRemaining)):money?.wallet;
     const areas=[['characters','Criação de Personagens'],...(game.user.isGM?[['npcs','NPCs'],['map','Mapa'],['monsters','Monstros'],['items','Itens'],['quests','Quests']]:[])];
@@ -32,13 +34,14 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
       <aside><small>SEU PERSONAGEM</small><h3>${e(this.draft.name||'Novo aventureiro')}</h3>${this.draft.portrait?`<img class="sy-portrait" src="${e(safeImage(this.draft.portrait))}" alt="Retrato">`:''}<div class="sy-stats"><div>Vida<strong>${hp} PV</strong></div><div>Ênfase<strong>${selected?this.draft.level*3:'—'} PE</strong></div></div><small>Nível ${this.draft.level}</small><dl>${['legacy','heritage','curse','background','class'].map(t=>`<dt>${LABELS[t]}</dt><dd>${e(this.selected(t)?.name??'—')}</dd>`).join('')}</dl><h3>Bolsa</h3><div class="sy-stats">${['k','p','t'].map(k=>`<div>${k.toUpperCase()}$<strong>${number(displayWallet?.[k])}</strong></div>`).join('')}</div>${money?.debt?`<p>Dívida: T$ ${money.debt}</p>`:''}${money?.equipmentBudget?`<p>Verba de exploração: T$ ${purchaseMoney?.budgetRemaining??money.equipmentBudget}</p>`:''}<small>Dinheiro e verba para equipamento são separados.</small></aside></div>
       <footer><button data-op="previous" ${this.step===0?'disabled':''}>← Voltar</button><small>${this.actor?'Ficha criada na mesa':'Nenhuma ficha criada ainda'}</small><button class="sy-primary" data-op="next" ${this.step===STEPS.length-1?'disabled':''}>Continuar →</button></footer></div>`;
   }
-  _replaceHTML(result,content){content.innerHTML=result;}
+  _replaceHTML(result,content){content.innerHTML=result;this.library.filter(content);content.addEventListener('input',this._libraryInput??=(event)=>{if(event.target.name==='libraryQuery')this.library.filter(event.currentTarget);});}
   async rerender(preserve=true){const content=this.element?.querySelector?.('.window-content');if(preserve&&content)this._restoreScroll={top:content.scrollTop,left:content.scrollLeft};else this._restoreScroll={top:0,left:0};return this.render(true);}
   _onRender(context,options){super._onRender(context,options);const root=this.element,content=root.querySelector?.('.window-content');if(content&&this._restoreScroll){content.scrollTop=this._restoreScroll.top;content.scrollLeft=this._restoreScroll.left;this._restoreScroll=null;}root.addEventListener('click',this._click??=(event)=>this.handleClick(event));root.addEventListener('change',this._change??=(event)=>this.handleChange(event));root.addEventListener('pointerover',this._hover??=(event)=>{const help=event.target.closest?.('.sy-help[data-uuid]');if(help)this.showHelp(help);});root.addEventListener('pointerout',this._unhover??=(event)=>{if(event.target.closest?.('.sy-help'))this.hideHelp();});root.addEventListener('input',this._input??=(event)=>{if(!['query','shopQuery'].includes(event.target.name))return;const name=event.target.name;clearTimeout(this._searchTimer);this._searchTimer=setTimeout(()=>{if(name==='query')this.query=event.target.value;else this.shopQuery=event.target.value;this.rerender(true);},180);});}
   hideHelp(){this._tooltipToken=(this._tooltipToken??0)+1;this.element?.querySelector?.('.sy-tooltip')?.remove();}
   async showHelp(button){const token=this._tooltipToken=(this._tooltipToken??0)+1;this.element?.querySelector?.('.sy-tooltip')?.remove();const tip=document.createElement('div');tip.className='sy-tooltip';tip.textContent='Carregando descrição…';this.element.append(tip);const rect=button.getBoundingClientRect(),host=this.element.getBoundingClientRect();tip.style.left=`${Math.max(8,Math.min(host.width-330,rect.left-host.left-280))}px`;tip.style.top=`${Math.max(8,rect.bottom-host.top+6)}px`;try{const doc=await this.catalog.document(button.dataset.uuid),fragments=[doc.system?.description?.value,doc.system?.effect?.descriptive,doc.system?.attack?.hit,doc.system?.special?.descriptive].filter(Boolean),plain=document.createElement('div');plain.innerHTML=fragments.join(' ');if(token!==this._tooltipToken)return;tip.textContent=(plain.textContent||doc.name||'Sem descrição.').replace(/\s+/g,' ').trim().slice(0,520)||'Sem descrição.';}catch{if(token===this._tooltipToken)tip.textContent='Descrição indisponível.';}}
   stepDone(i){if(i===0)return Boolean(this.draft.name.trim());if(TYPES[i])return i===3?true:Boolean(this.selected(TYPES[i]));if(i===6)return Boolean(this.benefitPlan&&!validateBenefitChoices(this.benefitPlan,this.benefitChoices).length);if(i===7)return this.attributesFinalized&&!this.attrErrors().length;if(i===8)return Boolean(this.trainingResolved&&!this.trainingResolved.errors.length);if(i===9)return Boolean(this.money());if(i===10)return Boolean(this.equipmentFinalized&&this.equipmentResolved&&!this.equipmentResolved.errors.length);if(i===11)return true;return Boolean(this.actor);}
   renderArea(){
+    if(['map','monsters','items'].includes(this.area))return `${this.message?`<p class="sy-alert" role="status">${e(this.message)}</p>`:''}${this.library.render(this.area)}`;
     const definitions={npcs:['Mercadores','Aliados','Rivais','Figurantes'],map:['Regiões','Cidades e locais','Mapas e cenas','Encontros da região'],monsters:['Aquáticos','Terrestres','Aéreos','Outros'],items:['Armas','Armaduras','Equipamentos','Consumíveis','Itens modificados'],quests:['Disponíveis','Ativas','Concluídas']};
     const titles={npcs:'NPCs',map:'Mapa',monsters:'Monstros',items:'Itens',quests:'Quests'},items=definitions[this.area]??[];
     return `<main class="sy-empty-area"><small>PAINEL HÍBRIDO DA MESTRA</small><h2>${titles[this.area]}</h2><p>Os cartões desta área serão índices do QUEDAÇO ligados aos documentos nativos da mesa.</p><div class="sy-empty-grid">${items.map(item=>`<section><span class="sy-done sy-pending">·</span><h3>${item}</h3><small>Aguardando preenchimento e vínculo com o Foundry.</small></section>`).join('')}</div></main>`;
@@ -132,9 +135,11 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   }
   async handleClick(event){
     const button=event.target.closest('button[data-op]');if(!button||button.disabled||this.busy)return;
+    if(button.dataset.op==='lib-open'){try{await this.library.open(button.dataset.id);}catch(error){ui.notifications.warn(error.message);}return;}
     this.busy=true;button.disabled=true;this.message='';const navigation=['area','step','previous','next'].includes(button.dataset.op);this.element?.querySelector?.('.sy-shell')?.insertAdjacentHTML('beforeend','<div class="sy-busy" role="status"><span></span><strong>Carregando…</strong></div>');
     try{const {op,uuid,type,kind}=button.dataset;
-      if(op==='area'){this.area=button.dataset.area;}
+      if(op==='area'){if(button.dataset.area!=='characters'&&!game.user.isGM)throw Error('Área exclusiva do mestre.');this.area=button.dataset.area;if(this.area==='monsters')await this.library.loadActors();}
+      if(op.startsWith('lib-'))await this.library.action(op,button.dataset.id);
       if(op==='step'||op==='previous'||op==='next'){if(op==='next'&&this.step===7&&!this.attrErrors().length)this.attributesFinalized=true;this.step=op==='step'?Number(button.dataset.index):this.step+(op==='next'?1:-1);this.query='';this.detail=null;}
       if(op==='select'){this.draft.selections[type]=uuid;this.benefitPlan=null;this.benefitChoices={};this.trainingPlan=null;this.trainingChoices={};this.equipmentPlan=null;this.equipmentChoices={};this.purchasesCash.clear();this.purchasesBudget.clear();if(type==='class'||type==='background')this.sums[type]=null;if(type==='legacy'){delete this.draft.selections.heritage;this.heritageOptions=await this.catalog.linkedItems(uuid,{type:'heritage',level:0});}this.detail=uuid;}
       if(op==='noCurse'){delete this.draft.selections.curse;this.detail=null;}
@@ -163,6 +168,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   applyFixed(){const base=[3,2,1,1,0,-1];Object.keys(ABILITIES).forEach((k,i)=>{this.draft.attributes[k]=base[this.draft.slots[i]]+(i===this.draft.boost?1:0);});}
   async handleChange(event){
     const {name,value}=event.target;if(!name)return;
+    if(name==='libraryQuery'||name==='libraryCategory'){this.library.filter(this.element);return;}
     if(['name','biography','spellcasting'].includes(name))this.draft[name]=value;
     if(name==='level'){this.draft.level=Math.max(1,Math.min(12,Number(value)||1));this.draft.hpRolls=[];this.benefitPlan=null;this.benefitChoices={};this.attributesFinalized=false;}
     if(name==='hpMethod'){this.draft.hpMethod=value;this.draft.hpRolls=[];}
