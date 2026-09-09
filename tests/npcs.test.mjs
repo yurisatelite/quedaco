@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {PLACES} from '../src/book-world.mjs';
-import {NPC_ROLE_STYLE,adoptNpcFlag,folderPath,inferPlaceId,inferRegionId,isGeneratedNpc,linksFromBio,itemTypeForCategory,npcVisibility,placeIdFromFolderPath,regionIdFromFolderPath,resolveLinkTarget,stripTags} from '../src/npcs.mjs';
+import {NPC_ROLE_STYLE,adoptNpcFlag,folderPath,inferPlaceId,inferRegionId,isGeneratedNpc,linksFromBio,itemTypeForCategory,npcCoverage,npcVisibility,placeIdFromFolderPath,regionIdFromFolderPath,resolveLinkTarget,stripTags} from '../src/npcs.mjs';
 
 test('pasta regional da macro resolve a capital do índice do QUEDAÇO',()=>{
   assert.equal(placeIdFromFolderPath(['🤖 NPCs por Região','Deserto de Mirmir','Kravokia'],PLACES),'kravokia');
@@ -81,4 +81,11 @@ test('bio sugere parentesco e nome repetido permanece ambíguo',()=>{
  assert.equal(links.find(link=>link.targetName==='Barra Brasa-Fria').to,'Actor.b');
  assert.equal(links.find(link=>link.targetName==='Vozz').ambiguous.length,2);
  assert.equal(resolveLinkTarget('Vozz',[vozz1,vozz2]).ambiguous.length,2);
+});
+
+test('cobertura regional aponta apenas arquétipos ausentes',()=>{
+ const region={id:'mirmir',npcArchetypes:['alquimista','ferreiro']};
+ const folder={name:'Deserto de Mirmir',folder:{name:'🤖 NPCs por Região'}};
+ const actor={name:'Alquimista do deserto',type:'character',folder,flags:{}};
+ assert.deepEqual(npcCoverage(region,[actor]).missing,['ferreiro']);
 });

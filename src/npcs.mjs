@@ -59,6 +59,18 @@ export function isGeneratedNpc(actor){
   const generated=path.indexOf(normalize('🤖 Criados pela IA'));
   return generated>=0&&path[generated+1]===normalize('NPCs');
 }
+
+export function npcCoverage(region,actors=[],places=PLACES){
+  const expected=Array.from(region?.npcArchetypes??[]),found=new Set();
+  for(const actor of actors){
+    const flag=npcFlag(actor)??adoptNpcFlag(actor),actorRegion=flag.regionId||places.find(place=>place.id===flag.placeId)?.regionId||inferRegionId(actor);
+    if(actorRegion!==region?.id)continue;
+    const text=`${actor?.name??''} ${stripTags(actor?.system?.details?.description??actor?.system?.biography??'')} ${NPC_ROLES[flag.role]??''}`;
+    for(const archetype of expected)if(hasWord(text,archetype)||(archetype==='ferreiro'&&flag.role==='smith')||(archetype==='mercador'&&flag.role==='merchant'))found.add(archetype);
+  }
+  return {regionId:region?.id,expected,found:[...found],missing:expected.filter(item=>!found.has(item))};
+}
+
 export function npcVisibility({role,shared=false,gm=false}){
   if(gm)return Boolean(role);
   if(!shared)return false;
