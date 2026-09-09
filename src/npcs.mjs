@@ -2,7 +2,14 @@ import {MODULE_ID} from './adapter.mjs';
 import {PLACES,REGIONS} from './book-world.mjs';
 import {normalize} from './rules.mjs';
 
-export const NPC_ROLES={merchant:'Mercador',ally:'Aliado',rival:'Rival',extra:'Figurante'};
+export const NPC_ROLE_STYLE={
+  merchant:{label:'Mercador',icon:'fa-coins',color:'#d8ad4c'},
+  ally:{label:'Aliado',icon:'fa-shield-halved',color:'#50b878'},
+  rival:{label:'Rival',icon:'fa-khanda',color:'#d95858'},
+  extra:{label:'Figurante',icon:'fa-masks-theater',color:'#9aa5b1'},
+  smith:{label:'Ferreiro',icon:'fa-hammer',color:'#d08048'}
+};
+export const NPC_ROLES=Object.fromEntries(Object.entries(NPC_ROLE_STYLE).map(([id,value])=>[id,value.label]));
 export const NPC_ROOTS=['🤖 Criados pela IA','🤖 NPCs por Região'];
 export const NPC_LINK_TYPES={pai:'Pai de',mãe:'Mãe de',filho:'Filho de',irmão:'Irmão de',aliado:'Aliado de',conhecido:'Conhecido de',inimigo:'Inimigo de'};
 const SYMMETRIC=new Set(['aliado','conhecido','inimigo']);

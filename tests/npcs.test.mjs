@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {PLACES} from '../src/book-world.mjs';
-import {adoptNpcFlag,folderPath,inferPlaceId,isGeneratedNpc,itemTypeForCategory,npcVisibility,placeIdFromFolderPath,stripTags} from '../src/npcs.mjs';
+import {NPC_ROLE_STYLE,adoptNpcFlag,folderPath,inferPlaceId,isGeneratedNpc,itemTypeForCategory,npcVisibility,placeIdFromFolderPath,stripTags} from '../src/npcs.mjs';
 
 test('pasta regional da macro resolve a capital do índice do QUEDAÇO',()=>{
   assert.equal(placeIdFromFolderPath(['🤖 NPCs por Região','Deserto de Mirmir','Kravokia'],PLACES),'kravokia');
@@ -57,3 +57,11 @@ test('stripTags remove marcação e decodifica entidades básicas',()=>{
   assert.equal(stripTags('<p>Vive em <em>Kravokia</em>.</p>'),'Vive em Kravokia.');
   assert.equal(stripTags('Sal &amp; pão&nbsp;quente'),'Sal & pão quente');
 });
+
+test('papéis de NPC têm rótulo, ícone e cor próprios',()=>{
+  assert.equal(NPC_ROLE_STYLE.merchant.icon,'fa-coins');
+  assert.equal(NPC_ROLE_STYLE.ally.label,'Aliado');
+  assert.notEqual(NPC_ROLE_STYLE.rival.color,NPC_ROLE_STYLE.extra.color);
+  assert.equal(NPC_ROLE_STYLE.smith.label,'Ferreiro');
+});
+

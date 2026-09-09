@@ -107,3 +107,5 @@
 .sy-creator .sy-map-breadcrumb{min-width:0;overflow:auto;white-space:nowrap}.sy-creator .sy-map-breadcrumb strong{margin:0;color:#dff8ff;font-size:12px}
 .sy-creator .sy-map-drawer{max-height:460px;overflow:auto;padding:2px}.sy-creator .sy-map-drawer .sy-library-detail{margin-top:0}
 @media(max-width:700px){.sy-creator .sy-map-viewport{height:55vh;min-height:330px}.sy-creator .sy-map-controls{align-items:stretch;flex-direction:column}.sy-creator .sy-map-breadcrumb{order:-1}}
+
+.sy-creator .sy-npc-role{display:inline-flex;align-items:center;gap:5px;color:var(--sy-role);font-weight:700}.sy-creator .sy-npc-role i{width:14px;text-align:center}.sy-creator button .sy-npc-role{color:var(--sy-role)}
