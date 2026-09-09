@@ -124,6 +124,14 @@ export class CampaignLibrary {
     if(bucket!=='areas'&&list.length&&!current.areas.includes(bucket))current.areas=[...current.areas,bucket];
     await this.game.settings.set(MODULE_ID,SHARED_KEY,current);
   }
+  async setMapShares(mode){
+    this.assertGM();const current={...emptyShare(),...(this.game.settings.get(MODULE_ID,SHARED_KEY)||{})};
+    if(mode==='regions')current.map=REGIONS.map(region=>region.id);
+    else if(mode==='all')current.map=[...REGIONS.map(region=>region.id),...PLACES.map(place=>place.id)];
+    else if(mode==='none')current.map=[];else return;
+    if(current.map.length&&!current.areas.includes('map'))current.areas=[...current.areas,'map'];
+    await this.game.settings.set(MODULE_ID,SHARED_KEY,current);
+  }
   sharedPlaceIds(){const s=this.shared.map;const ids=new Set(s);for(const r of REGIONS)if(s.includes(r.id))for(const p of PLACES)if(p.regionId===r.id)ids.add(p.id);return ids;}
   shareButton(bucket,value,labelOn,labelOff){const on=this.shared[bucket]?.includes(value);return `<button class="sy-share-toggle ${on?'is-on':''}" data-op="lib-share" data-id="${e(bucket)}:${e(value)}">${on?labelOn:labelOff}</button>`;}
   async loadActors(force=false){
@@ -149,7 +157,7 @@ export class CampaignLibrary {
     document.sheet.render(true);
   }
   async action(op,id,data={}){
-    const openOps=['lib-map','lib-region','lib-place','lib-map-focus','lib-map-zoom','lib-map-reset','lib-open-scene','lib-npc-buy','lib-npc-open','lib-quest-filter','lib-quest-open'];
+    const openOps=['lib-map','lib-region','lib-place','lib-map-focus','lib-map-zoom','lib-map-reset','lib-map-layer','lib-open-scene','lib-npc-buy','lib-npc-open','lib-quest-filter','lib-quest-open'];
     if(!openOps.includes(op))this.assertGM();
     if(op==='lib-map'){this.state.mapView=id;this.state.region=null;this.state.place=null;if(id==='regions')this.state.map={scale:1,tx:0,ty:0,focus:null};}
     if(op==='lib-region'){if(!REGIONS.some(i=>i.id===id)||(!this.game.user?.isGM&&!this.shared.map.includes(id)))return;this.state.mapView='regions';this.state.region=id;this.state.place=null;}
@@ -163,6 +171,8 @@ export class CampaignLibrary {
       this.state.map=clampPan(zoomToPoint(this.state.map,point,factor),data.imgW??data.viewW??800,data.imgH??data.viewH??500,data.viewW??800,data.viewH??500);
     }
     if(op==='lib-map-reset'){this.state.map={...this.state.map,scale:1,tx:0,ty:0,focus:null};this.state.mapView='regions';this.state.region=null;this.state.place=null;}
+    if(op==='lib-map-layer')this.state.map={...this.state.map,layer:['auto','regions','cities','all'].includes(id)?id:'auto'};
+    if(op==='lib-map-share-all')await this.setMapShares(id);
     if(op==='lib-map-pins')this.state.map={...this.state.map,movingPins:!this.state.map.movingPins};
     if(op==='lib-map-hotspot-reset'){const [kind,pinId]=String(id).split(':');await this.setMapHotspot(kind,pinId,null);}
     if(op==='lib-place'){const place=[...PLACES,...BEYOND].find(i=>i.id===id);if(!place||(!this.game.user?.isGM&&!this.sharedPlaceIds().has(id)))return;this.state.mapView=place.regionId?'regions':'beyond';this.state.region=place.regionId??null;this.state.place=id;}
@@ -343,12 +353,15 @@ export class CampaignLibrary {
     const focus=REGIONS.find(region=>region.id===state.focus),place=[...PLACES,...BEYOND].find(entry=>entry.id===this.state.place);
     const regions=(readonly?REGIONS.filter(region=>shared.includes(region.id)):REGIONS).filter(region=>Array.isArray(region.hotspot));
     const places=focus?(readonly?PLACES.filter(entry=>entry.regionId===focus.id&&placeIds.has(entry.id)):PLACES.filter(entry=>entry.regionId===focus.id)):[];
-    const regionPins=!focus?regions.map(region=>{const point=resolveHotspot(this.mapHotspots,'regions',region.id,region.hotspot);return `<button class="sy-map-marker ${state.movingPins?'is-movable':''}" data-pin-kind="regions" data-pin-id="${e(region.id)}" data-op="lib-map-focus" data-id="${e(region.id)}" style="--sy-region:${e(this.regionColor(region.id))};left:${point[0]}%;top:${point[1]}%" title="${state.movingPins?'Arraste para reposicionar':`Explorar ${e(region.name)}`}"><span>${e(region.name)}</span></button>`;}).join(''):'';
-    const placePins=focus?places.map((entry,index)=>{const [x,y]=resolveHotspot(this.mapHotspots,'places',entry.id,this.placeMarkerPosition(entry,index,places.length));return `<button class="sy-map-marker sy-map-marker-place ${state.movingPins?'is-movable':''} ${this.state.place===entry.id?'is-current':''}" data-pin-kind="places" data-pin-id="${e(entry.id)}" data-op="lib-place" data-id="${e(entry.id)}" style="--sy-region:${e(this.regionColor(entry.regionId))};left:${x}%;top:${y}%" title="Abrir ${e(entry.name)}"><span>${e(entry.name)}</span></button>`;}).join(''):'';
+    const layer=state.layer??'auto',showRegions=!focus&&(layer==='regions'||layer==='all'||(layer==='auto'&&state.scale<1.6)),showCities=!focus&&(layer==='cities'||layer==='all'||(layer==='auto'&&state.scale>=1.6));
+    const globalPlaces=showCities?(readonly?PLACES.filter(entry=>placeIds.has(entry.id)):PLACES):[];
+    const regionPins=showRegions?regions.map(region=>{const point=resolveHotspot(this.mapHotspots,'regions',region.id,region.hotspot);return `<button class="sy-map-marker ${state.movingPins?'is-movable':''}" data-pin-kind="regions" data-pin-id="${e(region.id)}" data-op="lib-map-focus" data-id="${e(region.id)}" style="--sy-region:${e(this.regionColor(region.id))};left:${point[0]}%;top:${point[1]}%" title="${state.movingPins?'Arraste para reposicionar':`Explorar ${e(region.name)}`}"><span>${e(region.name)}</span></button>`;}).join(''):'';
+    const shownPlaces=focus?places:globalPlaces;
+    const placePins=shownPlaces.map((entry,index)=>{let fallback;if(focus)fallback=this.placeMarkerPosition(entry,index,shownPlaces.length);else{const region=REGIONS.find(item=>item.id===entry.regionId),siblings=PLACES.filter(item=>item.regionId===entry.regionId),local=this.placeMarkerPosition(entry,siblings.indexOf(entry),siblings.length),base=region?.hotspot??[50,50];fallback=[Math.max(1,Math.min(99,base[0]+(local[0]-50)*.18)),Math.max(1,Math.min(99,base[1]+(local[1]-50)*.18))];}const [x,y]=resolveHotspot(this.mapHotspots,'places',entry.id,fallback);return `<button class="sy-map-marker sy-map-marker-place ${state.movingPins?'is-movable':''} ${this.state.place===entry.id?'is-current':''}" data-pin-kind="places" data-pin-id="${e(entry.id)}" data-op="lib-place" data-id="${e(entry.id)}" style="--sy-region:${e(this.regionColor(entry.regionId))};left:${x}%;top:${y}%" title="Abrir ${e(entry.name)}"><span>${e(entry.name)}</span></button>`;}).join('');
     const regionImage=focus?this.regionImages[focus.id]:null;
     const images=`<img class="sy-map-image sy-map-image-base ${regionImage?'is-faded':''}" src="${e(this.mapImage)}" alt="Mapa de Opath" draggable="false">${regionImage?`<img class="sy-map-image sy-map-image-region" src="${e(regionImage)}" alt="Mapa de ${e(focus.name)}" draggable="false">`:''}`;
     const transform=`translate(${Number(state.tx)||0}px,${Number(state.ty)||0}px) scale(${Number(state.scale)||1})`;
-    const controls=`<div class="sy-map-controls"><div class="sy-map-zoom" aria-label="Controles do mapa">${button('map-zoom','in','+')} ${button('map-zoom','out','−')} ${button('map-reset','','Reenquadrar')}${readonly?'':button('map-pins','',state.movingPins?'✓ Movendo pinos':'Mover pinos')}</div><div class="sy-map-breadcrumb" aria-label="Localização no mapa">${button('map-reset','','Opath')}${focus?`<span aria-hidden="true">›</span><strong>${e(focus.name)}</strong>`:''}${place?`<span aria-hidden="true">›</span><strong>${e(place.name)}</strong>`:''}</div></div>`;
+    const controls=`<div class="sy-map-controls"><div class="sy-map-zoom" aria-label="Controles do mapa">${button('map-zoom','in','+')} ${button('map-zoom','out','−')} ${button('map-reset','','Reenquadrar')}${readonly?'':button('map-pins','',state.movingPins?'✓ Movendo pinos':'Mover pinos')}</div><div class="sy-map-layers" aria-label="Camadas">${[['auto','Automático'],['regions','Regiões'],['cities','Cidades'],['all','Tudo']].map(([id,label])=>`<button data-op="lib-map-layer" data-id="${id}" aria-current="${layer===id?'page':'false'}">${label}</button>`).join('')}</div><div class="sy-map-breadcrumb" aria-label="Localização no mapa">${button('map-reset','','Opath')}${focus?`<span aria-hidden="true">›</span><strong>${e(focus.name)}</strong>`:''}${place?`<span aria-hidden="true">›</span><strong>${e(place.name)}</strong>`:''}</div></div>`;
     const viewport=`<div class="sy-map-viewport" data-map-viewport><div class="sy-map-world" style="transform:${e(transform)}">${images}${regionPins}${placePins}</div>${controls}</div>`;
     let detail='';
     if(place&&(!readonly||placeIds.has(place.id))){const scene=this.placeScenes[place.id];detail=`<div class="sy-map-drawer">${this.placeDetail(place,!readonly)}${readonly?(scene?`<div class="sy-library-share-row">${button('open-scene',scene,'Abrir cena vinculada')}</div>`:''):this.scenePicker(place)}</div>`;}
@@ -359,7 +372,7 @@ export class CampaignLibrary {
     const {mapView,region:regionId,place:placeId}=this.state;
     const region=REGIONS.find(i=>i.id===regionId),place=[...PLACES,...BEYOND].find(i=>i.id===placeId);
     const banner=this.mapImage&&!regionId&&!placeId?this.mapIndexBanner(!readonly):'';
-    if(this.mapImage){const shareArea=readonly?'':`<div class="sy-library-share-row">${this.shareButton('areas','map','✓ Aba Mapa visível aos jogadores','Liberar a aba Mapa aos jogadores')}</div>`;return `${shareArea}${this.renderDynamicMap(readonly)}`;}
+    if(this.mapImage){const shareArea=readonly?'':`<div class="sy-library-share-row">${this.shareButton('areas','map','✓ Aba Mapa visível aos jogadores','Liberar a aba Mapa aos jogadores')}${button('map-share-all','regions','Liberar todas as regiões')}${button('map-share-all','all','Liberar tudo')}${button('map-share-all','none','Recolher tudo')}</div>`;return `${shareArea}${this.renderDynamicMap(readonly)}`;}
     const fallback=`<p class="${readonly?'sy-library-deferred':'sy-alert'}">${readonly?'O mestre ainda não configurou a imagem do mapa de Opath.':'Configure “Imagem do mapa de Opath” para ativar o visor com pan e zoom. A lista continua disponível abaixo.'}</p>`;
     if(readonly){
       const sharedRegions=this.shared.map,placeIds=this.sharedPlaceIds();

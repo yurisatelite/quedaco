@@ -219,3 +219,13 @@ test('detalhes de região e cidade listam NPCs relacionados e arrastáveis',()=>
  assert.match(library.regionDetail({id:'mirmir',name:'Deserto de Mirmir',page:1,summary:'',government:'',trade:'',highlights:[]},true),/Actor\.wanderer/);
  assert.match(library.placeDetail({id:'kravokia',regionId:'mirmir',name:'Kravokia',page:1,kind:'Capital',summary:'',highlights:[]},true),/Actor\.city/);
 });
+
+test('camadas do mapa revelam cidades no zoom e compartilhamento em massa',async()=>{
+ const store={opathMapImage:'opath.webp',mapHotspots:{regions:{},places:{}},sharedContent:{areas:[],map:[],monsters:[],items:[],npcs:[]}};
+ const game={user:{isGM:true},actors:[],folders:[],settings:{get:(_m,key)=>store[key],set:async(_m,key,value)=>store[key]=value}};
+ const library=new CampaignLibrary(game,{items:[]});library.state.map.scale=2;
+ assert.match(library.render('map'),/data-pin-kind="places"/);
+ await library.action('lib-map-layer','regions');assert.doesNotMatch(library.render('map'),/data-pin-kind="places"/);
+ await library.action('lib-map-share-all','all');assert.ok(store.sharedContent.map.includes('kravokia'));assert.ok(store.sharedContent.map.includes('mirmir'));
+ await library.action('lib-map-share-all','none');assert.equal(store.sharedContent.map.length,0);
+});
