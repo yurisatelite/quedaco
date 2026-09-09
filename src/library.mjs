@@ -9,11 +9,13 @@ export const BOOK_ITEMS=[...BASE_ITEMS,...SIGILS];
 // Conteúdo que o mestre libera para os jogadores. Guardado no mundo, sem UUIDs privados.
 export const SHARED_KEY='sharedContent';
 export const SCENES_KEY='placeScenes';
+export const PLACE_IMG_KEY='placeImages';
 export const MAP_IMAGE_KEY='opathMapImage';
 export const emptyShare=()=>({areas:[],map:[],monsters:[],items:[]});
 export function registerLibrarySettings(game,onChange){
   game.settings.register(MODULE_ID,SHARED_KEY,{scope:'world',config:false,type:Object,default:emptyShare(),onChange});
   game.settings.register(MODULE_ID,SCENES_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
+  game.settings.register(MODULE_ID,PLACE_IMG_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
   game.settings.register(MODULE_ID,MAP_IMAGE_KEY,{scope:'world',config:true,type:String,default:'',filePicker:'image',
     name:'Imagem do mapa de Opath',hint:'Arquivo no armazenamento da mesa (não acompanha o módulo). Aparece no topo do índice do Mapa.',onChange});
 }
@@ -44,12 +46,19 @@ export class CampaignLibrary {
   assertGM(){if(!this.game.user?.isGM)throw Error('Esta área está disponível somente para o mestre.');}
   get shared(){try{return {...emptyShare(),...(this.game.settings?.get(MODULE_ID,SHARED_KEY)||{})};}catch{return emptyShare();}}
   get placeScenes(){try{return {...(this.game.settings?.get(MODULE_ID,SCENES_KEY)||{})};}catch{return {};}}
+  get placeImages(){try{return {...(this.game.settings?.get(MODULE_ID,PLACE_IMG_KEY)||{})};}catch{return {};}}
   get mapImage(){try{return String(this.game.settings?.get(MODULE_ID,MAP_IMAGE_KEY)||'');}catch{return '';}}
   async setPlaceScene(placeId,sceneId){
     this.assertGM();if(!placeId)return;
     const current={...(this.game.settings.get(MODULE_ID,SCENES_KEY)||{})};
     if(!sceneId||current[placeId]===sceneId)delete current[placeId];else current[placeId]=sceneId;
     await this.game.settings.set(MODULE_ID,SCENES_KEY,current);
+  }
+  async setPlaceImage(placeId,path){
+    this.assertGM();if(!placeId)return;
+    const current={...(this.game.settings.get(MODULE_ID,PLACE_IMG_KEY)||{})};
+    if(!path)delete current[placeId];else current[placeId]=String(path);
+    await this.game.settings.set(MODULE_ID,PLACE_IMG_KEY,current);
   }
   async setShare(bucket,value){
     this.assertGM();
@@ -142,7 +151,7 @@ export class CampaignLibrary {
     let body='';
     if(place){
       const parent=[...PLACES,...BEYOND].find(i=>i.id===place.parentId);
-      body=`<div class="sy-library-breadcrumb">${button('map',mapView,'← Voltar ao índice')}${region?button('region',region.id,region.name):''}${parent?button('place',parent.id,parent.name):''}</div>${this.placeDetail(place)}<div class="sy-library-share-row">${this.shareButton('map',place.id,'✓ Local liberado aos jogadores','Liberar este local aos jogadores')}</div>${this.scenePicker(place)}<div class="sy-library-grid">${[...PLACES,...BEYOND].filter(i=>i.parentId===place.id).map(i=>this.card(i,'place','map')).join('')}</div>`;
+      body=`<div class="sy-library-breadcrumb">${button('map',mapView,'← Voltar ao índice')}${region?button('region',region.id,region.name):''}${parent?button('place',parent.id,parent.name):''}</div>${this.placeDetail(place,true)}<div class="sy-library-share-row">${this.shareButton('map',place.id,'✓ Local liberado aos jogadores','Liberar este local aos jogadores')}</div>${this.scenePicker(place)}<div class="sy-library-grid">${[...PLACES,...BEYOND].filter(i=>i.parentId===place.id).map(i=>this.card(i,'place','map')).join('')}</div>`;
     }else if(region){
       const capital=PLACES.find(i=>i.id===region.capital);
       body=`${button('map','regions','← Todas as regiões')}<section class="sy-library-detail"><small>${page(region)}</small><h3>${e(region.name)}</h3><p>${e(region.summary)}</p><h4>Governo</h4><p>${e(region.government)}</p><h4>Comércio</h4><p>${e(region.trade)}</p><h4>Destaques</h4>${chips(region.highlights)}${capital?button('place',capital.id,`Ir à capital: ${capital.name}`):''}<div class="sy-library-share-row">${this.shareButton('map',region.id,'✓ Região liberada aos jogadores (com suas cidades)','Liberar região aos jogadores (com suas cidades)')}</div></section><h3>Cidades e locais da região</h3><div class="sy-library-grid">${PLACES.filter(i=>i.regionId===region.id).map(i=>this.card(i,'place','map')).join('')}</div><section class="sy-library-deferred"><h4>Mapas, cenas e encontros</h4><p>Reservados para seleção manual do mestre.</p></section>`;
@@ -150,7 +159,12 @@ export class CampaignLibrary {
     else{const entries=mapView==='places'?PLACES:mapView==='beyond'?BEYOND:REGIONS;body=`${this.filters(mapView==='places'?REGIONS.map(i=>[i.id,i.name]):[],`Buscar ${mapView==='regions'?'região':'local'}`)}<div class="sy-library-grid">${entries.map(i=>this.card(i,mapView==='regions'?'region':'place',mapView==='beyond'?null:'map')).join('')}</div>`;}
     return `${banner}<div class="sy-library-share-row">${shareArea}</div><nav class="sy-library-tabs" aria-label="Mapa">${tabs.map(([id,label])=>`<button data-op="lib-map" data-id="${id}" aria-current="${mapView===id?'page':'false'}">${label}</button>`).join('')}</nav>${body}`;
   }
-  placeDetail(place){return `<section class="sy-library-detail"><small>${page(place)} · ${e(place.kind??'Local')}</small><h3>${e(place.name)}</h3><p>${e(place.summary)}</p>${place.highlights?.length?`<h4>Destaques</h4>${chips(place.highlights)}`:''}</section>`;}
+  placeDetail(place,gm=false){
+    const img=this.placeImages[place.id];
+    const figure=img?`<img class="sy-library-figure" src="${e(img)}" alt="${e(place.name)}" loading="lazy">`:'';
+    const controls=gm?`<div class="sy-library-share-row">${button('place-img',place.id,img?'Trocar imagem':'Definir imagem')}${img?button('place-img',`${place.id}:`,'Remover imagem'):''}</div>`:'';
+    return `<section class="sy-library-detail"><small>${page(place)} · ${e(place.kind??'Local')}</small><h3>${e(place.name)}</h3>${figure}<p>${e(place.summary)}</p>${place.highlights?.length?`<h4>Destaques</h4>${chips(place.highlights)}`:''}${controls}</section>`;
+  }
   filters(categories,label='Buscar por nome ou descrição',groups=null){
     const opts=groups?groups.filter(g=>g.items.length).map(g=>`<optgroup label="${e(g.label)}">${g.items.map(([id,name])=>`<option value="${e(id)}">${e(name)}</option>`).join('')}</optgroup>`).join(''):categories.map(([id,name])=>`<option value="${e(id)}">${e(name)}</option>`).join('');
     const hasSelect=groups?groups.some(g=>g.items.length):categories.length;
