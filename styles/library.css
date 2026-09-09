@@ -38,7 +38,11 @@
 .sy-creator .sy-library-card .sy-share-toggle{width:100%;justify-content:center}
 .sy-creator .sy-library-thumb{width:44px;height:44px;flex:0 0 44px;object-fit:cover;border-radius:7px;border:1px solid #3a4a5c;background:#0f1620}
 .sy-creator .sy-library-card summary>span:first-child{flex:1}
-.sy-creator .sy-map-banner{width:100%;max-height:340px;object-fit:contain;border:1px solid #3a4a5c;border-radius:10px;background:#0d1420;margin:6px 0 14px}
+.sy-creator .sy-map-wrap{position:relative;display:block;max-width:900px;margin:6px auto 16px}
+.sy-creator .sy-map-banner{display:block;width:100%;height:auto;border:1px solid #3a4a5c;border-radius:10px;background:#0d1420}
+.sy-creator .sy-map-pin{position:absolute;transform:translate(-50%,-50%);width:auto;padding:3px 9px;font-size:11px;line-height:1.2;white-space:nowrap;color:#e6f7ff;background:#0c1c28d9;border:1px solid #49cce3;border-radius:20px;backdrop-filter:blur(2px)}
+.sy-creator .sy-map-pin::before{content:"";position:absolute;left:-4px;top:50%;width:7px;height:7px;transform:translate(-50%,-50%);border-radius:50%;background:#49cce3;box-shadow:0 0 8px #49cce3}
+.sy-creator .sy-map-pin:hover{background:#143342;border-color:#80dcf2;z-index:2}
 .sy-creator .sy-scene-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:10px}
 .sy-creator .sy-scene-pick{width:auto;display:flex;flex-direction:column;gap:5px;padding:6px;font-size:12px;text-align:center;background:#141d28;border:1px solid #3a4a5c}
 .sy-creator .sy-scene-pick.is-on{border-color:#4fca8f;background:#123a2a;color:#a9f2cf}

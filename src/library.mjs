@@ -113,10 +113,14 @@ export class CampaignLibrary {
     const grid=scenes.length?`<div class="sy-scene-grid">${scenes.map(s=>`<button class="sy-scene-pick ${linked===s.id?'is-on':''}" data-op="lib-scene" data-id="${e(place.id)}:${e(s.id)}"><img src="${e(s.thumb||s.background?.src||'')}" alt="" loading="lazy"><span>${e(s.name)}</span></button>`).join('')}</div>`:'<small>Nenhuma cena criada na mesa.</small>';
     return `<details class="sy-library-guide"><summary>Mapa/cena vinculada${linked?` — ${e(scenes.find(s=>s.id===linked)?.name??'cena')}`:''}</summary>${actions}${grid}</details>`;
   }
+  mapIndexBanner(interactive){
+    const pins=interactive?REGIONS.filter(r=>Array.isArray(r.hotspot)).map(r=>`<button class="sy-map-pin" data-op="lib-region" data-id="${e(r.id)}" style="left:${r.hotspot[0]}%;top:${r.hotspot[1]}%"><span>${e(r.name)}</span></button>`).join(''):'';
+    return `<div class="sy-map-wrap"><img class="sy-map-banner" src="${e(this.mapImage)}" alt="Mapa de Opath" loading="lazy">${pins}</div>`;
+  }
   renderMap(readonly=false){
     const {mapView,region:regionId,place:placeId}=this.state;
     const region=REGIONS.find(i=>i.id===regionId),place=[...PLACES,...BEYOND].find(i=>i.id===placeId);
-    const banner=this.mapImage&&!regionId&&!placeId?`<img class="sy-map-banner" src="${e(this.mapImage)}" alt="Mapa de Opath" loading="lazy">`:'';
+    const banner=this.mapImage&&!regionId&&!placeId?this.mapIndexBanner(!readonly):'';
     if(readonly){
       const sharedRegions=this.shared.map,placeIds=this.sharedPlaceIds();
       const visibleRegions=REGIONS.filter(r=>sharedRegions.includes(r.id));
