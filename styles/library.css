@@ -111,3 +111,5 @@
 .sy-creator .sy-npc-role{display:inline-flex;align-items:center;gap:5px;color:var(--sy-role);font-weight:700}.sy-creator .sy-npc-role i{width:14px;text-align:center}.sy-creator button .sy-npc-role{color:var(--sy-role)}
 
 .sy-creator .sy-region-card{border-left:4px solid var(--sy-region,#77818d)}.sy-creator .sy-region-chip{border-left:3px solid var(--sy-region,#77818d);padding-left:5px}.sy-creator .sy-map-marker{border-color:var(--sy-region,#42cce8)}.sy-creator .sy-map-marker::after{background:var(--sy-region,#42cce8)}
+
+.sy-creator .sy-location-npc-list{display:flex;flex-wrap:wrap;gap:7px}.sy-creator .sy-location-npc{display:flex;align-items:center;gap:7px;width:auto;text-align:left;padding:6px 9px}.sy-creator .sy-location-npc span{display:grid;gap:2px}.sy-creator .sy-location-npc .sy-library-thumb{width:36px;height:36px}

@@ -19,6 +19,12 @@ export function folderPath(actor){
   while(folder&&!seen.has(folder.id??folder.name)){seen.add(folder.id??folder.name);result.unshift(folder.name);folder=folder.folder??folder.parent??null;}
   return result.filter(Boolean);
 }
+export function regionIdFromFolderPath(path,regions=REGIONS){
+  if(!Array.isArray(path)||!path.length)return null;
+  const names=path.map(normalize),root=names.indexOf(normalize('🤖 NPCs por Região'));
+  if(root<0)return null;
+  return regions.find(region=>names.slice(root+1).some(name=>name===normalize(region.name)||name===normalize(region.id)))?.id??null;
+}
 export function placeIdFromFolderPath(path,places=PLACES){
   if(!Array.isArray(path)||!path.length)return null;
   const names=path.map(normalize),leaf=names.at(-1);
@@ -30,6 +36,11 @@ export function stripTags(html){
 }
 export function hasWord(haystack,needle){
   const hay=normalize(haystack),word=normalize(needle);return Boolean(word)&&` ${hay} `.includes(` ${word} `);
+}
+export function inferRegionId(actor,regions=REGIONS){
+  const byFolder=regionIdFromFolderPath(folderPath(actor),regions);if(byFolder)return byFolder;
+  const html=actor?.system?.details?.description??actor?.system?.biography??'',haystack=`${stripTags(html)} ${actor?.name??''}`;
+  return regions.find(region=>hasWord(haystack,region.name)||hasWord(haystack,region.id))?.id??null;
 }
 export function inferPlaceId(actor,places=PLACES){
   const byFolder=placeIdFromFolderPath(folderPath(actor),places);if(byFolder)return byFolder;
@@ -57,11 +68,12 @@ export function npcVisibility({role,shared=false,gm=false}){
   return false;
 }
 export function initialNpcFlag(actor){
-  return {role:'extra',placeId:placeIdFromFolderPath(folderPath(actor))??'',note:'',shop:{markup:1,note:'',stock:[]}};
+  return {role:'extra',regionId:regionIdFromFolderPath(folderPath(actor))??'',placeId:placeIdFromFolderPath(folderPath(actor))??'',note:'',shop:{markup:1,note:'',stock:[]}};
 }
 export function adoptNpcFlag(actor){
   const existing=npcFlag(actor);if(existing)return existing;
-  return {...initialNpcFlag(actor),placeId:inferPlaceId(actor)??''};
+  const base=initialNpcFlag(actor),placeId=inferPlaceId(actor)??base.placeId,place=PLACES.find(entry=>entry.id===placeId);
+  return {...base,regionId:place?.regionId??inferRegionId(actor)??base.regionId,placeId};
 }
 export function itemTypeForCategory(category){
   if(String(category).startsWith('Armas'))return 'weapon';

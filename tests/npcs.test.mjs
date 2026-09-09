@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {PLACES} from '../src/book-world.mjs';
-import {NPC_ROLE_STYLE,adoptNpcFlag,folderPath,inferPlaceId,isGeneratedNpc,itemTypeForCategory,npcVisibility,placeIdFromFolderPath,stripTags} from '../src/npcs.mjs';
+import {NPC_ROLE_STYLE,adoptNpcFlag,folderPath,inferPlaceId,inferRegionId,isGeneratedNpc,itemTypeForCategory,npcVisibility,placeIdFromFolderPath,regionIdFromFolderPath,stripTags} from '../src/npcs.mjs';
 
 test('pasta regional da macro resolve a capital do índice do QUEDAÇO',()=>{
   assert.equal(placeIdFromFolderPath(['🤖 NPCs por Região','Deserto de Mirmir','Kravokia'],PLACES),'kravokia');
@@ -65,3 +65,10 @@ test('papéis de NPC têm rótulo, ícone e cor próprios',()=>{
   assert.equal(NPC_ROLE_STYLE.smith.label,'Ferreiro');
 });
 
+
+test('NPC pode pertencer à região mesmo sem cidade',()=>{
+  assert.equal(regionIdFromFolderPath(['🤖 NPCs por Região','Deserto de Mirmir']),'mirmir');
+  assert.equal(inferRegionId({name:'Peregrino do Deserto de Mirmir'}),'mirmir');
+  const flag=adoptNpcFlag({name:'Peregrino',type:'character',folder:{name:'Deserto de Mirmir',folder:{name:'🤖 NPCs por Região'}}});
+  assert.equal(flag.regionId,'mirmir');assert.equal(flag.placeId,'');
+});

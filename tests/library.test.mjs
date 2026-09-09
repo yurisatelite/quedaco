@@ -211,3 +211,11 @@ test('filtro de NPC por local usa local manual ou inferido',()=>{
   const html=library.render('npcs');
   assert.match(html,/Morador de Kravokia/);assert.match(html,/Guia de Kravokia/);assert.doesNotMatch(html,/Morador da Foice/);
 });
+
+test('detalhes de região e cidade listam NPCs relacionados e arrastáveis',()=>{
+ const regionFolder={id:'r',name:'Deserto de Mirmir',folder:{id:'root',name:'🤖 NPCs por Região'}},cityFolder={id:'c',name:'Kravokia',folder:regionFolder};
+ const regionNpc={id:'wanderer',uuid:'Actor.wanderer',name:'Peregrino',type:'character',folder:regionFolder,flags:{}},cityNpc={id:'city',uuid:'Actor.city',name:'Morador',type:'character',folder:cityFolder,flags:{}};
+ const library=new CampaignLibrary({user:{isGM:true},actors:[regionNpc,cityNpc],folders:[]},{items:[]});
+ assert.match(library.regionDetail({id:'mirmir',name:'Deserto de Mirmir',page:1,summary:'',government:'',trade:'',highlights:[]},true),/Actor\.wanderer/);
+ assert.match(library.placeDetail({id:'kravokia',regionId:'mirmir',name:'Kravokia',page:1,kind:'Capital',summary:'',highlights:[]},true),/Actor\.city/);
+});
