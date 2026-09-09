@@ -3,6 +3,7 @@ import {MODULE_ID,assertCompatible} from './adapter.mjs';
 import {registerBranding,loadBranding} from './branding.mjs';
 import {registerLibrarySettings} from './library.mjs';
 import {CHANGELOG,entriesSince,isNewer} from './changelog.mjs';
+import {bindForienQuestHooks} from './forien-quests.mjs';
 let app;
 const LAST_SEEN_VERSION='lastSeenVersion';
 const escape=value=>String(value??'').replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
@@ -28,6 +29,7 @@ Hooks.once('ready',()=>{
   const module=game.modules.get(MODULE_ID);module.api={open:openCreator,openCampaign:()=>openCreator('npcs')};void loadBranding();
   const current=String(module.version??''),seen=String(game.settings.get(MODULE_ID,LAST_SEEN_VERSION)??'');
   if(seen!==current&&isNewer(current,seen)){const fresh=entriesSince(CHANGELOG,seen);if(fresh.length)showChangelog(fresh,current);}
+  bindForienQuestHooks(game,()=>{if(app?.rendered&&app.area==='quests')app.render(false);});
 });
 Hooks.on('renderActorDirectory',(application,html)=>{
   const root=html instanceof HTMLElement?html:html?.[0];if(!root||root.querySelector('[data-yuri-creator]'))return;

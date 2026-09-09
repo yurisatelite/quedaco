@@ -6,6 +6,7 @@ import {MODULE_ID,purchaseItem} from './adapter.mjs';
 import {NPC_LINK_TYPES,NPC_ROLES,adoptNpcFlag,inferPlaceId,isGeneratedNpc,itemTypeForCategory,normalizeNpcLinks,npcFlag,npcLinkSummary,npcVisibility} from './npcs.mjs';
 import {modifiedItemSheet} from './item-mod.mjs';
 import {clampPan,focusRegion,zoomToPoint} from './map-view.mjs';
+import {ForienQuestIntegration,QUEST_STATUSES,questCounts} from './forien-quests.mjs';
 
 export const BOOK_ITEMS=[...BASE_ITEMS,...SIGILS];
 
@@ -78,7 +79,7 @@ export function monsterMatches(entry,filters={}){
 export function monsterCategory(entry){return Object.entries(monsterFacetValues(entry)).flatMap(([facet,values])=>values.map(value=>`${facet}:${value}`)).join('|');}
 
 export class CampaignLibrary {
-  constructor(game,catalog){this.game=game;this.catalog=catalog;this.actors=[];this.failures=[];this.loaded=false;this.state={mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null},npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcActor:null,monsterFacets:{}};this.modBuilder={baseId:'',materialId:'',sigils:[]};}
+  constructor(game,catalog){this.game=game;this.catalog=catalog;this.quests=new ForienQuestIntegration(game);this.actors=[];this.failures=[];this.loaded=false;this.state={mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null},npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcActor:null,monsterFacets:{},questStatus:'all'};this.modBuilder={baseId:'',materialId:'',sigils:[]};}
   assertGM(){if(!this.game.user?.isGM)throw Error('Esta área está disponível somente para o mestre.');}
   get shared(){try{return {...emptyShare(),...(this.game.settings?.get(MODULE_ID,SHARED_KEY)||{})};}catch{return emptyShare();}}
   get placeScenes(){try{return {...(this.game.settings?.get(MODULE_ID,SCENES_KEY)||{})};}catch{return {};}}
@@ -140,7 +141,7 @@ export class CampaignLibrary {
     document.sheet.render(true);
   }
   async action(op,id,data={}){
-    const openOps=['lib-map','lib-region','lib-place','lib-map-focus','lib-map-zoom','lib-map-reset','lib-open-scene','lib-npc-buy'];
+    const openOps=['lib-map','lib-region','lib-place','lib-map-focus','lib-map-zoom','lib-map-reset','lib-open-scene','lib-npc-buy','lib-quest-filter','lib-quest-open'];
     if(!openOps.includes(op))this.assertGM();
     if(op==='lib-map'){this.state.mapView=id;this.state.region=null;this.state.place=null;if(id==='regions')this.state.map={scale:1,tx:0,ty:0,focus:null};}
     if(op==='lib-region'){if(!REGIONS.some(i=>i.id===id)||(!this.game.user?.isGM&&!this.shared.map.includes(id)))return;this.state.mapView='regions';this.state.region=id;this.state.place=null;}
@@ -203,6 +204,9 @@ export class CampaignLibrary {
       const name=generatorMacroName(this.game.settings),macro=this.game.macros?.getName?.(name);
       if(macro)await macro.execute();else ui.notifications.warn(`Macro '${name}' não encontrada. Configure o nome em Configurações do Módulo → QUEDAÇO.`);
     }
+    if(op==='lib-quest-filter')this.state.questStatus=QUEST_STATUSES.some(([status])=>status===id)?id:'all';
+    if(op==='lib-quest-open')this.quests.open(id);
+    if(op==='lib-quest-create')await this.quests.create();
     if(op==='lib-npc-open'){const actor=this.actorById(id);actor?.sheet?.render(true);}
     if(op==='lib-npc-active'){const actor=this.actorById(id);if(!actor)return;const flag=npcFlag(actor)??adoptNpcFlag(actor);await actor.update({[`flags.${MODULE_ID}.npc`]:{...flag,active:!flag.active}});}
     if(op==='lib-npc-buy'){
@@ -250,10 +254,26 @@ export class CampaignLibrary {
   modSheet(){return modifiedItemSheet(this.modBase(),this.modMaterial(),this.modBuilder.sigils);}
   render(area,readonly=false){
     if(!readonly)this.assertGM();
-    else if(!this.shared.areas.includes(area))return `<main class="sy-library"><small>CONSULTA DA CAMPANHA</small><h2>${area}</h2><p class="sy-library-deferred">O mestre ainda não liberou este conteúdo.</p></main>`;
-    const titles={npcs:'NPCs',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir'};
-    const body=area==='npcs'?this.renderNpcs(readonly):area==='map'?this.renderMap(readonly):area==='monsters'?this.renderMonsters(readonly):area==='imbue'?this.renderImbue(readonly):this.renderItems(readonly);
-    return `<main class="sy-library"><small>${readonly?'LIBERADO PELO MESTRE':'CONSULTA DA CAMPANHA'}</small><h2>${titles[area]}</h2>${body}</main>`;
+    else if(area!=='quests'&&!this.shared.areas.includes(area))return `<main class="sy-library"><small>CONSULTA DA CAMPANHA</small><h2>${area}</h2><p class="sy-library-deferred">O mestre ainda não liberou este conteúdo.</p></main>`;
+    const titles={npcs:'NPCs',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'};
+    const body=area==='npcs'?this.renderNpcs(readonly):area==='map'?this.renderMap(readonly):area==='monsters'?this.renderMonsters(readonly):area==='imbue'?this.renderImbue(readonly):area==='quests'?this.renderQuests(readonly):this.renderItems(readonly);
+    return `<main class="sy-library"><small>${area==='quests'?'QUESTS DA CAMPANHA':readonly?'LIBERADO PELO MESTRE':'CONSULTA DA CAMPANHA'}</small><h2>${titles[area]}</h2>${body}</main>`;
+  }
+  renderQuests(readonly=false){
+    if(!this.quests.available)return `<p class="sy-library-deferred"><strong>Forien's Quest Log não está disponível.</strong><br>Ative o módulo nesta mesa e abra novamente o QUEDAÇO.</p>`;
+    if(readonly&&this.quests.hiddenFromPlayers)return `<p class="sy-library-deferred">A área de Quests está disponível, mas o Forien's Quest Log está configurado para ocultar suas quests dos jogadores.</p>`;
+    const all=this.quests.quests(),counts=questCounts(all);
+    const allowedStatuses=readonly&&counts.inactive===0?QUEST_STATUSES.filter(([status])=>status!=='inactive'):QUEST_STATUSES;
+    if(!allowedStatuses.some(([status])=>status===this.state.questStatus))this.state.questStatus='all';
+    const visible=this.state.questStatus==='all'?all:all.filter(quest=>quest.status===this.state.questStatus);
+    const tabs=allowedStatuses.map(([status,label])=>`<button data-op="lib-quest-filter" data-id="${status}" aria-current="${this.state.questStatus===status?'page':'false'}">${label} <span class="sy-quest-count">${counts[status]??0}</span></button>`).join('');
+    const cards=visible.map(quest=>{
+      const taskSummary=quest.tasks.length?`${quest.completed} de ${quest.tasks.length} objetivos concluídos${quest.failed?` · ${quest.failed} falharam`:''}`:'Sem objetivos visíveis';
+      const badges=[quest.statusLabel,quest.primary?'Principal':'',quest.personal?'Pessoal':'',quest.location,quest.giver?`Por ${quest.giver}`:''].filter(Boolean);
+      const objectives=quest.tasks.length?`<ul class="sy-quest-objectives">${quest.tasks.slice(0,4).map(task=>`<li class="${task.completed?'is-complete':task.failed?'is-failed':''}"><span>${task.completed?'✓':task.failed?'×':'○'}</span>${e(task.name)}</li>`).join('')}${quest.tasks.length>4?`<li>+ ${quest.tasks.length-4} objetivo(s)</li>`:''}</ul>`:'';
+      return `<article class="sy-library-card sy-quest-card" data-search="${e(nameKey([quest.name,quest.description,quest.giver,quest.location,quest.statusLabel].join(' ')))}" data-category="${e(quest.status)}">${cardFigure(quest.image||'icons/svg/book.svg',quest.name,'compact')}<div class="sy-library-card-content">${chips(badges)}<h3>${e(quest.name)}</h3>${quest.description?`<p>${e(quest.description)}</p>`:''}${objectives}<small>${e(taskSummary)} · ${quest.rewardCount} recompensa(s)${quest.subquestCount?` · ${quest.subquestCount} subquest(s)`:''}</small><div class="sy-library-tabs">${button('quest-open',quest.id,'Abrir quest')}</div></div></article>`;
+    }).join('');
+    return `<p>Quests sincronizadas com o Forien's Quest Log. Cada jogador vê somente o que o Forien permite para seu usuário.</p>${readonly?'':`<div class="sy-library-share-row">${button('quest-create','','Nova quest')}</div>`}<nav class="sy-library-tabs sy-quest-tabs" aria-label="Estados das quests">${tabs}</nav>${this.filters([],'Buscar quest por nome, local ou contratante')}<div class="sy-library-grid sy-quest-grid">${cards||'<p class="sy-library-deferred">Nenhuma quest corresponde a este filtro.</p>'}</div>`;
   }
   renderNpcs(readonly=false){
     const all=this.npcActors(),shared=this.shared.npcs;

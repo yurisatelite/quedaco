@@ -24,7 +24,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   money(){try{const base=startingMoney(this.selected('class')?.name,this.selected('background')?.name,this.sums.class,this.sums.background);if(this.draft.moneyOverride!=null&&this.draft.moneyOverride>=0)return {...base,cash:this.draft.moneyOverride,wallet:wallet(this.draft.moneyOverride)};return base;}catch{return null;}}
   attrErrors(){const bases=[3,2,1,1,0,-1],values=Object.values(this.draft.attributes);const errors=validateAttributes(values,this.draft.method,this.draft.slots.map(i=>bases[i]),this.draft.boost);if(this.draft.method==='fixed'&&new Set(this.draft.slots).size!==6)errors.push('Use cada posição da distribuição uma única vez.');if(['conventional','ordered'].includes(this.draft.method)&&this.rolls.length!==6)errors.push('Role os seis conjuntos antes de continuar.');return errors;}
   async _renderHTML(){
-    const sharedAreas=game.user.isGM?[]:this.library.shared.areas.filter(a=>['npcs','map','monsters','items','imbue','quests'].includes(a));
+    const sharedAreas=game.user.isGM?[]:[...new Set([...this.library.shared.areas.filter(a=>['npcs','map','monsters','items','imbue'].includes(a)),'quests'])];
     if(!game.user.isGM&&this.area!=='characters'&&!sharedAreas.includes(this.area))this.area='characters';
     if(!this.loading)this.visited.add(this.step);
     const selected=this.selected('class');let hp='—';try{hp=hitPoints(selected?.name,this.draft.attributes.con,this.draft.level,this.draft.hpMethod==='rolled'?this.draft.hpRolls:null);}catch{}
@@ -71,7 +71,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   }
   stepDone(i){return !this.stepIssues(i).length;}
   renderArea(){
-    if(['npcs','map','monsters','items','imbue'].includes(this.area))return `${this.message?`<p class="sy-alert" role="status">${e(this.message)}</p>`:''}${this.library.render(this.area,!game.user.isGM)}`;
+    if(['npcs','map','monsters','items','imbue','quests'].includes(this.area))return `${this.message?`<p class="sy-alert" role="status">${e(this.message)}</p>`:''}${this.library.render(this.area,!game.user.isGM)}`;
     const definitions={npcs:['Mercadores','Aliados','Rivais','Figurantes'],map:['Regiões','Cidades e locais','Mapas e cenas','Encontros da região'],monsters:['Aquáticos','Terrestres','Aéreos','Outros'],items:['Armas','Armaduras','Equipamentos','Consumíveis'],quests:['Disponíveis','Ativas','Concluídas']};
     const titles={npcs:'NPCs',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'},items=definitions[this.area]??[];
     return `<main class="sy-empty-area"><small>PAINEL HÍBRIDO DA MESTRA</small><h2>${titles[this.area]}</h2><p>Os cartões desta área serão índices do QUEDAÇO ligados aos documentos nativos da mesa.</p><div class="sy-empty-grid">${items.map(item=>`<section><span class="sy-done sy-pending">·</span><h3>${item}</h3><small>Aguardando preenchimento e vínculo com o Foundry.</small></section>`).join('')}</div></main>`;
@@ -184,7 +184,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     if(button.dataset.op==='lib-open'){try{await this.library.open(button.dataset.id);}catch(error){ui.notifications.warn(error.message);}return;}
     this.busy=true;button.disabled=true;this.message='';const navigation=['area','step','previous','next'].includes(button.dataset.op);this.element?.querySelector?.('.sy-shell')?.insertAdjacentHTML('beforeend','<div class="sy-busy" role="status"><span></span><strong>Carregando…</strong></div>');
     try{const {op,uuid,type,kind}=button.dataset;
-      if(op==='area'){const target=button.dataset.area;if(target!=='characters'&&!game.user.isGM&&!this.library.shared.areas.includes(target))throw Error('Esta área ainda não foi liberada pelo mestre.');this.area=target;if(this.area==='monsters'&&game.user.isGM)await this.library.loadActors();}
+      if(op==='area'){const target=button.dataset.area;if(target!=='characters'&&target!=='quests'&&!game.user.isGM&&!this.library.shared.areas.includes(target))throw Error('Esta área ainda não foi liberada pelo mestre.');this.area=target;if(this.area==='monsters'&&game.user.isGM)await this.library.loadActors();}
       if(op==='lib-place-img'){const raw=button.dataset.id;if(raw.endsWith(':'))await this.library.setPlaceImage(raw.slice(0,-1),'');else{const FP=foundry.applications.apps.FilePicker.implementation;new FP({type:'image',current:this.library.placeImages[raw]||'',callback:async path=>{await this.library.setPlaceImage(raw,path);this.render(true);}}).render(true);}}
       else if(op==='lib-region-img'){const raw=button.dataset.id;if(raw.endsWith(':'))await this.library.setRegionImage(raw.slice(0,-1),'');else{const FP=foundry.applications.apps.FilePicker.implementation;new FP({type:'image',current:this.library.regionImages[raw]||'',callback:async path=>{await this.library.setRegionImage(raw,path);this.render(true);}}).render(true);}}
       else if(op.startsWith('lib-')){

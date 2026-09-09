@@ -90,6 +90,14 @@ test('imagens de região e local ficam em settings separados e aparecem nos cart
   await library.action('lib-place','kravokia');
   assert.match(library.render('map'),/kravokia\.webp/);
 });
+test('aba Quests é pública e segue os documentos observáveis do Forien',async()=>{
+  const API={DB:{getAllQuests:()=>[{id:'q1',name:'Salvar Kravokia',status:'available',location:'Kravokia',tasks:[],rewards:[],subquests:[]}],hooks:{}},open({questId}){this.opened=questId;}};
+  const game={user:{isGM:false},modules:new Map([['forien-quest-log',{active:true,public:{QuestAPI:API}}]]),settings:{get:(_module,key)=>key==='sharedContent'?{areas:[],map:[],monsters:[],items:[],npcs:[]}:false}};
+  const player=new CampaignLibrary(game,{items:[]});
+  const html=player.render('quests',true);
+  assert.match(html,/Salvar Kravokia/);assert.match(html,/Abrir quest/);assert.doesNotMatch(html,/Nova quest/);
+  await player.action('lib-quest-open','q1');assert.equal(API.opened,'q1');
+});
 test('mapa configurado usa visor único, foca região e abre detalhe de cidade',async()=>{
   const store={opathMapImage:'worlds/teste/opath.webp',regionImages:{mirmir:'worlds/teste/mirmir.webp'},placeImages:{},sharedContent:{areas:['map'],map:['mirmir'],monsters:[],items:[],npcs:[]}};
   const settings={get:(_module,key)=>store[key],set:async(_module,key,value)=>{store[key]=value;}};

@@ -2,13 +2,21 @@
   "id": "quedaco",
   "title": "QUEDAÇO",
   "description": "Criação guiada de personagens e controle de campanha para Skyfall RPG.",
-  "version": "0.4.10",
+  "version": "0.4.11",
   "url": "https://github.com/yurisatelite/quedaco",
   "manifest": "https://github.com/yurisatelite/quedaco/releases/latest/download/module.json",
-  "download": "https://github.com/yurisatelite/quedaco/releases/download/v0.4.10/quedaco.zip",
+  "download": "https://github.com/yurisatelite/quedaco/releases/download/v0.4.11/quedaco.zip",
   "authors": [{ "name": "Yuri" }],
   "compatibility": { "minimum": "13", "verified": "13", "maximum": "13" },
-  "relationships": { "systems": [{ "id": "skyfall", "type": "system", "compatibility": { "minimum": "1.0.1" } }] },
+  "relationships": {
+    "systems": [{ "id": "skyfall", "type": "system", "compatibility": { "minimum": "1.0.1" } }],
+    "recommends": [{
+      "id": "forien-quest-log",
+      "type": "module",
+      "compatibility": { "minimum": "0.9.0" },
+      "manifest": "https://github.com/Forien/foundryvtt-forien-quest-log/releases/latest/download/module.json"
+    }]
+  },
   "esmodules": ["src/main.mjs"],
   "styles": ["styles/creator.css", "styles/library.css"]
 }

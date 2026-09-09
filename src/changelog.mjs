@@ -1,5 +1,17 @@
 export const CHANGELOG = [
   {
+    version:'0.4.11',
+    date:'2026-09-09',
+    title:'Quests públicas integradas ao Forien',
+    notes:[
+      'A aba Quests agora está disponível para todos os jogadores. Cada usuário vê somente as quests permitidas pelo Forien.',
+      'Cartões mostram estado, local, contratante, objetivos visíveis, recompensas, prioridade e subquests.',
+      'Busca, filtros por estado e contadores ajudam a acompanhar a campanha.',
+      'Quests abrem na ficha oficial do Forien, e o mestre pode criar uma nova quest pelo QUEDAÇO.',
+      'Alterações feitas no Forien atualizam automaticamente o painel aberto.'
+    ]
+  },
+  {
     version:'0.4.10',
     date:'2026-09-09',
     title:'Novidades, mapa e controle do painel',
