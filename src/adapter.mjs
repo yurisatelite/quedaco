@@ -62,24 +62,45 @@ export async function finalizeClassProgression(actor,targetLevel) {
   if(have.length===want.length&&want.every(id=>have.includes(id))) return;
   await cls.update({'system.origin':want,'system.level':level});
 }
+/** O ciclo de criação do Skyfall só encaixa a trilha no slot path-01/path-02 quando o item é
+ *  criado sozinho (fora do lote). Aqui garantimos o slot por update depois. */
+export async function finalizePathProgression(actor) {
+  const paths=actor.items.filter(item=>item.type==='path');
+  if(!paths.length) return;
+  const updates=[];
+  paths.forEach((path,index)=>{
+    const slot=index===0?'path-01':'path-02';
+    const origin=Array.from(path.system?.origin??[]).filter(id=>!/^path-\d\d$/.test(id));
+    if(!origin.includes(slot))origin.push(slot);
+    updates.push({_id:path.id,'system.origin':origin});
+  });
+  if(updates.length) await actor.updateEmbeddedDocuments('Item',updates);
+}
 export async function addResolvedPlan(actor,planItems,catalog) {
   if (!actor.isOwner) throw Error('Você não tem acesso de edição a essa ficha.');
   const seen=new Set(actor.items.map(item=>item._stats?.compendiumSource).filter(Boolean));
-  const sources=[];
+  const batch=[],paths=[];
   for (const item of planItems) {
     if (seen.has(item.entry.uuid)) continue;
     const document=item.document??await catalog.document(item.entry.uuid);
-    sources.push(embeddedSource(document,item.originId,item.level));seen.add(item.entry.uuid);
+    (document.type==='path'?paths:batch).push(embeddedSource(document,item.originId,item.level));
+    seen.add(item.entry.uuid);
   }
-  if (!sources.length) return [];
   const BenefitsDialog=globalThis.skyfall?.applications?.BenefitsDialog;
   const originalPrompt=BenefitsDialog?.prompt;
+  const created=[];
   try {
     if (BenefitsDialog&&typeof originalPrompt==='function') BenefitsDialog.prompt=()=>null;
-    return await actor.createEmbeddedDocuments('Item',sources);
+    if (batch.length) created.push(...(await actor.createEmbeddedDocuments('Item',batch)??[]));
+    // trilhas uma a uma: o _preCreate do Skyfall precisa ver as anteriores para dar path-01/path-02
+    for (const source of paths) {
+      try { created.push(...(await actor.createEmbeddedDocuments('Item',[source])??[])); }
+      catch (error) { console.error(MODULE_ID,'trilha',error); }
+    }
   } finally {
     if (BenefitsDialog&&typeof originalPrompt==='function') BenefitsDialog.prompt=originalPrompt;
   }
+  return created;
 }
 export async function addInventory(actor,items,catalog) {
   if (!actor.isOwner) throw Error('Você não tem acesso de edição a essa ficha.');
