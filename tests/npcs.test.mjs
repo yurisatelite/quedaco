@@ -28,13 +28,12 @@ test('pastas da macro distinguem NPC character de monstro npc',()=>{
   assert.equal(isGeneratedNpc({type:'character',folder:city}),true);
 });
 
-test('visibilidade de NPC respeita papel, atividade e liberação',()=>{
-  assert.equal(npcVisibility({role:'merchant',active:true,shared:true}),'shop');
-  assert.equal(npcVisibility({role:'ally',active:true,shared:true}),'identity');
-  assert.equal(npcVisibility({role:'extra',active:true,shared:true}),'identity');
-  assert.equal(npcVisibility({role:'rival',active:true,shared:true}),'identity');
-  assert.equal(npcVisibility({role:'merchant',active:false,shared:true}),false);
-  assert.equal(npcVisibility({role:'merchant',active:true,shared:false}),false);
+test('visibilidade de NPC depende do papel e da liberação',()=>{
+  assert.equal(npcVisibility({role:'merchant',shared:true}),'shop');
+  assert.equal(npcVisibility({role:'ally',shared:true}),'identity');
+  assert.equal(npcVisibility({role:'extra',shared:true}),'identity');
+  assert.equal(npcVisibility({role:'rival',shared:true}),'identity');
+  assert.equal(npcVisibility({role:'merchant',shared:false}),false);
 });
 
 test('inferência de local usa pasta, descrição, nome e limites de palavra',()=>{
@@ -48,7 +47,7 @@ test('inferência de local usa pasta, descrição, nome e limites de palavra',()
 
 test('adoção infere o local sem substituir flag manual existente',()=>{
   const fresh=adoptNpcFlag({name:'Talia de Mirmir'});
-  assert.equal(fresh.role,'extra');assert.equal(fresh.active,false);assert.equal(fresh.placeId,'kravokia');
+  assert.equal(fresh.role,'extra');assert.equal('active' in fresh,false);assert.equal(fresh.placeId,'kravokia');
   const manual={role:'ally',active:true,placeId:'foice',shop:{stock:[]}},actor={flags:{quedaco:{npc:manual}},name:'Talia de Mirmir'};
   assert.equal(adoptNpcFlag(actor),manual);
   assert.equal(adoptNpcFlag(actor).placeId,'foice');

@@ -41,16 +41,16 @@ export function isGeneratedNpc(actor){
   const generated=path.indexOf(normalize('🤖 Criados pela IA'));
   return generated>=0&&path[generated+1]===normalize('NPCs');
 }
-export function npcVisibility({role,active,shared=false,gm=false}){
+export function npcVisibility({role,shared=false,gm=false}){
   if(gm)return Boolean(role);
-  if(!active||!shared)return false;
+  if(!shared)return false;
   if(role==='merchant')return 'shop';
   if(role==='ally'||role==='extra')return 'identity';
   if(role==='rival')return 'identity';
   return false;
 }
 export function initialNpcFlag(actor){
-  return {role:'extra',placeId:placeIdFromFolderPath(folderPath(actor))??'',active:false,note:'',shop:{markup:1,note:'',stock:[]}};
+  return {role:'extra',placeId:placeIdFromFolderPath(folderPath(actor))??'',note:'',shop:{markup:1,note:'',stock:[]}};
 }
 export function adoptNpcFlag(actor){
   const existing=npcFlag(actor);if(existing)return existing;

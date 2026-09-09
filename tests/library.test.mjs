@@ -149,6 +149,9 @@ test('monstros usam imagem inteira e facetas recolhíveis preservam seleção',(
   assert.match(html,/data-monster-facet-group="papel" open/);
   assert.match(html,/data-monster-facet="papel" value="Atirador" checked/);
   assert.match(html,/Papel<span class="sy-facet-count"> \(1\)<\/span>/);
+  library.actors=[{name:'Kraken',type:'npc',uuid:'Actor.kraken',img:'kraken.webp',source:'Mundo'}];
+  library.loaded=true;
+  assert.match(library.render('monsters'),/draggable="true" data-drag-actor="Actor\.kraken"/);
 });
 test('itens usam miniatura compacta e Imbuir fica em área própria',()=>{
   const store={areas:['imbue'],map:[],monsters:[],items:[],npcs:[]};
@@ -165,20 +168,24 @@ test('itens usam miniatura compacta e Imbuir fica em área própria',()=>{
   assert.match(readonly,/O que é imbuir/);
   assert.doesNotMatch(readonly,/Montar item modificado/);
 });
-test('NPC detectado oferece edição direta e protege Actor com dono jogador',async()=>{
+test('todo NPC gerado aparece direto, edita sem adoção e protege Actor com dono jogador',async()=>{
   const root={id:'root',name:'🤖 Criados pela IA'},folder={id:'npcs',name:'NPCs',folder:root};
   const makeActor=(id,hasPlayerOwner=false)=>({id,uuid:`Actor.${id}`,name:id==='a'?'Guia de Kravokia':'Companheiro',type:'character',folder,flags:{},hasPlayerOwner,
     async update(change){const value=change['flags.quedaco.npc'];if(value)this.flags={quedaco:{npc:value}};},sheet:{render(){}}});
   const first=makeActor('a'),owned=makeActor('b',true),library=new CampaignLibrary({user:{isGM:true},actors:[first,owned]},{items:[]});
   const html=library.render('npcs');
-  assert.match(html,/Gerado pela macro · Kravokia/);
+  assert.match(html,/Guia de Kravokia/);assert.doesNotMatch(html,/Detectados nas pastas|Adotar todos|Ativar|Inativo/);
+  assert.match(html,/draggable="true" data-drag-actor="Actor\.a"/);assert.match(html,/sy-library-thumb/);
   assert.match(html,/data-op="lib-npc-edit" data-id="a"/);
   assert.match(html,/data-op="lib-npc-delete" data-id="a"/);
   assert.doesNotMatch(html,/data-op="lib-npc-delete" data-id="b"/);
   assert.doesNotMatch(html,/Escolha um Actor/);
   await library.action('lib-npc-edit','a');
-  assert.equal(first.flags.quedaco.npc.placeId,'kravokia');
+  assert.equal(first.flags.quedaco,undefined);
   assert.equal(library.state.npcActor,'a');
+  assert.match(library.render('npcs'),/Fechar edição/);
+  await library.action('lib-npc-close','a');
+  assert.equal(library.state.npcActor,null);
 });
 test('exclusão de NPC confirma, limpa o editor e recusa Actor de jogador',async()=>{
   let deleted=false;
