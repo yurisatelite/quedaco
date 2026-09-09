@@ -2,6 +2,10 @@ import {normalize} from './rules.mjs';
 
 const array=value=>value==null?[]:Array.from(value instanceof Set&&value.toObject?value.toObject():value);
 const rootTypes=['legacy','curse','background','class'];
+// As três classes do Livro Básico escolhem a primeira trilha no 2º nível e,
+// no 7º, avançam a mesma trilha ou escolhem uma segunda.
+const pathChoiceLevels=[2,7];
+const occultistCantripChoices=[[1,3,'Conexão Superficial · truques mágicos'],[5,1,'Conexão Rasa · truque mágico'],[9,1,'Conexão Profunda · truque mágico']];
 
 async function entriesFromUuids(catalog,uuids){
   const entries=[];
@@ -68,6 +72,29 @@ export async function buildCharacterPlan(catalog,selections={},choices={},target
     }
   };
   await processQueue();
+  // Alguns compêndios antigos não registram o grant de trilha na classe. A tabela
+  // de progressão ainda determina essas escolhas; criar o grupo aqui mantém a
+  // seleção utilizável sem inventar uma concessão em outro nível.
+  const classRoot=roots.find(root=>root.entry.type==='class');
+  if(classRoot){
+    for(const pathLevel of pathChoiceLevels.filter(item=>item<=level)){
+      const exists=[...groups.values()].some(group=>group.granting==='path'&&group.atLevel===pathLevel);
+      if(exists)continue;
+      const id=`${classRoot.document.uuid}|path-choice|${pathLevel}`;
+      groups.set(id,{id,title:pathLevel===2?'Escolha de trilha':'Trilha avançada (mesma do nível 2) ou segunda trilha',owner:classRoot.document,granting:'path',query:'',originIds:[],options:[],count:1,atLevel:pathLevel,populated:false});
+    }
+    // A tabela do Ocultista concede 3 truques no 1º nível e mais um nos
+    // níveis 5 e 9. Alguns compêndios legados omitem os grants; só criamos
+    // estes grupos quando o conteúdo nativo não os forneceu.
+    if(normalize(classRoot.entry.name)==='ocultista'){
+      for(const [spellLevel,count,title] of occultistCantripChoices.filter(([spellLevel])=>spellLevel<=level)){
+        const exists=[...groups.values()].some(group=>group.granting==='spell'&&group.atLevel===spellLevel);
+        if(exists)continue;
+        const id=`${classRoot.document.uuid}|cantrip-choice|${spellLevel}`;
+        groups.set(id,{id,title,owner:classRoot.document,granting:'spell',query:'cantrip',originIds:[],options:[],count,atLevel:spellLevel,populated:false});
+      }
+    }
+  }
   while(true){const pending=[...groups.values()].filter(group=>!group.populated);if(!pending.length&&!queue.length)break;for(const group of pending)await populate(group);await processQueue();}
   return {level,roots,included,groups:[...groups.values()].sort((a,b)=>a.atLevel-b.atLevel||a.title.localeCompare(b.title,'pt-BR'))};
 }

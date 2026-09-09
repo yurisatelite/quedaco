@@ -64,16 +64,24 @@ export async function finalizeClassProgression(actor,targetLevel) {
 }
 /** O ciclo de criação do Skyfall só encaixa a trilha no slot path-01/path-02 quando o item é
  *  criado sozinho (fora do lote). Aqui garantimos o slot por update depois. */
-export async function finalizePathProgression(actor) {
-  const paths=actor.items.filter(item=>item.type==='path');
-  if(!paths.length) return;
-  const updates=[];
-  paths.forEach((path,index)=>{
-    const slot=index===0?'path-01':'path-02';
-    const origin=Array.from(path.system?.origin??[]).filter(id=>!/^path-\d\d$/.test(id));
-    if(!origin.includes(slot))origin.push(slot);
-    updates.push({_id:path.id,'system.origin':origin});
+export async function finalizePathProgression(actor,planItems=[]) {
+  const requested=planItems.filter(item=>item.entry?.type==='path').map(item=>item.entry.uuid);
+  if(!requested.length)return;
+  const desired=new Map();
+  requested.slice(0,2).forEach((uuid,index)=>{
+    const slots=desired.get(uuid)??[];
+    slots.push(`path-${String(index+1).padStart(2,'0')}`);
+    desired.set(uuid,slots);
   });
+  const updates=[];
+  for(const path of actor.items.filter(item=>item.type==='path')){
+    const source=path._stats?.compendiumSource;
+    const slots=desired.get(source);
+    if(!slots)continue;
+    const origin=Array.from(path.system?.origin??[]).filter(id=>!/^path-\d\d$/.test(id));
+    origin.push(...slots);
+    if(Array.from(path.system?.origin??[]).join('|')!==origin.join('|'))updates.push({_id:path.id,'system.origin':origin});
+  }
   if(updates.length) await actor.updateEmbeddedDocuments('Item',updates);
 }
 export async function addResolvedPlan(actor,planItems,catalog) {
@@ -81,10 +89,10 @@ export async function addResolvedPlan(actor,planItems,catalog) {
   const seen=new Set(actor.items.map(item=>item._stats?.compendiumSource).filter(Boolean));
   const batch=[],paths=[];
   for (const item of planItems) {
-    if (seen.has(item.entry.uuid)) continue;
+    if (item.entry.type!=='path'&&seen.has(item.entry.uuid)) continue;
     const document=item.document??await catalog.document(item.entry.uuid);
     (document.type==='path'?paths:batch).push(embeddedSource(document,item.originId,item.level));
-    seen.add(item.entry.uuid);
+    if(item.entry.type!=='path')seen.add(item.entry.uuid);
   }
   const BenefitsDialog=globalThis.skyfall?.applications?.BenefitsDialog;
   const originalPrompt=BenefitsDialog?.prompt;

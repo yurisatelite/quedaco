@@ -59,3 +59,40 @@ test('trilha escolhida entra no plano e abre seus benefícios próprios',async()
   const expanded=await buildCharacterPlan(catalog,{legacy:'legacy',heritage:'heritage',class:'class',background:'bg'},{[trail.id]:['path']},2);
   assert.ok(expanded.included.some(item=>item.entry.name==='Ação Ardilosa'));
 });
+
+test('tabela de classe mantém a escolha de trilha disponível quando o grant do compêndio falta',async()=>{
+  const cls=makeDoc('class','Combatente','class');
+  const pathFeature=makeDoc('path-feature','Golpe de trilha','feature');
+  const path=makeDoc('path','Trilha Marcial','path',{benefits:[{_id:'path-feature-origin',type:'feature',uuid:'path-feature',level:1}]});
+  const bg=makeDoc('bg','Artista','background');
+  const legacy=makeDoc('legacy','Humani','legacy',{benefits:[{_id:'heritage-origin',type:'heritage',uuid:'heritage',level:0}]});
+  const heritage=makeDoc('heritage','Herança','heritage');
+  const catalog=mockCatalog([cls,path,pathFeature,bg,legacy,heritage]);
+  const levelTwo=await buildCharacterPlan(catalog,{legacy:'legacy',heritage:'heritage',class:'class',background:'bg'},{},2);
+  const firstTrail=levelTwo.groups.find(group=>group.granting==='path');
+  assert.equal(firstTrail.atLevel,2);
+  assert.equal(firstTrail.count,1);
+  assert.ok(firstTrail.options.length>0);
+  const plan=await buildCharacterPlan(catalog,{legacy:'legacy',heritage:'heritage',class:'class',background:'bg'},{},7);
+  const trails=plan.groups.filter(group=>group.granting==='path');
+  assert.deepEqual(trails.map(group=>group.atLevel),[2,7]);
+  assert.ok(trails.every(group=>group.count===1&&group.options.length>0&&group.options[0].uuid==='path'));
+  const expanded=await buildCharacterPlan(catalog,{legacy:'legacy',heritage:'heritage',class:'class',background:'bg'},{[trails[0].id]:['path'],[trails[1].id]:['path']},7);
+  assert.ok(expanded.included.some(item=>item.entry.uuid==='path-feature'));
+});
+
+test('Ocultista mantém as escolhas de truque quando grants antigos de magia estão ausentes',async()=>{
+  const cls=makeDoc('class','Ocultista','class');
+  const bg=makeDoc('bg','Artista','background');
+  const legacy=makeDoc('legacy','Humani','legacy',{benefits:[{_id:'heritage-origin',type:'heritage',uuid:'heritage',level:0}]});
+  const heritage=makeDoc('heritage','Herança','heritage');
+  const cantrip=makeDoc('cantrip','Luz','spell',{descriptors:['cantrip']});
+  const superficial=makeDoc('superficial','Escuridão','spell',{descriptors:['superficial']});
+  const catalog=mockCatalog([cls,bg,legacy,heritage,cantrip,superficial]);
+  const selections={legacy:'legacy',heritage:'heritage',class:'class',background:'bg'};
+  const levelOne=await buildCharacterPlan(catalog,selections,{},1);
+  const first=levelOne.groups.find(group=>group.id.includes('cantrip-choice|1'));
+  assert.equal(first.count,3);assert.deepEqual(first.options.map(option=>option.uuid),['cantrip']);
+  const levelNine=await buildCharacterPlan(catalog,selections,{},9);
+  assert.deepEqual(levelNine.groups.filter(group=>group.granting==='spell').map(group=>[group.atLevel,group.count]),[[1,3],[5,1],[9,1]]);
+});

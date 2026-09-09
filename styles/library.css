@@ -1,4 +1,4 @@
-.sy-creator .sy-library{padding:22px;max-width:1500px;margin:0 auto;width:100%}
+.sy-creator .sy-library{min-height:100%;padding:22px;max-width:1500px;margin:0 auto;width:100%}
 .sy-creator .sy-library-tabs,.sy-creator .sy-library-breadcrumb{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0;padding:0;border:0}
 .sy-creator .sy-library-tabs button,.sy-creator .sy-library-breadcrumb button{width:auto;display:inline-flex;margin:0;padding:7px 12px;text-align:center;background:#202b39;border:1px solid #435567}
 .sy-creator .sy-library-tabs button[aria-current="false"]{background:#202b39;border-color:#435567;color:#e9f3ff}
