@@ -119,3 +119,5 @@
 .sy-creator .sy-map-marker.is-movable{cursor:move;outline:2px dashed #fff8;outline-offset:2px;animation:sy-pin-pulse 1.2s ease-in-out infinite alternate}@keyframes sy-pin-pulse{to{filter:brightness(1.35)}}
 
 .sy-creator .sy-map-layers{display:flex;gap:4px;flex-wrap:wrap}.sy-creator .sy-map-layers button{width:auto;padding:4px 7px;font-size:10px}.sy-creator .sy-map-layers button[aria-current=page]{border-color:var(--sy-cyan);color:var(--sy-cyan)}
+
+.sy-creator .sy-forge{display:grid;gap:9px;margin-top:10px;padding:10px;border:1px solid #d08048;border-radius:9px;background:#d0804810}.sy-creator .sy-forge-drop{display:flex;align-items:center;justify-content:center;gap:9px;min-height:72px;padding:10px;border:2px dashed #d08048;border-radius:8px;background:#0b1119}.sy-creator .sy-forge-drop span{display:grid}.sy-creator .sy-forge>label{margin:0}

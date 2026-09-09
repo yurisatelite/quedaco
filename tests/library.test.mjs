@@ -229,3 +229,9 @@ test('camadas do mapa revelam cidades no zoom e compartilhamento em massa',async
  await library.action('lib-map-share-all','all');assert.ok(store.sharedContent.map.includes('kravokia'));assert.ok(store.sharedContent.map.includes('mirmir'));
  await library.action('lib-map-share-all','none');assert.equal(store.sharedContent.map.length,0);
 });
+
+test('ferreiro liberado mostra zona de forja ao jogador',()=>{
+ const actor={id:'smith',uuid:'Actor.smith',name:'Ferreiro',type:'character',flags:{quedaco:{npc:{role:'smith',regionId:'mirmir',placeId:'',forge:{enabled:true,markup:1},shop:{stock:[]}}}}};
+ const shared={areas:['npcs'],npcs:['Actor.smith'],map:[],monsters:[],items:[]},game={user:{isGM:false,character:null},actors:[actor],settings:{get:(_m,key)=>key==='sharedContent'?shared:''}};
+ assert.match(new CampaignLibrary(game,{items:[]}).render('npcs',true),/sy-forge/);
+});

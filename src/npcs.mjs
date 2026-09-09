@@ -71,16 +71,17 @@ export function npcCoverage(region,actors=[],places=PLACES){
   return {regionId:region?.id,expected,found:[...found],missing:expected.filter(item=>!found.has(item))};
 }
 
-export function npcVisibility({role,shared=false,gm=false}){
+export function npcVisibility({role,shared=false,gm=false,forge={}}){
   if(gm)return Boolean(role);
   if(!shared)return false;
   if(role==='merchant')return 'shop';
+  if(role==='smith'&&forge.enabled!==false)return 'forge';
   if(role==='ally'||role==='extra')return 'identity';
   if(role==='rival')return 'identity';
   return false;
 }
 export function initialNpcFlag(actor){
-  return {role:'extra',regionId:regionIdFromFolderPath(folderPath(actor))??'',placeId:placeIdFromFolderPath(folderPath(actor))??'',note:'',shop:{markup:1,note:'',stock:[]}};
+  return {role:'extra',regionId:regionIdFromFolderPath(folderPath(actor))??'',placeId:placeIdFromFolderPath(folderPath(actor))??'',note:'',shop:{markup:1,note:'',stock:[]},forge:{enabled:false,markup:1}};
 }
 export function adoptNpcFlag(actor){
   const existing=npcFlag(actor);if(existing)return existing;

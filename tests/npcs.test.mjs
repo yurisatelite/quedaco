@@ -30,6 +30,7 @@ test('pastas da macro distinguem NPC character de monstro npc',()=>{
 
 test('visibilidade de NPC depende do papel e da liberação',()=>{
   assert.equal(npcVisibility({role:'merchant',shared:true}),'shop');
+  assert.equal(npcVisibility({role:'smith',shared:true,forge:{enabled:true}}),'forge');
   assert.equal(npcVisibility({role:'ally',shared:true}),'identity');
   assert.equal(npcVisibility({role:'extra',shared:true}),'identity');
   assert.equal(npcVisibility({role:'rival',shared:true}),'identity');
