@@ -18,6 +18,23 @@ Uma instalação manual antiga precisa ser vinculada a esse manifesto uma vez. E
 
 Os arquivos licenciados Noka-Medium.woff2 e Noka-Semibold.woff2 podem permanecer em uma pasta da própria mesa, por exemplo `quedaco-brand`. Em Configurações do módulo, informe essa pasta em “Pasta de fontes da mesa”. Como fica fora de `modules/quedaco`, a pasta sobrevive às atualizações. O pacote público utiliza Outfit quando nenhuma pasta estiver configurada. A Outfit acompanha o módulo e funciona sem serviços externos, em peso Medium (500) no texto e Semibold (600) nos títulos. Sua licença SIL Open Font License 1.1 está incluída em `assets/fonts/OFL-Outfit.txt`.
 
+## Versão 0.4.1
+
+Corrige a compatibilidade do manifesto: adiciona `verified` ao bloco `compatibility`
+(`minimum`/`verified`/`maximum` = "13"), removendo o aviso "Compatibilidade
+Desconhecida" na lista de módulos do Foundry 13. Sem mudança de comportamento em
+relação a 0.4.0.
+
+## Versão 0.4.0
+
+Preenche as bibliotecas de Mapa, Monstros e Itens como índice de consulta do Livro
+Básico DIGITAL 1.25 (10 regiões, 48 locais, 5 entradas além de Opath, 44 blocos de
+ameaça, 214 itens e sigilos), com auditoria somente-leitura das fichas de ameaça
+contra os Actors da mesa. Divergências do livro ficam sinalizadas nos cartões.
+Imagens, cenas, encontros regionais, Quests e NPCs seguem reservados. A criação de
+personagens não muda em relação a 0.3.2. Conferência linha a linha em
+`docs/CONFERENCIA-BIBLIOTECA.md`.
+
 ## Versão 0.3.2
 
 Inclui a fonte secundária Outfit e sua licença de redistribuição. Preserva o canal de atualizações e a opção de carregar Noka da pasta privada da mesa.
