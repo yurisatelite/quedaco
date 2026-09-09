@@ -1,7 +1,7 @@
 import {CreatorApp} from './app.mjs';
 import {MODULE_ID,assertCompatible} from './adapter.mjs';
 import {registerBranding,loadBranding} from './branding.mjs';
-import {registerSharedContent} from './library.mjs';
+import {registerLibrarySettings} from './library.mjs';
 let app;
 function openCreator(startArea='characters'){
   try{
@@ -13,7 +13,7 @@ function openCreator(startArea='characters'){
     return app.start();
   }catch(error){ui.notifications.error(error.message);}
 }
-Hooks.once('init',()=>{registerBranding();registerSharedContent(game,()=>{if(app?.rendered)app.render(false);});});
+Hooks.once('init',()=>{registerBranding();registerLibrarySettings(game,()=>{if(app?.rendered)app.render(false);});});
 Hooks.once('ready',()=>{game.modules.get(MODULE_ID).api={open:openCreator,openCampaign:()=>openCreator('npcs')};void loadBranding();});
 Hooks.on('renderActorDirectory',(application,html)=>{
   const root=html instanceof HTMLElement?html:html?.[0];if(!root||root.querySelector('[data-yuri-creator]'))return;
