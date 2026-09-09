@@ -48,9 +48,19 @@ export async function addDocument(actor, document) {
 function embeddedSource(document,originId=null,level=null) {
   const data=document.toObject();delete data._id;
   data._stats={...data._stats,compendiumSource:document.uuid};
-  if (originId) data.system.origin=[originId];
+  // Trilhas recebem o slot (path-01/path-02) do próprio ciclo de criação do Skyfall.
+  if (originId&&document.type!=='path') data.system.origin=[originId];
   if(document.type==='class') {const target=Math.max(1,Math.min(12,Number(level)||1));data.system.level=target;data.system.initial=true;data.system.origin=classOrigins(target);data.system.hitDie.value=target;}
   return data;
+}
+/** O _preCreate da classe reescreve origin para ['class-01']; refixa a lista completa por update. */
+export async function finalizeClassProgression(actor,targetLevel) {
+  const level=Math.max(1,Math.min(12,Number(targetLevel)||1));
+  const cls=actor.items.find(item=>item.type==='class'&&item.system?.initial)??actor.items.find(item=>item.type==='class');
+  if(!cls) return;
+  const want=classOrigins(level),have=Array.from(cls.system?.origin??[]).filter(id=>/^class-\d\d$/.test(id));
+  if(have.length===want.length&&want.every(id=>have.includes(id))) return;
+  await cls.update({'system.origin':want,'system.level':level});
 }
 export async function addResolvedPlan(actor,planItems,catalog) {
   if (!actor.isOwner) throw Error('Você não tem acesso de edição a essa ficha.');
