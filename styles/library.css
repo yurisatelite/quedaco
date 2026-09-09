@@ -32,3 +32,7 @@
 .sy-creator .sy-library th,.sy-creator .sy-library td{padding:8px;border:1px solid #42576a;text-align:left;color:inherit;background:transparent}
 .sy-creator .sy-library thead{background:#234251;color:#effcff}
 .sy-creator .sy-library summary:focus-visible{outline:2px solid #50daf0;outline-offset:5px}
+.sy-creator .sy-library-share-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.sy-creator .sy-share-toggle{width:auto;display:inline-flex;align-items:center;gap:6px;padding:6px 11px;font-size:12px;background:#1b2735;border:1px dashed #4a6b80;color:#bfe4f2}
+.sy-creator .sy-share-toggle.is-on{background:#123a2a;border-style:solid;border-color:#4fca8f;color:#a9f2cf}
+.sy-creator .sy-library-card .sy-share-toggle{width:100%;justify-content:center}

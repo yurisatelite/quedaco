@@ -39,10 +39,28 @@ test('GM audit reads world and actor pack indexes without creating or updating d
   game.packs=[pack];await library.loadActors(true);assert.equal(library.report().missing.length,42);assert.equal(library.report().found.length,2);
   const before=JSON.stringify(game.actors);library.render('monsters');library.render('items');assert.equal(JSON.stringify(game.actors),before);
 });
-test('player cannot enter, audit or open GM library through its handlers',async()=>{
-  const library=new CampaignLibrary({user:{isGM:false}},{items:[]});
-  assert.throws(()=>library.render('map'),/somente/);assert.throws(()=>library.report(),/somente/);
-  await assert.rejects(library.loadActors(),/somente/);await assert.rejects(library.action('lib-place','foice'),/somente/);await assert.rejects(library.open('Actor.x'),/somente/);
+test('player cannot mutate the GM library or read unshared content',async()=>{
+  const player=new CampaignLibrary({user:{isGM:false},settings:{get:()=>({areas:[],map:[],monsters:[],items:[]})}},{items:[]});
+  assert.throws(()=>player.render('map'),/somente/);assert.throws(()=>player.report(),/somente/);
+  await assert.rejects(player.loadActors(),/somente/);
+  await assert.rejects(player.action('lib-refresh'),/somente/);
+  await assert.rejects(player.action('lib-share','map:foice'),/somente/);
+  await assert.rejects(player.open('Actor.x'),/somente/);
+  const locked=player.render('map',true);
+  assert.match(locked,/não liberou/);assert.doesNotMatch(locked,/Kravokia/);
+  await player.action('lib-place','foice');// navegar é permitido dentro da vista liberada
+});
+test('GM sharing exposes only the chosen entries to players',async()=>{
+  const store={areas:[],map:[],monsters:[],items:[]};
+  const settings={get:()=>store,set:async(_m,_k,value)=>{Object.assign(store,value);}};
+  const gm=new CampaignLibrary({user:{isGM:true},settings},{items:[]});
+  await gm.setShare('map','mirmir');
+  assert.ok(store.areas.includes('map'));assert.ok(store.map.includes('mirmir'));
+  const player=new CampaignLibrary({user:{isGM:false},settings},{items:[]});
+  const view=player.render('map',true);
+  assert.match(view,/Deserto de Mirmir/);assert.doesNotMatch(view,/Arquipélago de Huma/);assert.doesNotMatch(view,/Liberar/);
+  await gm.setShare('map','mirmir');// alterna de novo: remove
+  assert.equal(store.map.length,0);
 });
 test('region and city navigation produces working breadcrumbs; no image or scene import',async()=>{
   const library=new CampaignLibrary({user:{isGM:true}},{items:[]});
