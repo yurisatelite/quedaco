@@ -96,6 +96,7 @@ test('aba Quests é pública e segue os documentos observáveis do Forien',async
   const player=new CampaignLibrary(game,{items:[]});
   const html=player.render('quests',true);
   assert.match(html,/Salvar Kravokia/);assert.match(html,/Abrir quest/);assert.doesNotMatch(html,/Nova quest/);
+  assert.match(html,/sy-card-figure-full/);assert.match(html,/data-fallback-src="icons\/svg\/book\.svg"/);
   await player.action('lib-quest-open','q1');assert.equal(API.opened,'q1');
 });
 test('mapa configurado usa visor único, foca região e abre detalhe de cidade',async()=>{
