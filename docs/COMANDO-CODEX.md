@@ -476,3 +476,400 @@ própria na navegação do topo**, sem misturar com o catálogo de itens.
   `system.fragments`) e não o imbuir de sigilo do T10 — nesse caso, perguntar antes.
 
 Entrega dos B5–B8 pode ir junto do T16 no mesmo bump (0.4.10).
+
+---
+
+# LOTE ATUAL PARA O CODEX — T17–T29 + B9–B10 (enviado 09/09/2026)
+
+Codex já entregou T14, T15, T16, B5–B8 e a área de Quests (0.4.11). Este lote é o
+próximo. Ordem sugerida: B9–B10 (rápidos) → T20/T21/T22/T23/T24 (aba NPCs) →
+T17/T18/T19 (mapa) → T25/T26/T29 (cobertura + tokens + mercador) → T28 (forja) →
+T27 (logo). Entregar em um bump só quando der, com changelog.
+
+Contexto: Codex já entregou T14, T15, T16, B5–B8 e a área de Quests (0.4.10–0.4.11).
+Estes são ajustes em cima disso.
+
+## T17 — Mapa: mover a posição dos pinos (GM)
+
+Sintoma: "castelete da Tora Furada" aparece longe de Maruma (posição errada). Os
+`hotspot` das regiões estão fixos em `src/book-world.mjs` e locais não têm hotspot
+próprio (são calculados em `placeMarkerPosition`).
+
+- Setting `world` novo `quedaco.mapHotspots` = `{regions:{<id>:[x,y]}, places:{<id>:[x,y]}}`
+  (x,y em %).
+- Botão "Mover pinos" no `.sy-map-controls` (só GM): liga um modo em que cada
+  `.sy-map-marker` fica arrastável (pointerdown/move/up já existem no viewport — só
+  interceptar quando o alvo é um marcador e o modo está ligado). Ao soltar, grava
+  `[x,y]` no setting. Botão "Voltar ao padrão do livro" limpa o override daquele pino.
+- `renderDynamicMap`: posição do pino = `mapHotspots.regions[id]` ?? `region.hotspot`;
+  para locais = `mapHotspots.places[id]` ?? `placeMarkerPosition(...)`.
+- Função pura `resolveHotspot(overrides, kind, id, fallback)` + teste.
+
+## T18 — Mapa: camadas de pino, zoom e "liberar todos"
+
+- **Zoom controla a camada:** com `scale` abaixo de um limiar (ex. 1.6) e sem `focus`,
+  mostrar só pinos de **região**; acima do limiar, mostrar também pinos de **cidade**
+  (de todas as regiões, posicionados por `mapHotspots.places`/`placeMarkerPosition`).
+  Hoje cidade só aparece com região focada — manter esse caminho e somar o do zoom.
+- **Botões de camada** no `.sy-map-controls`: `Regiões` · `Cidades` · `Tudo`
+  (`this.state.map.layer`, default `auto`). Escolha manual sobrepõe o automático.
+- **Liberar em massa** na faixa de compartilhamento do GM:
+  `Liberar todas as regiões` e `Liberar tudo (regiões + cidades)` → chamam
+  `setShare('map', id)` em lote; e `Recolher tudo` para desfazer.
+
+## T19 — Imagens de mapa a partir da arte do livro (encanamento; NÃO commitar imagem)
+
+O Yuri tem os prints do livro e quer usá-los como fundo de mapa/região/local.
+**Regra CLAUDE.md #2: nenhuma imagem do livro entra no repositório.** O Yuri põe os
+arquivos numa pasta do armazenamento da mesa; o módulo resolve por convenção.
+
+- Implementar o descrito em `docs/IMAGENS-E-BANCO-DE-DADOS.md` (Opção A + B):
+  - setting `quedaco.assetRoot` (caminho da pasta, escolhido uma vez, `FilePicker`
+    tipo folder).
+  - `resolveImage(kind, idOuNome)` — precedência: `quedaco-imagens.json` (exceções) →
+    arquivo por convenção `<root>/<kind>/<slug>.{webp,png,jpg,svg}` → imagem do
+    documento no Foundry → ícone padrão da categoria.
+  - `regionImages`/`placeImages` e as figuras de monstro/NPC/item/quest usam
+    `resolveImage` como fallback quando não há caminho explícito no setting.
+  - Painel de ajuda no Mapa: "Coloque seus arquivos em `<root>/regioes/<id>.webp`,
+    `<root>/locais/<id>.webp`…" listando os `id`s.
+- Testes: precedência de `resolveImage` + geração de slug (sem acento, minúsculo,
+  espaço→`-`).
+
+## B9 — Checkbox de faceta de monstro com visual quebrado
+
+Ao marcar uma faceta (ex. Deslocamento → "Terrestre"), a caixinha fica **amarela com um
+quadradinho azul por cima**, parecendo estado de erro.
+
+- O estado marcado tem que ser um controle único e limpo, **igual ao das checkboxes da
+  criação de personagem**: preenchimento ciano, sem amarelo, sem indicador duplicado,
+  sem contorno de "inválido".
+- Verificar se `.sy-creator .sy-monster-facets input` (styles/library.css) está
+  brigando com `.sy-creator .sy-check-grid input{appearance:none!important…}`
+  (styles/creator.css) — consolidar numa regra só. Conferir no Foundry 13, tema claro
+  e escuro.
+
+## B10 — Imagens das quests cortadas
+
+`renderQuests` usa `cardFigure(quest.image||'icons/svg/book.svg', quest.name, 'compact')`
+(faixa 96px com `object-fit:cover` → corta a arte).
+
+- Trocar para `'full'` (contain, com espaço sobrando em cima/embaixo) como os monstros,
+  ou uma faixa `contain` ~220px específica de quest. O Yuri quer ver a arte inteira.
+- Quando `quest.image` é inválida/quebrada, cair no `icons/svg/book.svg` sem mostrar
+  imagem quebrada.
+
+## T20 — Aba NPCs: remover adoção, sempre ativo, cartão enxuto, arrastar token
+
+Decisões do Yuri (respostas às pendências):
+
+### 20.1 — Fim de "adotar" e de "detectado"
+- **Todo** ator que passa em `isGeneratedNpc(actor)` (ou está nas pastas `🤖`) aparece
+  direto na grade de NPCs. **Sem** seção "Detectados nas pastas da macro", **sem**
+  botão "Adotar todos", **sem** `lib-npc-adopt-all`.
+- O flag `flags.quedaco.npc` **não é mais pré-gravado**. Papel/local/nota/loja/vínculos
+  são lidos com fallback em memória: `const flag = npcFlag(actor) ?? adoptNpcFlag(actor)`
+  na hora de renderizar/editar. O flag só é **persistido quando o GM salva algo**
+  (`saveNpc`, aceitar local sugerido, adicionar vínculo/estoque). `markNpc` e
+  `lib-npc-adopt-all` saem.
+- `renderNpcs`: uma única lista `all = this.npcActors()` (não separar `marked`/`detected`).
+
+### 20.2 — Sempre ativo
+- Remover o conceito Ativo/Inativo: sai o campo `active` do flag, o selo
+  "· Ativo/· Inativo" no cartão, o botão `Ativar/Desativar` e o op `lib-npc-active`.
+- Visibilidade para o jogador passa a depender **só** do botão "Liberar"
+  (`shareButton('npcs', actor.uuid, …)`). Ajustar `npcVisibility` para não exigir
+  `active` (só `shared` + `role`).
+
+### 20.3 — Cartão enxuto
+- O cartão de NPC não tem faixa de imagem grande. Usar **avatar pequeno**
+  (`thumb(actor.img)` 44px, ou `icons/svg/mystery-man.svg`) ao lado do nome, no estilo
+  do cartão de item. Nada de `cardFigure(...,'compact')` aqui.
+- Linha de ações compacta: **Editar** · **Abrir ficha** + ícone 🗑 pequeno no canto
+  (`aria-label="Excluir NPC"`, `.sy-danger`, posicionado como `.sy-help`; escondido se
+  `actor.hasPlayerOwner`). Nada de botão "Excluir" de texto na linha.
+- Os `<select>` "Filtrar por local" e "Filtrar por vínculo" estão ocupando a linha
+  inteira. Deixar **inline e estreitos** (largura automática / `max-width: 220px`),
+  lado a lado com os botões de papel, não como blocos full-width.
+
+### 20.4 — Editar abre de fato, sem pulo de scroll, e dá para não editar
+- Clicar **Editar** tem que mostrar o editor. Como o flag agora não é gravado na hora,
+  `renderNpcEditor` deve renderizar sempre que houver `this.state.npcActor` resolvendo
+  para um ator (usar `npcFlag(actor) ?? adoptNpcFlag(actor)`).
+- Sem pulo para o topo no re-render (reaproveitar `_scroller`); depois de renderizar,
+  rolar `[data-npc-editor]` para a vista. Idealmente o editor sai logo **abaixo do
+  cartão clicado**, não no topo da aba.
+- O editor **começa fechado**; ninguém é forçado a editar. Botão **"Fechar edição"**
+  (`this.state.npcActor=null`) no topo do editor.
+- Ficar claro **qual** NPC está em edição: destacar o cartão correspondente
+  (`.is-editing`, borda ciano) enquanto o editor está aberto.
+- Ao salvar (`saveNpc` etc.), aviso curto `ui.notifications.info('NPC atualizado.')` e
+  um `✓ salvo` que some sozinho — hoje não dá para perceber que algo mudou.
+
+### 20.5 — Arrastar o NPC para a cena (dropar token)
+- Cada cartão de NPC vira arrastável: `draggable="true"` +
+  `dragstart` → `event.dataTransfer.setData('text/plain', JSON.stringify({type:'Actor', uuid: actor.uuid}))`.
+  É o formato que o canvas do Foundry entende para criar o token ao soltar.
+- Fazer o mesmo nos cartões de **monstro** (arrastar a ameaça para a cena) quando há
+  `entry.matches[0]?.uuid`.
+- Dica de UI: cursor `grab` no cartão e um `title="Arraste para a cena para colocar o token"`.
+
+### 20.6 — Testes
+- `npcVisibility` sem `active`: `{role:'merchant', shared:true}` → `'shop'`;
+  `{role:'ally', shared:false}` → `false`.
+- `adoptNpcFlag` continua puro e **não** grava nada.
+- Cartão de NPC contém `draggable="true"` e o `uuid` no HTML.
+
+## T21 — Papéis de NPC com ícone + cor (fácil de bater o olho)
+
+As tags Mercador/Aliado/Rival/Figurante são texto liso, tudo igual. Dar a cada papel
+**ícone + cor própria**, como chip:
+- **Mercador** — moeda/balança, dourado.
+- **Aliado** — escudo/aperto de mão, verde.
+- **Rival** — espadas cruzadas, vermelho.
+- **Figurante** — máscara/silhueta, cinza.
+Usar ícone Font Awesome que o Foundry já carrega (`fa-solid fa-coins`, `fa-shield-halved`,
+`fa-swords`… confirmar nomes disponíveis na versão) ou um SVG inline pequeno. Aplicar no
+cartão de NPC, no editor e no filtro de papel. Mapa `NPC_ROLE_STYLE = {merchant:{icon,color}…}`.
+
+## T22 — Cor da região (bater com as pastas do Foundry)
+
+As pastas de Ator por região têm cor no Foundry (Deserto de Mirmir amarelo, Lim'Sa roxo,
+Norvak azul, Tatsumari rosa…). Quero ver essa cor no QUEDAÇO.
+- Ler a cor real: para cada região, achar a `Folder` de Ator com o nome da região
+  (`game.folders.filter(f=>f.type==='Actor')`) e pegar `folder.color`. Fallback: paleta
+  fixa por `regionId` em `book-world.mjs` (`REGIONS[i].color`), que o Yuri ajusta.
+- Usar como **faixa/へponto colorido** no: pino de região do mapa, cartão de região,
+  cartão de local (herda da região), chip de local no cartão de NPC, chip do filtro
+  "por local".
+- Função pura `regionColor(regionId, folders, REGIONS)` + teste (folder ganha da paleta;
+  sem nada → cor neutra).
+
+## T23 — Aba "NPCs" em região e em cidade; NPC pode ser da região (peregrino)
+
+- NPC hoje só tem `placeId` (cidade). Adicionar suporte a **NPC de região**: campo
+  `regionId` no flag (e `inferRegionId(actor)` análogo ao `inferPlaceId` — pasta
+  `🤖 NPCs por Região/<Região>` sem capital, ou texto da bio citando a região).
+  No editor, `<select>` "Região" ao lado de "Local"; um NPC pode ter região sem local
+  (peregrino/errante).
+- No **Mapa**, no detalhe de região (`regionDetail`) e no detalhe de local
+  (`placeDetail`), uma seção **"NPCs"**: lista compacta (avatar + nome + papel) dos NPCs
+  cujo `placeId` é aquele local, ou cujo `regionId` é aquela região (incluindo os que
+  não têm local). Cada item abre a ficha / arrasta para a cena (mesmo drag do T20.5).
+- Reaproveitar: `npcActors()` + filtro por `placeId`/`regionId`.
+
+## T24 — Vínculos de parentesco a partir da bio (não digitar à mão)
+
+- `linksFromBio(actor, allNpcs)` puro: varre `system.details.description` /
+  `system.biography` procurando padrões de parentesco/relação em PT
+  ("filho de X", "irmã de Y", "mãe de Z", "casado com", "aliado de", "rival de",
+  "inimigo de") e casa X/Y/Z com nomes de outros NPCs (normalizados, palavra inteira).
+  Devolve `[{type, from, to, note:'da bio'}]`.
+- Esses vínculos entram como **sugestão** no editor (lista "Detectados na bio" com
+  botão "Confirmar") — não gravam sozinhos. O editor manual de vínculos continua para
+  quem quiser ajustar.
+- **Nome repetido:** se o alvo de um vínculo bate com **mais de um** NPC, não adivinhar
+  — mostrar "⚠ vários NPCs chamados 'Vozz': escolha qual" com um `<select>` na hora de
+  confirmar. Função `resolveLinkTarget(name, allNpcs)` → `{match}` | `{ambiguous:[…]}`.
+- Testes: "filho de Barra Brasa-Fria" → vínculo `filho`; nome repetido → `ambiguous`.
+
+## DÚVIDA RESPONDIDA — imagens de NPC "de acordo com a bio"
+
+Não existe banco mágico. Três fontes possíveis (dá para combinar), em ordem de esforço:
+1. **Por arquivo (T19):** pasta `<assetRoot>/npcs/<slug>.webp`. O Yuri joga o arquivo e
+   aparece. Confiável, zero mágica.
+2. **Biblioteca de retratos por palavra-chave:** pasta com nomes descritivos
+   (`humano-velho-pescador.webp`, `anao-mercador.webp`…). `pickPortrait(bio, index)`
+   extrai raça/profissão/idade/aparência da bio e escolhe o arquivo com mais palavras
+   em comum. Precisa o Yuri montar a biblioteca uma vez; depois é automático.
+3. **Geração por IA:** trabalho da macro do Yuri (ela já monta o prompt). A macro salva
+   o resultado em `actor.img` / `prototypeToken.texture.src`. O QUEDAÇO só exibe o que
+   estiver lá — **nada de chave de API no módulo**.
+Precedência de exibição: `actor.img` explícito → arquivo por convenção (1) → retrato por
+palavra-chave (2) → `icons/svg/mystery-man.svg`.
+**PRECISA DO YURI:** qual(is) dessas fontes implementar agora (recomendo 1 já, 2 depois).
+
+## T25 — Cobertura de NPCs por região (auditoria + gerar o que falta)
+
+Cada região precisa dos seus NPCs "de serviço": mercadores, magos, e o que o livro
+indicar para aquele lugar (porto → mestre de doca, contrabandista; deserto → guia,
+mercador de água; capital → autoridade, agiota; etc.).
+
+- **Tabela de arquétipos esperados por região** em `src/book-world.mjs`
+  (`REGIONS[i].npcArchetypes = ['mercador','mago','ferreiro','curandeiro','guarda',...]`),
+  derivada de `region.trade` / `region.government` / `region.highlights` já existentes.
+  Codex propõe a tabela a partir do que o livro diz de cada região; Yuri revisa.
+- **Auditoria** (aba NPCs, só GM): para cada região, cruzar os arquétipos esperados com
+  os NPCs existentes (por `regionId`/`placeId` + palavra-chave no nome/bio/papel) e
+  listar **o que falta**: "Norvak: falta mago, falta ferreiro".
+- **Gerar o que falta**: botão por lacuna → chama a macro geradora
+  (`game.macros.getName(quedaco.generatorMacro)?.execute()`), passando o contexto
+  (região + arquétipo) via `scope` se a macro aceitar; senão só abre a macro com um
+  aviso do que criar. **Nunca** embutir a macro/opções/chave no módulo.
+- Função pura `npcCoverage(regions, npcs)` → `[{regionId, missing:[...], have:[...]}]` + teste.
+
+## T26 — Tokens locais como fonte de imagem (NPC **e** monstro; sem macro)
+
+Yuri tem um pacote de ~3,5 mil tokens PNG no PC
+(`E:\RPG\OPATH\Tokens Pack\tokens-skyfall`, repo git à parte). O servidor Foundry está
+quase no limite de GB → **não sobe o pacote inteiro**. Decisão do Yuri: **sem macro**.
+Fluxo: ferramenta Node local casa NPCs/monstros ↔ tokens, **copia só os escolhidos**
+(1 por ficha, dedup) para uma pasta pequena; Yuri sobe essa pasta uma vez; o módulo
+acha por convenção de nome.
+
+**Índice já gerado:** `.local/tokens-skyfall-index.json` (**2058** tokens de NPC e de
+monstro; gerador em `.local/tokens-index-gen.mjs`, rodar `node .local/tokens-index-gen.mjs`
+para regenerar). Cada item: `{p:caminho relativo no pacote, k:[palavras-chave],
+r:raça, s:sexo, t:tipo (humanoide/fera/morto-vivo/dragao/elemental/planta/constructo/
+gigante/espirito/aberracao/monstruosidade), h:1 se humanoide-ish, n:1 se é só nome
+próprio (ignorar no automático)}`. Contagem por tipo: humanoide 1021, monstruosidade
+358, morto-vivo 222, espirito 148, fera 138, aberração 50, dragão 37, gigante 31,
+elemental 23, constructo 17, planta 13.
+
+Padrões de nome no pacote: descritivo (`hedge knight.png`, `smiling innkeeper.png`,
+`arcane conjurer.png`, `adult blue dragon.png`, `goblin archer.png`); estruturado
+(`Fisherman_Human_M_A1_01.png` = `Profissão_Raça_Sexo_variante`); só nome próprio
+(`Bertand.png`, `Old Gnawbone.png`) → `n:1`.
+
+**No módulo (puro, testado) — `src/tokens.mjs`:**
+- `parseTokenName(filename) -> {keywords, race, sex, isName}`.
+- `imageKeywords(doc)` — de um NPC: raça/profissão/idade/aparência da bio + papel;
+  de um monstro: `creatureType` + palavras do nome + `movement`/porte.
+- `pickToken(keywords, index, {type, humanoid, seed})` — filtra por `t`/`h` compatível
+  quando é monstro, depois melhor sobreposição de keywords (profissão/tipo pesa mais que
+  raça > sexo > adjetivos); desempate **estável** por hash de `seed` (nome da ficha) para
+  fichas parecidas não pegarem todas o mesmo arquivo.
+- `slugify(name)` (minúsculo, sem acento, espaço→`-`).
+- `resolveImage` (T19) ganha o nível `<assetRoot>/tokens/<slug>.<ext>` (aceitar
+  `.webp/.png/.jpg`), tanto para NPC quanto para monstro, antes do `mystery-man`.
+
+**Ferramenta Node local — `tools/pick-tokens.mjs` (NÃO empacotada, dev only):**
+1. Lê `.local/tokens-skyfall-index.json`, o pacote em disco e um arquivo
+   `.local/fichas-para-casar.json` (lista `[{slug,name,kind:'npc'|'monster',type,keywords}]`).
+2. `pickToken` para cada ficha; dedup por caminho escolhido.
+3. **Copia** os PNGs escolhidos para `.local/tokens-escolhidos/<slug>.png` (sem
+   dependência; sem conversão — são ~256px, ~30–90 KB; ~1 por ficha, poucos MB no total).
+4. Escreve `.local/tokens-escolhidos/RELATORIO.md`: casados, sem match, colisões.
+- Como a lista `fichas-para-casar.json` é produzida: botão **"Exportar fichas p/ casar
+  tokens"** na aba NPCs / Monstros (só GM) que baixa esse JSON a partir de
+  `npcActors()` + `MONSTERS`/`audit` já em memória (usa `imageKeywords`). Zero macro.
+5. Yuri sobe a pasta `.local/tokens-escolhidos/` para `<assetRoot>/tokens/` pelo
+   navegador de arquivos do Foundry (uma vez). `resolveImage` acha pelo slug — sem
+   passo de importação.
+
+**Nunca no repositório:** os PNGs do pacote nem os escolhidos; o índice e a pasta ficam
+em `.local/` (já no `.gitignore`). `tools/pick-tokens.mjs` pode ir no repo (é só código).
+Testes (`tests/tokens.test.mjs`): `parseTokenName` nos dois padrões; `pickToken` —
+profissão/tipo manda, monstro só casa token de tipo compatível, desempate estável,
+`n:1` ignorado; `slugify`.
+
+## T27 — Logo nova (horizontal, gelo, "— POR YURI SATÉLITE")
+
+Yuri mandou uma logo nova: faixa horizontal de gelo estilhaçado com "QUEDAÇO" e o
+crédito "— POR YURI SATÉLITE". Substitui o emblema atual do dragão.
+- Yuri coloca o arquivo em **`assets/quedaco-logo.png`** (PNG com transparência; pode
+  empacotar — é arte do Yuri). Manter também um `@2x`/versão larga se ele mandar.
+- `src/app.mjs`: as duas referências do `.sy-brand-lockup` passam a apontar para
+  `modules/quedaco/assets/quedaco-logo.png`.
+- É uma logo **horizontal com texto embutido** — o lockup não precisa mais do `<div>` com
+  "QUEDAÇO"/subtítulo ao lado; deixar só a imagem (ou manter o subtítulo pequeno abaixo).
+  Ajustar `styles/creator.css .sy-brand-lockup` (altura ~64–80px, `object-fit:contain`,
+  sem `drop-shadow` pesado — a arte já tem sombra).
+- Manter `assets/quedaco-dragon.png` no repo por ora (pode virar favicon/ícone); só parar
+  de referenciar no cabeçalho.
+
+## T28 — Forja / Imbuir: gerar o item modificado com as regras do próprio Skyfall
+
+### Como o Skyfall trata isto (analisado em `Data/systems/skyfall/skyfall.mjs`)
+
+- **Sigilo ligado a equipamento** é nativo. O item `weapon`/`armor`/`clothing` tem
+  `system.sigils: [{uuid, parentUuid, infused:boolean}]`, `max: 4`.
+- Ao **criar** o equipamento num ator (`_onCreate → _createSigils`, ~12172): para cada
+  entrada, busca o Sigilo pelo `uuid` (compêndio), cria o Sigilo como **Item embutido**
+  no ator, grava `sigilo.system.item = <uuid do equipamento>` e
+  `sigilo.system.fragments.value = entry.infused`, e escreve de volta
+  `system.sigils[i].parentUuid`. Apagar o equipamento apaga os sigilos.
+- **`sigilo.system.fragments.value` (Boolean, label "Imbuído")** = imbuído/infundido.
+  `true` → permanente, **não consome** Fragmentos Arcanos e dispensa cargas
+  (`fragments.type: permanent|recharge`; `fragments.amount` = custo em fragmentos
+  quando NÃO imbuído).
+- **Fragmentos Arcanos (ator):** `prepareFragmentsLimit` → `fragments.max = abl + prof*2`;
+  soma `amount` dos sigilos **não imbuídos** do equipamento em uso; estourar o limite dá
+  `{n}d6` de dano Energético (`SKYFALL2.SIGIL.AlertArcaneOverload`).
+- **Sigilo `type`:** `prefix` | `sufix`. O sistema monta `magicName = "<prefixos> <nome>
+  <sufixos>"` (`_getMagicName`, ~12066).
+- **Material especial:** é um Item `loot` (`/* arte | material-especial */`). O sistema
+  **não** aplica bônus automático de material — é conceito de custo/ofício. Regra do
+  livro: material = **+T$ 300** fixo (já em `item-mod.mjs`).
+- Drop nativo de sigilo em item já existe (`SigilDropOnActor`, `InvalidItemSigil`,
+  `DuplicatedItemSigil`).
+
+### O que fazer no QUEDAÇO
+
+Transformar a aba **Imbuir** (`renderImbue`, hoje só calculadora) num fluxo de forja que
+**gera o item de verdade**, reaproveitando o cálculo de `item-mod.mjs`
+(`modifiedItemSheet`: material +T$300; `SIGIL_COSTS[jáPresentes][grau-1]`;
+`IMBUE_COSTS[grau-1]`, grau 4 "a conferir"; limite 4, ≤2 prefixo + ≤2 sufixo).
+
+1. **NPC "ferreiro" / "ferreiro mágico"** (novo `NPC_ROLES.smith` = "Ferreiro", ícone
+   bigorna): o cartão dele, aberto pelo jogador, mostra o painel de forja (a mesma UI da
+   aba Imbuir, embutida). Setting/flag no NPC: `flag.forge = { enabled:true, markup:1 }`.
+   `npcVisibility`: role `smith` + `shared` → modo `'forge'` (análogo a `'shop'`).
+2. **Arrastar o equipamento** (jogador): zona de drop no painel; `drop` lê
+   `{type:'Item', uuid}`; aceita só `weapon`/`armor`/`clothing` **do próprio ator do
+   jogador**; vira o item-base (substitui o `<select>` de base no fluxo do jogador; o GM
+   mantém o `<select>` na aba Imbuir).
+3. **Escolher sigilos** do compêndio de sigilos da mesa (não itens soltos de Mundo),
+   marcar **Imbuir** por sigilo, escolher material especial opcional. Validar limites do
+   livro e compatibilidade sigilo×tipo de equipamento.
+4. **Preço:** `modifiedItemSheet` × `markup` do NPC. Mostrar a quebra (material, cada
+   sigilo, cada imbuir). Mostrar aviso se os sigilos **não imbuídos** estourariam
+   `actor.system.fragments.max` (dano de sobrecarga).
+5. **Pagar:** descontar do `wallet` do ator com a mesma lógica de moedas do
+   `purchaseItem` (k=1000 T$, p=10 T$; `walletTotal`), com checagem de saldo.
+6. **Entregar:** criar um **novo Item** no ator = cópia do base com
+   `system.sigils = [{uuid:<uuid compêndio do sigilo>, parentUuid:'', infused:<marcado?>}]`.
+   O Skyfall embute os sigilos e liga tudo no `_onCreate`. Nome: deixar o sistema montar
+   o `magicName`, ou aplicar prefixo/sufixo no `name`. Se havia item-base arrastado,
+   **perguntar** se consome o original (apaga) ou mantém os dois.
+   Material especial: **não** criar loot solto de Mundo — dobrar o +T$300 no preço e
+   anotar no nome/descrição ("de aço-lunar"); se a mesa tiver o material no compêndio,
+   pode adicionar como componente.
+7. GM: botão continua servindo de calculadora pura (sem criar item) na aba Imbuir.
+
+Testes: validação de limites (4 / 2+2 / compatibilidade); preço com markup; recusa por
+saldo; recusa de item que não é do próprio ator; montagem correta do `system.sigils`
+(incluindo `infused`).
+
+## T29 — Mercador por tipo de localidade (estoque útil e típico do lugar)
+
+Ideia do Yuri: ao chegar num lugar novo, o mercador local vende coisas **daquele
+lugar** que são **úteis**. Nem todos ficam em cidade — alguns são errantes da região.
+
+- Tabela `LOCALITY_GOODS` em `src/book-world.mjs` por **tipo de local** (usar
+  `place.kind` já existente — "Capital", "Ilha", "Porto", "Vila", … — ou um novo
+  `place.localeType`): lista de categorias/itens de `src/book-items.mjs` típicos e úteis
+  ali. Exemplos:
+  - **Porto / costa:** cordas, redes, âncoras, botes, mantimentos, remédio de enjoo,
+    mapas náuticos, arpões, roupa impermeável.
+  - **Deserto:** cantis, filtros de água, véus, bússola, óleo solar, montaria, ração
+    seca.
+  - **Capital:** variedade ampla + itens de status + serviços (encaminha para o
+    Ferreiro/T28) + agiota.
+  - **Montanha / forja:** minério, picareta, ferramentas, sigilos comuns, material
+    especial, lampião.
+  - **Pântano:** antídotos, repelente, botas, tocha à prova d'água, corda.
+  - **Selvagem / acampamento:** suprimentos básicos, armadilhas, peles, munição, kit de
+    primeiros socorros.
+  Codex propõe a tabela a partir do que o livro diz de cada local; Yuri revisa.
+- **Gerador "Criar mercador típico"** (por local ou por tipo): cria um NPC role
+  `merchant` com `placeId`/`regionId` setado e `flag.shop.stock` preenchido **só** com
+  itens dos compêndios da mesa que casam com `LOCALITY_GOODS` daquele tipo, preço do
+  livro × markup. Nunca cria item solto de Mundo (regra de sempre).
+- **Errantes:** opção `itinerant:true` no flag → NPC com `regionId` e sem `placeId`;
+  aparece como "mercador errante de <região>" na aba NPCs (T23) e no detalhe da região,
+  não numa cidade específica.
+- Liga com T25 (auditoria de cobertura): "Porto de Huma: sem mercador típico" → botão
+  gera.
+- Função pura `localityStock(place, bookItems, packIndex)` → lista de `{uuid, price}` +
+  teste (porto traz corda/rede; deserto traz cantil; nada solto de Mundo).

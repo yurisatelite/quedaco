@@ -1,5 +1,19 @@
 export const CHANGELOG = [
   {
+    version:'0.4.12',
+    date:'2026-09-09',
+    title:'Mapa vivo, NPCs regionais, tokens e forja',
+    notes:[
+      'NPCs ficaram mais compactos, arrastáveis e fáceis de editar, com papéis coloridos, região, vínculos sugeridos pela biografia e cobertura regional.',
+      'O mapa ganhou pinos reposicionáveis, camadas de regiões e cidades, cores das pastas do Foundry e liberação em massa.',
+      'Imagens agora podem vir de uma pasta da mesa, por convenção de nomes ou por um arquivo quedaco-imagens.json, sem incluir artes do livro no módulo.',
+      'A ferramenta local de tokens casa fichas com o índice do pacote sem publicar os arquivos de imagem.',
+      'Mercadores típicos recebem estoque de compêndio conforme a localidade.',
+      'Ferreiros liberados oferecem uma forja completa: equipamento próprio, sigilos nativos do Skyfall, material, imbuência, fragmentos, preço e pagamento.',
+      'A interface usa a nova logo horizontal do QUEDAÇO e corrige checkboxes de monstro e enquadramento das imagens de quests.'
+    ]
+  },
+  {
     version:'0.4.11',
     date:'2026-09-09',
     title:'Quests públicas integradas ao Forien',
