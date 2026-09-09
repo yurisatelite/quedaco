@@ -87,7 +87,11 @@
 .sy-creator .sy-monster-facets .sy-check-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:5px}
 .sy-creator .sy-monster-facets .sy-facet .sy-check-grid{padding:8px}
 .sy-creator .sy-monster-facets .sy-check-grid label{display:flex;align-items:center;gap:6px;margin:0;padding:5px 6px;border:1px solid #344457;border-radius:6px;background:#192432;font-size:12px}
-.sy-creator .sy-monster-facets input{flex:0 0 auto;margin:0}
+.sy-creator .sy-monster-facets input[type="checkbox"]{appearance:none!important;-webkit-appearance:none!important;box-sizing:border-box;width:18px!important;height:18px!important;min-width:18px!important;flex:0 0 18px;margin:0!important;padding:0!important;border:1px solid #5b6c7e!important;border-radius:5px!important;background:#0f1620!important;box-shadow:none!important;outline:0!important;display:grid!important;place-content:center;cursor:pointer}
+.sy-creator .sy-monster-facets input[type="checkbox"]::before{content:"✓"!important;width:auto!important;height:auto!important;border:0!important;border-radius:0!important;background:transparent!important;color:#08202a;font-size:13px;font-weight:800;line-height:1;transform:scale(0)!important;transition:transform .12s ease}
+.sy-creator .sy-monster-facets input[type="checkbox"]:checked{border-color:#74e9ff!important;background:var(--sy-cyan)!important}
+.sy-creator .sy-monster-facets input[type="checkbox"]:checked::before{transform:scale(1)!important}
+.sy-creator .sy-monster-facets .sy-check-grid label:has(input:checked){border-color:var(--sy-cyan)!important;background:#143342!important}
 .sy-creator .sy-map-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
 .sy-creator .sy-map-viewport{position:relative;height:clamp(360px,70vh,720px);overflow:hidden;touch-action:none;cursor:grab;border:1px solid #3a4a5c;border-radius:12px;background:radial-gradient(circle at center,#152839,#080d14 72%);user-select:none}
 .sy-creator .sy-map-viewport.is-panning{cursor:grabbing}.sy-creator .sy-map-viewport.is-panning .sy-map-world{transition:none}
