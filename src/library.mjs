@@ -3,8 +3,9 @@ import {BASE_ITEMS,MODIFICATION_GUIDES,SIGIL_COSTS,IMBUE_COSTS} from './book-ite
 import {SIGILS} from './book-sigils.mjs';
 import {MONSTERS} from './book-monsters.mjs';
 import {MODULE_ID,purchaseItem} from './adapter.mjs';
-import {NPC_LINK_TYPES,NPC_ROLES,initialNpcFlag,isGeneratedNpc,itemTypeForCategory,normalizeNpcLinks,npcFlag,npcLinkSummary,npcVisibility} from './npcs.mjs';
+import {NPC_LINK_TYPES,NPC_ROLES,adoptNpcFlag,inferPlaceId,isGeneratedNpc,itemTypeForCategory,normalizeNpcLinks,npcFlag,npcLinkSummary,npcVisibility} from './npcs.mjs';
 import {modifiedItemSheet} from './item-mod.mjs';
+import {clampPan,focusRegion,zoomToPoint} from './map-view.mjs';
 
 export const BOOK_ITEMS=[...BASE_ITEMS,...SIGILS];
 
@@ -39,7 +40,7 @@ const e=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;',
 export const nameKey=value=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9+]+/g,' ').trim().replace(/\s+/g,' ');
 const page=entry=>`Livro Básico 1.25 · p. ${entry.page}`;
 const currency=value=>`T$ ${Number(value).toLocaleString('pt-BR')}`;
-const button=(op,id,label)=>`<button data-op="lib-${op}" data-id="${e(id)}">${e(label)}</button>`;
+const button=(op,id,label,className='')=>`<button${className?` class="${e(className)}"`:''} data-op="lib-${op}" data-id="${e(id)}">${e(label)}</button>`;
 const chips=values=>`<div class="sy-library-chips">${values.filter(v=>v!==null&&v!==undefined&&v!=='').map(v=>`<span>${e(v)}</span>`).join('')}</div>`;
 const thumb=src=>src&&!/mystery-man|item-bag|svg\/(mystery|blank|item)/.test(String(src))?`<img class="sy-library-thumb" src="${e(src)}" alt="" loading="lazy">`:'';
 const cardFigure=(src,name,size='wide')=>src?`<div class="sy-card-figure sy-card-figure-${e(size)}"><img src="${e(src)}" alt="${e(name)}" loading="lazy"></div>`:'';
@@ -77,13 +78,13 @@ export function monsterMatches(entry,filters={}){
 export function monsterCategory(entry){return Object.entries(monsterFacetValues(entry)).flatMap(([facet,values])=>values.map(value=>`${facet}:${value}`)).join('|');}
 
 export class CampaignLibrary {
-  constructor(game,catalog){this.game=game;this.catalog=catalog;this.actors=[];this.failures=[];this.loaded=false;this.state={mapView:'regions',region:null,place:null,npcRole:'all',npcLink:'all',npcActor:null};this.modBuilder={baseId:'',materialId:'',sigils:[]};}
+  constructor(game,catalog){this.game=game;this.catalog=catalog;this.actors=[];this.failures=[];this.loaded=false;this.state={mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null},npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcActor:null,monsterFacets:{}};this.modBuilder={baseId:'',materialId:'',sigils:[]};}
   assertGM(){if(!this.game.user?.isGM)throw Error('Esta área está disponível somente para o mestre.');}
   get shared(){try{return {...emptyShare(),...(this.game.settings?.get(MODULE_ID,SHARED_KEY)||{})};}catch{return emptyShare();}}
   get placeScenes(){try{return {...(this.game.settings?.get(MODULE_ID,SCENES_KEY)||{})};}catch{return {};}}
   get placeImages(){try{return {...(this.game.settings?.get(MODULE_ID,PLACE_IMG_KEY)||{})};}catch{return {};}}
   get regionImages(){try{return {...(this.game.settings?.get(MODULE_ID,REGION_IMG_KEY)||{})};}catch{return {};}}
-  get mapImage(){try{return String(this.game.settings?.get(MODULE_ID,MAP_IMAGE_KEY)||'');}catch{return '';}}
+  get mapImage(){try{const value=this.game.settings?.get(MODULE_ID,MAP_IMAGE_KEY);return typeof value==='string'?value:'';}catch{return '';}}
   get npcLinks(){try{return normalizeNpcLinks(this.game.settings?.get(MODULE_ID,NPC_LINKS_KEY)||[]);}catch{return [];}}
   async setPlaceScene(placeId,sceneId){
     this.assertGM();if(!placeId)return;
@@ -139,11 +140,21 @@ export class CampaignLibrary {
     document.sheet.render(true);
   }
   async action(op,id,data={}){
-    const openOps=['lib-map','lib-region','lib-place','lib-open-scene','lib-npc-buy'];
+    const openOps=['lib-map','lib-region','lib-place','lib-map-focus','lib-map-zoom','lib-map-reset','lib-open-scene','lib-npc-buy'];
     if(!openOps.includes(op))this.assertGM();
-    if(op==='lib-map'){this.state={mapView:id,region:null,place:null};}
-    if(op==='lib-region'){if(!REGIONS.some(i=>i.id===id))return;this.state={mapView:'regions',region:id,place:null};}
-    if(op==='lib-place'){const place=[...PLACES,...BEYOND].find(i=>i.id===id);if(!place)return;this.state={mapView:place.regionId?'regions':'beyond',region:place.regionId??null,place:id};}
+    if(op==='lib-map'){this.state.mapView=id;this.state.region=null;this.state.place=null;if(id==='regions')this.state.map={scale:1,tx:0,ty:0,focus:null};}
+    if(op==='lib-region'){if(!REGIONS.some(i=>i.id===id)||(!this.game.user?.isGM&&!this.shared.map.includes(id)))return;this.state.mapView='regions';this.state.region=id;this.state.place=null;}
+    if(op==='lib-map-focus'){
+      if(!REGIONS.some(i=>i.id===id)||(!this.game.user?.isGM&&!this.shared.map.includes(id)))return;
+      const focused=focusRegion(id,REGIONS,data.viewW??800,data.viewH??500,data.imgW??data.viewW??800,data.imgH??data.viewH??500);if(!focused)return;
+      this.state.map=focused;this.state.mapView='regions';this.state.region=id;this.state.place=null;
+    }
+    if(op==='lib-map-zoom'){
+      const factor=id==='in'?1.2:1/1.2,point=data.point??{x:(data.viewW??800)/2,y:(data.viewH??500)/2};
+      this.state.map=clampPan(zoomToPoint(this.state.map,point,factor),data.imgW??data.viewW??800,data.imgH??data.viewH??500,data.viewW??800,data.viewH??500);
+    }
+    if(op==='lib-map-reset'){this.state.map={scale:1,tx:0,ty:0,focus:null};this.state.mapView='regions';this.state.region=null;this.state.place=null;}
+    if(op==='lib-place'){const place=[...PLACES,...BEYOND].find(i=>i.id===id);if(!place||(!this.game.user?.isGM&&!this.sharedPlaceIds().has(id)))return;this.state.mapView=place.regionId?'regions':'beyond';this.state.region=place.regionId??null;this.state.place=id;}
     if(op==='lib-open')await this.open(id);
     if(op==='lib-refresh')await this.loadActors(true);
     if(op==='lib-report')saveDataToFile(JSON.stringify(this.report(),null,2),'application/json','quedaco-monstros-pendentes.json');
@@ -151,10 +162,30 @@ export class CampaignLibrary {
     if(op==='lib-scene'){const idx=String(id).indexOf(':');await this.setPlaceScene(String(id).slice(0,idx),String(id).slice(idx+1));}
     if(op==='lib-open-scene'){const scene=this.game.scenes?.get?.(id);if(scene)scene.view?.();}
     if(op==='lib-activate-scene'){this.assertGM();const scene=this.game.scenes?.get?.(id);if(scene)await scene.activate?.();}
-    if(op==='lib-npc-edit')this.state.npcActor=id||null;
+    if(op==='lib-npc-edit'){
+      const actor=this.actorById(id);if(!actor)throw Error('NPC não encontrado.');
+      if(!npcFlag(actor))await actor.update({[`flags.${MODULE_ID}.npc`]:adoptNpcFlag(actor)});
+      this.state.npcActor=actor.id;
+    }
     if(op==='lib-npc-filter')this.state.npcRole=NPC_ROLES[id]?id:'all';
     if(op==='lib-npc-link-filter')this.state.npcLink=NPC_LINK_TYPES[id]?id:'all';
     if(op==='lib-npc-mark')await this.markNpc(id);
+    if(op==='lib-npc-adopt-all'){
+      const actors=this.npcActors().filter(actor=>!npcFlag(actor));
+      await Promise.all(actors.map(actor=>actor.update({[`flags.${MODULE_ID}.npc`]:adoptNpcFlag(actor)})));
+      ui.notifications.info(`${actors.length} NPC(s) adotado(s) pelo QUEDAÇO.`);
+    }
+    if(op==='lib-npc-place-accept'){
+      const split=String(id).lastIndexOf(':'),actor=this.actorById(String(id).slice(0,split)),placeId=String(id).slice(split+1);
+      if(!actor||!PLACES.some(place=>place.id===placeId))throw Error('Local sugerido inválido.');
+      await actor.update({[`flags.${MODULE_ID}.npc.placeId`]:placeId});this.state.npcActor=actor.id;
+    }
+    if(op==='lib-npc-delete'){
+      const actor=this.actorById(id);if(!actor)throw Error('NPC não encontrado.');
+      if(actor.hasPlayerOwner)throw Error('Este Actor pertence a um jogador e não pode ser excluído pelo painel.');
+      const confirmed=await foundry.applications.api.DialogV2.confirm({window:{title:'Excluir NPC'},content:`<p>Excluir <strong>${e(actor.name)}</strong> permanentemente da mesa?</p>`,yes:{label:'Excluir'},no:{label:'Cancelar'}});
+      if(confirmed){if(this.state.npcActor===actor.id)this.state.npcActor=null;await actor.delete();}
+    }
     if(op==='lib-npc-save')await this.saveNpc(id,data);
     if(op==='lib-npc-stock-add')await this.updateStock(id,data);
     if(op==='lib-npc-stock-remove'){const [actorId,...uuid]=String(id).split('|');await this.updateStock(actorId,{remove:uuid.join('|')});}
@@ -173,7 +204,7 @@ export class CampaignLibrary {
       if(macro)await macro.execute();else ui.notifications.warn(`Macro '${name}' não encontrada. Configure o nome em Configurações do Módulo → QUEDAÇO.`);
     }
     if(op==='lib-npc-open'){const actor=this.actorById(id);actor?.sheet?.render(true);}
-    if(op==='lib-npc-active'){const actor=this.actorById(id),flag=npcFlag(actor);if(actor&&flag)await actor.update({[`flags.${MODULE_ID}.npc.active`]:!flag.active});}
+    if(op==='lib-npc-active'){const actor=this.actorById(id);if(!actor)return;const flag=npcFlag(actor)??adoptNpcFlag(actor);await actor.update({[`flags.${MODULE_ID}.npc`]:{...flag,active:!flag.active}});}
     if(op==='lib-npc-buy'){
       const [actorId,...uuidParts]=String(id).split('|'),uuid=uuidParts.join('|'),actor=this.actorById(actorId),flag=npcFlag(actor),shared=this.shared.npcs.includes(actor?.uuid);
       if(!actor||npcVisibility({...flag,shared,gm:this.game.user?.isGM})!=='shop')throw Error('Esta loja não está disponível.');
@@ -186,11 +217,11 @@ export class CampaignLibrary {
   npcActors(){return Array.from(this.game.actors??[]).filter(isGeneratedNpc);}
   async saveNpc(actorId,data){
     this.assertGM();const actor=this.actorById(actorId);if(!actor)throw Error('NPC não encontrado.');
-    const current=npcFlag(actor)??initialNpcFlag(actor),role=NPC_ROLES[data.role]?data.role:current.role;
+    const current=npcFlag(actor)??adoptNpcFlag(actor),role=NPC_ROLES[data.role]?data.role:current.role;
     const next={...current,role,placeId:PLACES.some(place=>place.id===data.placeId)?data.placeId:'',active:Boolean(data.active),note:String(data.note??''),shop:{...current.shop,markup:Math.max(.1,Number(data.markup)||1),note:String(data.shopNote??'')}};
     await actor.update({[`flags.${MODULE_ID}.npc`]:next});this.state.npcActor=actor.id;
   }
-  async markNpc(actorId){this.assertGM();const actor=this.actorById(actorId);if(!actor)throw Error('Escolha um Actor para marcar.');if(!npcFlag(actor))await actor.update({[`flags.${MODULE_ID}.npc`]:initialNpcFlag(actor)});this.state.npcActor=actor.id;}
+  async markNpc(actorId){this.assertGM();const actor=this.actorById(actorId);if(!actor)throw Error('Escolha um Actor para marcar.');if(!npcFlag(actor))await actor.update({[`flags.${MODULE_ID}.npc`]:adoptNpcFlag(actor)});this.state.npcActor=actor.id;}
   async updateStock(actorId,change){
     this.assertGM();const actor=this.actorById(actorId),flag=npcFlag(actor);if(!actor||!flag)throw Error('NPC não encontrado.');
     const stock=Array.from(flag.shop?.stock??[]);
@@ -220,36 +251,41 @@ export class CampaignLibrary {
   render(area,readonly=false){
     if(!readonly)this.assertGM();
     else if(!this.shared.areas.includes(area))return `<main class="sy-library"><small>CONSULTA DA CAMPANHA</small><h2>${area}</h2><p class="sy-library-deferred">O mestre ainda não liberou este conteúdo.</p></main>`;
-    const titles={npcs:'NPCs',map:'Mapa',monsters:'Monstros',items:'Itens'};
-    const body=area==='npcs'?this.renderNpcs(readonly):area==='map'?this.renderMap(readonly):area==='monsters'?this.renderMonsters(readonly):this.renderItems(readonly);
+    const titles={npcs:'NPCs',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir'};
+    const body=area==='npcs'?this.renderNpcs(readonly):area==='map'?this.renderMap(readonly):area==='monsters'?this.renderMonsters(readonly):area==='imbue'?this.renderImbue(readonly):this.renderItems(readonly);
     return `<main class="sy-library"><small>${readonly?'LIBERADO PELO MESTRE':'CONSULTA DA CAMPANHA'}</small><h2>${titles[area]}</h2>${body}</main>`;
   }
   renderNpcs(readonly=false){
     const all=this.npcActors(),shared=this.shared.npcs;
     const marked=all.filter(actor=>npcFlag(actor));
     const detected=all.filter(actor=>!npcFlag(actor));
+    const actorPlace=actor=>npcFlag(actor)?.placeId||inferPlaceId(actor)||'';
+    const availablePlaceIds=new Set(all.map(actorPlace).filter(Boolean));
+    const placeFilter=availablePlaceIds.has(this.state.npcPlaceFilter)?this.state.npcPlaceFilter:'all';
+    const matchesPlace=actor=>placeFilter==='all'||actorPlace(actor)===placeFilter;
     const linkedKeys=type=>new Set(this.npcLinks.filter(link=>type==='all'||link.type===type).flatMap(link=>[link.from,link.to]));
     const keys=linkedKeys(this.state.npcLink);
-    const visible=(readonly?marked.filter(actor=>npcVisibility({...npcFlag(actor),shared:shared.includes(actor.uuid)})):marked.filter(actor=>this.state.npcRole==='all'||npcFlag(actor).role===this.state.npcRole)).filter(actor=>this.state.npcLink==='all'||keys.has(actor.uuid));
+    const visible=(readonly?marked.filter(actor=>npcVisibility({...npcFlag(actor),shared:shared.includes(actor.uuid)})):marked.filter(actor=>this.state.npcRole==='all'||npcFlag(actor).role===this.state.npcRole)).filter(actor=>(this.state.npcLink==='all'||keys.has(actor.uuid))&&matchesPlace(actor));
+    const visibleDetected=detected.filter(matchesPlace);
     const placeName=id=>PLACES.find(place=>place.id===id)?.name||'Sem local';
     const nameFor=key=>key.startsWith('txt:')?key.slice(4):this.actorById(key)?.name??key;
     const stockCard=(actor,player)=>{const flag=npcFlag(actor),stock=flag.shop?.stock??[];if(flag.role!=='merchant')return '';return `<div class="sy-shop-stock">${flag.shop?.note?`<p>${e(flag.shop.note)}</p>`:''}${stock.map(item=>{const entry=this.catalog?.entry?.(item.uuid)??this.catalog?.items?.find(i=>i.uuid===item.uuid),name=entry?.name??item.uuid,price=item.price??entry?.system?.price??0;return `<article><span><strong>${e(name)}</strong><small>T$ ${e(price)}${item.qty==null?'':' · '+e(item.qty)+' restantes'}</small></span>${player?`<input type="number" min="1" value="1" aria-label="Quantidade"><button data-op="lib-npc-buy" data-id="${e(actor.id)}|${e(item.uuid)}|1">Comprar</button>`:''}</article>`;}).join('')||'<small>Estoque vazio.</small>'}</div>`;};
-    const cards=visible.map(actor=>{const flag=npcFlag(actor),mode=npcVisibility({...flag,shared:shared.includes(actor.uuid),gm:!readonly}),links=npcLinkSummary(actor.uuid,this.npcLinks,nameFor);return `<article class="sy-library-card sy-npc-card">${cardFigure(actor.img||'icons/svg/mystery-man.svg',actor.name,'compact')}${readonly?'':this.shareButton('npcs',actor.uuid,'✓ Liberado','Liberar')}<div class="sy-library-card-content"><small>${e(NPC_ROLES[flag.role])} · ${e(placeName(flag.placeId))}${flag.active?' · Ativo':' · Inativo'}</small><h3>${e(actor.name)}</h3>${links.length?`<p class="sy-npc-links">${e(links.join(' · '))}</p>`:''}${flag.note?`<p>${e(flag.note)}</p>`:''}${mode==='shop'?stockCard(actor,true):''}${readonly?'':`<div class="sy-library-tabs">${button('npc-active',actor.id,flag.active?'Desativar':'Ativar')}${button('npc-edit',actor.id,'Editar')}${button('npc-open',actor.id,'Abrir ficha')}</div>`}</div></article>`;}).join('');
+    const deleteButton=actor=>actor.hasPlayerOwner?'':button('npc-delete',actor.id,'Excluir','sy-danger');
+    const cards=visible.map(actor=>{const flag=npcFlag(actor),mode=npcVisibility({...flag,shared:shared.includes(actor.uuid),gm:!readonly}),links=npcLinkSummary(actor.uuid,this.npcLinks,nameFor);return `<article class="sy-library-card sy-npc-card">${cardFigure(actor.img||'icons/svg/mystery-man.svg',actor.name,'compact')}${readonly?'':this.shareButton('npcs',actor.uuid,'✓ Liberado','Liberar')}<div class="sy-library-card-content"><small>${e(NPC_ROLES[flag.role])} · ${e(placeName(flag.placeId))}${flag.active?' · Ativo':' · Inativo'}</small><h3>${e(actor.name)}</h3>${links.length?`<p class="sy-npc-links">${e(links.join(' · '))}</p>`:''}${flag.note?`<p>${e(flag.note)}</p>`:''}${mode==='shop'?stockCard(actor,true):''}${readonly?'':`<div class="sy-library-tabs">${button('npc-active',actor.id,flag.active?'Desativar':'Ativar')}${button('npc-edit',actor.id,'Editar')}${button('npc-open',actor.id,'Abrir ficha')}${deleteButton(actor)}</div>`}</div></article>`;}).join('');
     if(readonly)return `<div class="sy-library-grid">${cards||'<p class="sy-library-deferred">Nenhum NPC está disponível agora.</p>'}</div>`;
-    const unmarked=Array.from(this.game.actors??[]).filter(actor=>!npcFlag(actor));
-    const add=`<section class="sy-library-guide sy-npc-add"><h3>Marcar um NPC existente</h3><select name="npcActor"><option value="">Escolha um Actor…</option>${unmarked.map(actor=>`<option value="${e(actor.id)}">${e(actor.name)}</option>`).join('')}</select>${button('npc-mark','','Marcar como NPC')}</section>`;
-    const filters=`<div class="sy-library-tabs">${[['all','Todos'],...Object.entries(NPC_ROLES)].map(([id,label])=>`<button data-op="lib-npc-filter" data-id="${id}" aria-current="${this.state.npcRole===id?'page':'false'}">${label}</button>`).join('')}</div><label>Filtrar por vínculo<select name="npcLinkFilter"><option value="all">Todos</option>${Object.entries(NPC_LINK_TYPES).map(([id,label])=>`<option value="${id}" ${this.state.npcLink===id?'selected':''}>${label}</option>`).join('')}</select></label>`;
+    const filters=`<div class="sy-library-tabs">${[['all','Todos'],...Object.entries(NPC_ROLES)].map(([id,label])=>`<button data-op="lib-npc-filter" data-id="${id}" aria-current="${this.state.npcRole===id?'page':'false'}">${label}</button>`).join('')}</div><div class="sy-npc-filters"><label>Filtrar por local<select name="npcPlaceFilter"><option value="all">Todos os locais</option>${PLACES.filter(place=>availablePlaceIds.has(place.id)).map(place=>`<option value="${e(place.id)}" ${placeFilter===place.id?'selected':''}>${e(place.name)}</option>`).join('')}</select></label><label>Filtrar por vínculo<select name="npcLinkFilter"><option value="all">Todos</option>${Object.entries(NPC_LINK_TYPES).map(([id,label])=>`<option value="${id}" ${this.state.npcLink===id?'selected':''}>${label}</option>`).join('')}</select></label></div>`;
     const editor=this.renderNpcEditor(this.actorById(this.state.npcActor));
-    const detectedCards=detected.map(actor=>{const initial=initialNpcFlag(actor);return `<article class="sy-library-card">${cardFigure(actor.img||'icons/svg/mystery-man.svg',actor.name,'compact')}<div class="sy-library-card-content"><small>Detectado pela macro · ${e(placeName(initial.placeId))}</small><h3>${e(actor.name)}</h3><p>Actor ${e(actor.type)} ainda não marcado no QUEDAÇO.</p>${button('npc-mark',actor.id,'Vincular ao painel')}</div></article>`;}).join('');
-    return `<p>NPCs ligados a cidades, lojas e ao controle do mestre. Actors das pastas da macro também aparecem aqui para serem marcados.</p><div class="sy-library-share-row">${this.shareButton('areas','npcs','✓ Aba NPCs visível aos jogadores','Liberar a aba NPCs aos jogadores')}</div>${detected.length?`<h3>Detectados nas pastas da macro</h3><div class="sy-library-grid">${detectedCards}</div>`:''}${add}${filters}${editor}<div class="sy-library-grid">${cards||'<p class="sy-library-deferred">Nenhum NPC marcado nesta seção.</p>'}</div>`;
+    const detectedCards=visibleDetected.map(actor=>`<article class="sy-library-card sy-npc-card">${cardFigure(actor.img||'icons/svg/mystery-man.svg',actor.name,'compact')}<div class="sy-library-card-content"><small>Gerado pela macro · ${e(placeName(actorPlace(actor)))}</small><h3>${e(actor.name)}</h3><p>Actor ${e(actor.type)} pronto para ser adotado pelo QUEDAÇO.</p><div class="sy-library-tabs">${button('npc-active',actor.id,'Ativar')}${button('npc-edit',actor.id,'Editar')}${button('npc-open',actor.id,'Abrir ficha')}${deleteButton(actor)}</div></div></article>`).join('');
+    return `<p>NPCs ligados a cidades, lojas e ao controle do mestre. Actors criados nas pastas da macro são localizados automaticamente e podem ser administrados direto no cartão.</p><div class="sy-library-share-row">${this.shareButton('areas','npcs','✓ Aba NPCs visível aos jogadores','Liberar a aba NPCs aos jogadores')}</div>${filters}${detected.length?`<div class="sy-library-share-row"><h3>Detectados nas pastas da macro</h3>${button('npc-adopt-all','','Adotar todos os detectados')}</div><div class="sy-library-grid">${detectedCards||'<p class="sy-library-deferred">Nenhum NPC detectado neste local.</p>'}</div>`:''}${editor}<div class="sy-library-grid">${cards||'<p class="sy-library-deferred">Nenhum NPC marcado nesta seção.</p>'}</div>`;
   }
   renderNpcEditor(actor){
     const flag=npcFlag(actor);if(!actor||!flag)return '';
+    const suggested=!flag.placeId?inferPlaceId(actor):null,suggestedPlace=PLACES.find(place=>place.id===suggested);
     const stock=flag.shop?.stock??[],compendium=String(this.game.settings.get(MODULE_ID,ITEM_COMPENDIUM_KEY)||'');
     const catalogItems=(this.catalog?.items??[]).filter(item=>String(item.uuid).startsWith('Compendium.')&&['weapon','armor','clothing','equipment','consumable','loot'].includes(item.type));
     const marked=this.npcActors().filter(item=>npcFlag(item)&&item.uuid!==actor.uuid),links=this.npcLinks;
     const linkRows=links.map((link,index)=>({link,index})).filter(({link})=>link.from===actor.uuid||link.to===actor.uuid).map(({link,index})=>`<div><span>${e(NPC_LINK_TYPES[link.type])} · ${e(link.from===actor.uuid?link.to:link.from)}${link.note?` · ${e(link.note)}`:''}</span>${button('npc-link-remove',String(index),'Remover')}</div>`).join('');
-    return `<section class="sy-library-detail sy-npc-editor" data-npc-editor="${e(actor.id)}"><h3>Editar · ${e(actor.name)}</h3><div class="sy-npc-form"><label>Papel<select name="npcRole">${Object.entries(NPC_ROLES).map(([id,label])=>`<option value="${id}" ${flag.role===id?'selected':''}>${label}</option>`).join('')}</select></label><label>Local<select name="npcPlace"><option value="">Sem local</option>${PLACES.map(place=>`<option value="${e(place.id)}" ${flag.placeId===place.id?'selected':''}>${e(place.name)}</option>`).join('')}</select></label><label><input type="checkbox" name="npcActive" ${flag.active?'checked':''}> Ativo na campanha</label><label>Nota<textarea name="npcNote">${e(flag.note??'')}</textarea></label><label>Margem da loja<input type="number" name="npcMarkup" min="0.1" step="0.1" value="${e(flag.shop?.markup??1)}"></label><label>Apresentação da loja<textarea name="npcShopNote">${e(flag.shop?.note??'')}</textarea></label></div>${button('npc-save',actor.id,'Salvar NPC')}<h4>Vínculos</h4><div class="sy-npc-stock">${linkRows||'<small>Nenhum vínculo.</small>'}</div><div class="sy-npc-link-add"><select name="npcLinkType">${Object.entries(NPC_LINK_TYPES).map(([id,label])=>`<option value="${id}">${label}</option>`).join('')}</select><select name="npcLinkTarget"><option value="">Outro NPC…</option>${marked.map(item=>`<option value="${e(item.uuid)}">${e(item.name)}</option>`).join('')}</select><input name="npcLinkText" placeholder="Ou nome fora da mesa"><input name="npcLinkNote" placeholder="Nota opcional">${button('npc-link-add',actor.id,'Adicionar vínculo')}</div><h4>Estoque de compêndio</h4><div class="sy-npc-stock">${stock.map(item=>`<div><code>${e(item.uuid)}</code><span>${item.price==null?'Preço do item':currency(item.price)} · ${item.qty==null?'sem limite':e(item.qty)+' un.'}</span>${button('npc-stock-remove',`${actor.id}|${item.uuid}`,'Remover')}</div>`).join('')||'<small>Estoque vazio.</small>'}</div><div class="sy-npc-stock-add"><select name="npcStockUuid"><option value="">Adicionar item…</option>${catalogItems.map(item=>`<option value="${e(item.uuid)}">${e(item.name)} · ${e(item.source)}</option>`).join('')}</select><input name="npcStockPrice" type="number" min="0" placeholder="Preço opcional"><input name="npcStockQty" type="number" min="0" placeholder="Qtd. vazia = infinita">${button('npc-stock-add',actor.id,'Adicionar ao estoque')}</div><h4>Criar item tabelado</h4>${compendium?`<div class="sy-npc-new-item"><input name="npcItemName" placeholder="Nome"><select name="npcItemCategory">${[...new Set(BOOK_ITEMS.map(item=>item.category))].map(category=>`<option>${e(category)}</option>`).join('')}</select><input name="npcItemPrice" type="number" min="0" placeholder="Preço em T$"><input name="npcItemVolume" type="number" min="0" step="0.1" placeholder="Volume">${button('npc-create-item',actor.id,'Criar no compêndio e adicionar')}</div>`:'<p class="sy-alert">Configure “Compêndio de itens do QUEDAÇO” para criar itens tabelados. Nenhum item solto de Mundo será criado.</p>'}</section>`;
+    return `<section class="sy-library-detail sy-npc-editor" data-npc-editor="${e(actor.id)}"><h3>Editar · ${e(actor.name)}</h3>${suggestedPlace?`<p class="sy-hint"><span>Local sugerido: <strong>${e(suggestedPlace.name)}</strong></span>${button('npc-place-accept',`${actor.id}:${suggestedPlace.id}`,'Usar local sugerido')}</p>`:''}<div class="sy-npc-form"><label>Papel<select name="npcRole">${Object.entries(NPC_ROLES).map(([id,label])=>`<option value="${id}" ${flag.role===id?'selected':''}>${label}</option>`).join('')}</select></label><label>Local<select name="npcPlace"><option value="">Sem local</option>${PLACES.map(place=>`<option value="${e(place.id)}" ${flag.placeId===place.id?'selected':''}>${e(place.name)}</option>`).join('')}</select></label><label><input type="checkbox" name="npcActive" ${flag.active?'checked':''}> Ativo na campanha</label><label>Nota<textarea name="npcNote">${e(flag.note??'')}</textarea></label><label>Margem da loja<input type="number" name="npcMarkup" min="0.1" step="0.1" value="${e(flag.shop?.markup??1)}"></label><label>Apresentação da loja<textarea name="npcShopNote">${e(flag.shop?.note??'')}</textarea></label></div>${button('npc-save',actor.id,'Salvar NPC')}<h4>Vínculos</h4><div class="sy-npc-stock">${linkRows||'<small>Nenhum vínculo.</small>'}</div><div class="sy-npc-link-add"><select name="npcLinkType">${Object.entries(NPC_LINK_TYPES).map(([id,label])=>`<option value="${id}">${label}</option>`).join('')}</select><select name="npcLinkTarget"><option value="">Outro NPC…</option>${marked.map(item=>`<option value="${e(item.uuid)}">${e(item.name)}</option>`).join('')}</select><input name="npcLinkText" placeholder="Ou nome fora da mesa"><input name="npcLinkNote" placeholder="Nota opcional">${button('npc-link-add',actor.id,'Adicionar vínculo')}</div><h4>Estoque de compêndio</h4><div class="sy-npc-stock">${stock.map(item=>`<div><code>${e(item.uuid)}</code><span>${item.price==null?'Preço do item':currency(item.price)} · ${item.qty==null?'sem limite':e(item.qty)+' un.'}</span>${button('npc-stock-remove',`${actor.id}|${item.uuid}`,'Remover')}</div>`).join('')||'<small>Estoque vazio.</small>'}</div><div class="sy-npc-stock-add"><select name="npcStockUuid"><option value="">Adicionar item…</option>${catalogItems.map(item=>`<option value="${e(item.uuid)}">${e(item.name)} · ${e(item.source)}</option>`).join('')}</select><input name="npcStockPrice" type="number" min="0" placeholder="Preço opcional"><input name="npcStockQty" type="number" min="0" placeholder="Qtd. vazia = infinita">${button('npc-stock-add',actor.id,'Adicionar ao estoque')}</div><h4>Criar item tabelado</h4>${compendium?`<div class="sy-npc-new-item"><input name="npcItemName" placeholder="Nome"><select name="npcItemCategory">${[...new Set(BOOK_ITEMS.map(item=>item.category))].map(category=>`<option>${e(category)}</option>`).join('')}</select><input name="npcItemPrice" type="number" min="0" placeholder="Preço em T$"><input name="npcItemVolume" type="number" min="0" step="0.1" placeholder="Volume">${button('npc-create-item',actor.id,'Criar no compêndio e adicionar')}</div>`:'<p class="sy-alert">Configure “Compêndio de itens do QUEDAÇO” para criar itens tabelados. Nenhum item solto de Mundo será criado.</p>'}</section>`;
   }
   card(entry,op,share=null){
     const image=op==='region'?this.regionImages[entry.id]:this.placeImages[entry.id];
@@ -265,10 +301,36 @@ export class CampaignLibrary {
     const pins=interactive?REGIONS.filter(r=>Array.isArray(r.hotspot)).map(r=>`<button class="sy-map-pin" data-op="lib-region" data-id="${e(r.id)}" style="left:${r.hotspot[0]}%;top:${r.hotspot[1]}%"><span>${e(r.name)}</span></button>`).join(''):'';
     return `<div class="sy-map-wrap"><img class="sy-map-banner" src="${e(this.mapImage)}" alt="Mapa de Opath" loading="lazy">${pins}</div>`;
   }
+  placeMarkerPosition(place,index,total){
+    if(Array.isArray(place.hotspot))return place.hotspot;
+    const region=REGIONS.find(entry=>entry.id===place.regionId);if(region?.capital===place.id)return [50,50];
+    const siblings=PLACES.filter(entry=>entry.regionId===place.regionId&&entry.id!==region?.capital),position=Math.max(0,siblings.findIndex(entry=>entry.id===place.id)),count=Math.max(1,siblings.length);
+    const angle=-Math.PI*.9+(Math.PI*1.8*(count===1?.5:position/(count-1))),radius=count<=4?24:34;
+    return [50+Math.cos(angle)*radius,52+Math.sin(angle)*radius*.68];
+  }
+  renderDynamicMap(readonly=false){
+    const state=this.state.map??{scale:1,tx:0,ty:0,focus:null},shared=this.shared.map,placeIds=this.sharedPlaceIds();
+    const focus=REGIONS.find(region=>region.id===state.focus),place=[...PLACES,...BEYOND].find(entry=>entry.id===this.state.place);
+    const regions=(readonly?REGIONS.filter(region=>shared.includes(region.id)):REGIONS).filter(region=>Array.isArray(region.hotspot));
+    const places=focus?(readonly?PLACES.filter(entry=>entry.regionId===focus.id&&placeIds.has(entry.id)):PLACES.filter(entry=>entry.regionId===focus.id)):[];
+    const regionPins=!focus?regions.map(region=>`<button class="sy-map-marker" data-op="lib-map-focus" data-id="${e(region.id)}" style="left:${region.hotspot[0]}%;top:${region.hotspot[1]}%" title="Explorar ${e(region.name)}"><span>${e(region.name)}</span></button>`).join(''):'';
+    const placePins=focus?places.map((entry,index)=>{const [x,y]=this.placeMarkerPosition(entry,index,places.length);return `<button class="sy-map-marker sy-map-marker-place ${this.state.place===entry.id?'is-current':''}" data-op="lib-place" data-id="${e(entry.id)}" style="left:${x}%;top:${y}%" title="Abrir ${e(entry.name)}"><span>${e(entry.name)}</span></button>`;}).join(''):'';
+    const regionImage=focus?this.regionImages[focus.id]:null;
+    const images=`<img class="sy-map-image sy-map-image-base ${regionImage?'is-faded':''}" src="${e(this.mapImage)}" alt="Mapa de Opath" draggable="false">${regionImage?`<img class="sy-map-image sy-map-image-region" src="${e(regionImage)}" alt="Mapa de ${e(focus.name)}" draggable="false">`:''}`;
+    const transform=`translate(${Number(state.tx)||0}px,${Number(state.ty)||0}px) scale(${Number(state.scale)||1})`;
+    const controls=`<div class="sy-map-controls"><div class="sy-map-zoom" aria-label="Controles do mapa">${button('map-zoom','in','+')} ${button('map-zoom','out','−')} ${button('map-reset','','Reenquadrar')}</div><div class="sy-map-breadcrumb" aria-label="Localização no mapa">${button('map-reset','','Opath')}${focus?`<span aria-hidden="true">›</span><strong>${e(focus.name)}</strong>`:''}${place?`<span aria-hidden="true">›</span><strong>${e(place.name)}</strong>`:''}</div></div>`;
+    const viewport=`<div class="sy-map-viewport" data-map-viewport><div class="sy-map-world" style="transform:${e(transform)}">${images}${regionPins}${placePins}</div>${controls}</div>`;
+    let detail='';
+    if(place&&(!readonly||placeIds.has(place.id))){const scene=this.placeScenes[place.id];detail=`<div class="sy-map-drawer">${this.placeDetail(place,!readonly)}${readonly?(scene?`<div class="sy-library-share-row">${button('open-scene',scene,'Abrir cena vinculada')}</div>`:''):this.scenePicker(place)}</div>`;}
+    else if(focus&&(!readonly||shared.includes(focus.id)))detail=`<div class="sy-map-drawer">${this.regionDetail(focus,!readonly)}<p class="sy-note">Escolha um pino de cidade no mapa para abrir seus detalhes.</p></div>`;
+    return `<div class="sy-map-layout">${viewport}${detail}</div>`;
+  }
   renderMap(readonly=false){
     const {mapView,region:regionId,place:placeId}=this.state;
     const region=REGIONS.find(i=>i.id===regionId),place=[...PLACES,...BEYOND].find(i=>i.id===placeId);
     const banner=this.mapImage&&!regionId&&!placeId?this.mapIndexBanner(!readonly):'';
+    if(this.mapImage){const shareArea=readonly?'':`<div class="sy-library-share-row">${this.shareButton('areas','map','✓ Aba Mapa visível aos jogadores','Liberar a aba Mapa aos jogadores')}</div>`;return `${shareArea}${this.renderDynamicMap(readonly)}`;}
+    const fallback=`<p class="${readonly?'sy-library-deferred':'sy-alert'}">${readonly?'O mestre ainda não configurou a imagem do mapa de Opath.':'Configure “Imagem do mapa de Opath” para ativar o visor com pan e zoom. A lista continua disponível abaixo.'}</p>`;
     if(readonly){
       const sharedRegions=this.shared.map,placeIds=this.sharedPlaceIds();
       const visibleRegions=REGIONS.filter(r=>sharedRegions.includes(r.id));
@@ -276,14 +338,14 @@ export class CampaignLibrary {
       if(place&&placeIds.has(place.id)){
         const parent=[...PLACES,...BEYOND].find(i=>i.id===place.parentId&&placeIds.has(i.id));
         const scene=this.placeScenes[place.id]?`<div class="sy-library-share-row">${button('open-scene',this.placeScenes[place.id],'Abrir cena vinculada')}</div>`:'';
-        return `<div class="sy-library-breadcrumb">${button('map','regions','← Voltar')}${region&&sharedRegions.includes(region.id)?button('region',region.id,region.name):''}${parent?button('place',parent.id,parent.name):''}</div>${this.placeDetail(place)}${scene}<div class="sy-library-grid">${[...PLACES,...BEYOND].filter(i=>i.parentId===place.id&&placeIds.has(i.id)).map(i=>this.card(i,'place')).join('')}</div>`;
+        return `${fallback}<div class="sy-library-breadcrumb">${button('map','regions','← Voltar')}${region&&sharedRegions.includes(region.id)?button('region',region.id,region.name):''}${parent?button('place',parent.id,parent.name):''}</div>${this.placeDetail(place)}${scene}<div class="sy-library-grid">${[...PLACES,...BEYOND].filter(i=>i.parentId===place.id&&placeIds.has(i.id)).map(i=>this.card(i,'place')).join('')}</div>`;
       }
       if(region&&sharedRegions.includes(region.id)){
         const capital=PLACES.find(i=>i.id===region.capital);
-        return `${visibleRegions.length+loosePlaces.length>1?button('map','regions','← Tudo que foi liberado'):''}${this.regionDetail(region,false)}<h3>Cidades e locais</h3><div class="sy-library-grid">${PLACES.filter(i=>i.regionId===region.id).map(i=>this.card(i,'place')).join('')}</div>`;
+        return `${fallback}${visibleRegions.length+loosePlaces.length>1?button('map','regions','← Tudo que foi liberado'):''}${this.regionDetail(region,false)}<h3>Cidades e locais</h3><div class="sy-library-grid">${PLACES.filter(i=>i.regionId===region.id).map(i=>this.card(i,'place')).join('')}</div>`;
       }
       const cards=[...visibleRegions.map(i=>this.card(i,'region')),...loosePlaces.map(i=>this.card(i,'place'))].join('');
-      return `${banner}<div class="sy-library-grid">${cards||'<p class="sy-library-deferred">O mestre ainda não liberou nenhuma região.</p>'}</div>`;
+      return `${fallback}${banner}<div class="sy-library-grid">${cards||'<p class="sy-library-deferred">O mestre ainda não liberou nenhuma região.</p>'}</div>`;
     }
     const tabs=[['regions','Regiões'],['places','Cidades e locais'],['beyond','Além de Opath'],['scenes','Mapas e cenas'],['encounters','Encontros da região']];
     const shareArea=this.shareButton('areas','map','✓ Aba Mapa visível aos jogadores','Liberar a aba Mapa aos jogadores');
@@ -296,7 +358,7 @@ export class CampaignLibrary {
       body=`${button('map','regions','← Todas as regiões')}${this.regionDetail(region,true)}<h3>Cidades e locais da região</h3><div class="sy-library-grid">${PLACES.filter(i=>i.regionId===region.id).map(i=>this.card(i,'place','map')).join('')}</div><section class="sy-library-deferred"><h4>Mapas, cenas e encontros</h4><p>Reservados para seleção manual do mestre.</p></section>`;
     }else if(mapView==='scenes'||mapView==='encounters')body='<p class="sy-library-deferred">Aguardando a seleção manual do mestre.</p>';
     else{const entries=mapView==='places'?PLACES:mapView==='beyond'?BEYOND:REGIONS;body=`${this.filters(mapView==='places'?REGIONS.map(i=>[i.id,i.name]):[],`Buscar ${mapView==='regions'?'região':'local'}`)}<div class="sy-library-grid">${entries.map(i=>this.card(i,mapView==='regions'?'region':'place',mapView==='beyond'?null:'map')).join('')}</div>`;}
-    return `${banner}<div class="sy-library-share-row">${shareArea}</div><nav class="sy-library-tabs" aria-label="Mapa">${tabs.map(([id,label])=>`<button data-op="lib-map" data-id="${id}" aria-current="${mapView===id?'page':'false'}">${label}</button>`).join('')}</nav>${body}`;
+    return `${fallback}${banner}<div class="sy-library-share-row">${shareArea}</div><nav class="sy-library-tabs" aria-label="Mapa">${tabs.map(([id,label])=>`<button data-op="lib-map" data-id="${id}" aria-current="${mapView===id?'page':'false'}">${label}</button>`).join('')}</nav>${body}`;
   }
   regionDetail(region,gm=false){
     const img=this.regionImages[region.id],capital=PLACES.find(i=>i.id===region.capital);
@@ -314,7 +376,7 @@ export class CampaignLibrary {
     return `<div class="sy-library-filters"><label>${label}<input name="libraryQuery" type="search" autocomplete="off"></label>${hasSelect?`<label>${groups?'Filtro':'Categoria'}<select name="libraryCategory"><option value="">${groups?'Todos':'Todas'}</option>${opts}</select></label>`:''}<small class="sy-library-count" role="status"></small></div><p class="sy-library-no-results" hidden>Nenhuma entrada corresponde aos filtros.</p>`;
   }
   monsterFilters(groups){
-    return `<div class="sy-library-filters sy-monster-filter"><label>Buscar monstro por nome, tipo ou papel<input name="libraryQuery" type="search" autocomplete="off"></label><small class="sy-library-count" role="status"></small></div><div class="sy-monster-facets">${groups.map(group=>`<fieldset><legend>${e(group.label)}</legend><div class="sy-check-grid">${group.items.map(([value,label])=>`<label><input type="checkbox" name="monsterFacet" data-monster-facet="${e(group.facet)}" value="${e(value)}">${e(label)}</label>`).join('')}</div></fieldset>`).join('')}</div><section class="sy-library-no-results sy-generate-monster" hidden><p>Nenhuma ameaça do livro combina com esses filtros.</p>${button('generate-monster','','Gerar um monstro assim')}<small>Depois de gerar, clique em Conferir Foundry novamente.</small></section>`;
+    return `<div class="sy-library-filters sy-monster-filter"><label>Buscar monstro por nome, tipo ou papel<input name="libraryQuery" type="search" autocomplete="off"></label><small class="sy-library-count" role="status"></small></div><div class="sy-monster-facets">${groups.map(group=>{const selected=this.state.monsterFacets[group.facet]??[];return `<details class="sy-facet" data-monster-facet-group="${e(group.facet)}" ${selected.length?'open':''}><summary>${e(group.label)}<span class="sy-facet-count">${selected.length?` (${selected.length})`:''}</span></summary><div class="sy-check-grid">${group.items.map(([value,label])=>`<label><input type="checkbox" name="monsterFacet" data-monster-facet="${e(group.facet)}" value="${e(value)}" ${selected.includes(value)?'checked':''}>${e(label)}</label>`).join('')}</div></details>`;}).join('')}</div><section class="sy-library-no-results sy-generate-monster" hidden><p>Nenhuma ameaça do livro combina com esses filtros.</p>${button('generate-monster','','Gerar um monstro assim')}<small>Depois de gerar, clique em Conferir Foundry novamente.</small></section>`;
   }
   filter(root){
     const query=nameKey(root.querySelector('[name="libraryQuery"]')?.value),category=root.querySelector('[name="libraryCategory"]')?.value??'';
@@ -341,29 +403,29 @@ export class CampaignLibrary {
       {facet:'nd',label:'Nível de Desafio',items:['ND 1–4','ND 5–8','ND 9–12','ND 13+'].map(b=>[b,b])},
       {facet:'conf',label:'Conferência na mesa',items:[['missing','Ficha pendente'],['found','Encontrado'],['unverified','A conferir']]}
     ];
-    return `<p>${MONSTERS.length} blocos do livro. Encontrados por nome e tipo: <strong>${report.found.length}</strong>. Fichas pendentes: <strong>${report.missing.length}</strong>. Sem verificação completa: <strong>${report.unverified.length}</strong>.</p><p class="sy-note">Encontrar o nome não confirma os valores da ficha. As fichas pendentes aguardam sua revisão antes de serem criadas. Os filtros usam as classificações do livro: tipo de criatura, papel, porte, deslocamento e Nível de Desafio.</p><div class="sy-library-share-row">${this.shareButton('areas','monsters','✓ Aba Monstros visível aos jogadores','Liberar a aba Monstros aos jogadores')}</div><div class="sy-library-tabs">${button('refresh','','Conferir Foundry novamente')}${button('report','','Exportar conferência')}</div>${this.failures.length?`<p class="sy-alert">${this.failures.length} compêndio(s) não puderam ser consultados; ausências ainda não confirmadas.</p>`:''}${this.monsterFilters(filterGroups)}<div class="sy-library-grid">${audit.map(entry=>`<details class="sy-library-card" data-search="${e(nameKey(`${entry.name} ${entry.creatureType} ${entry.role} ND ${entry.nd} ${entry.summary}`))}" data-category="${e(monsterCategory(entry))}"><summary>${cardFigure(entry.matches[0]?.img||'icons/svg/mystery-man.svg',entry.name,'compact')}<div class="sy-card-heading"><span><small>ND ${entry.nd} · ${e(entry.creatureType)}</small><strong>${e(entry.name)}</strong></span><span class="sy-library-status ${entry.status==='found'?'sy-library-found':''}" title="${entry.status==='found'?'Correspondência por nome e tipo':'Aguardando revisão'}">${entry.status==='found'?'✓ Encontrado':entry.status==='missing'?'Ficha pendente':'A conferir'}</span></div></summary>${this.shareButton('monsters',entry.id,'✓ Liberado','Liberar')}<div class="sy-library-body"><p>${e(entry.summary)}</p>${chips([monsterTier(entry),...monsterRoles(entry),monsterNdBand(entry.nd),page(entry)])}${this.links(entry.matches)}${entry.candidates.length?'<p class="sy-note">Há documento com esse nome, mas de outro tipo de ficha. Não contado como ameaça.</p>':''}</div></details>`).join('')}</div>`;
+    return `<p>${MONSTERS.length} blocos do livro. Encontrados por nome e tipo: <strong>${report.found.length}</strong>. Fichas pendentes: <strong>${report.missing.length}</strong>. Sem verificação completa: <strong>${report.unverified.length}</strong>.</p><p class="sy-note">Encontrar o nome não confirma os valores da ficha. As fichas pendentes aguardam sua revisão antes de serem criadas. Os filtros usam as classificações do livro: tipo de criatura, papel, porte, deslocamento e Nível de Desafio.</p><div class="sy-library-share-row">${this.shareButton('areas','monsters','✓ Aba Monstros visível aos jogadores','Liberar a aba Monstros aos jogadores')}</div><div class="sy-library-tabs">${button('refresh','','Conferir Foundry novamente')}${button('report','','Exportar conferência')}</div>${this.failures.length?`<p class="sy-alert">${this.failures.length} compêndio(s) não puderam ser consultados; ausências ainda não confirmadas.</p>`:''}${this.monsterFilters(filterGroups)}<div class="sy-library-grid">${audit.map(entry=>`<details class="sy-library-card" data-search="${e(nameKey(`${entry.name} ${entry.creatureType} ${entry.role} ND ${entry.nd} ${entry.summary}`))}" data-category="${e(monsterCategory(entry))}"><summary>${cardFigure(entry.matches[0]?.img||'icons/svg/mystery-man.svg',entry.name,'full')}<div class="sy-card-heading"><span><small>ND ${entry.nd} · ${e(entry.creatureType)}</small><strong>${e(entry.name)}</strong></span><span class="sy-library-status ${entry.status==='found'?'sy-library-found':''}" title="${entry.status==='found'?'Correspondência por nome e tipo':'Aguardando revisão'}">${entry.status==='found'?'✓ Encontrado':entry.status==='missing'?'Ficha pendente':'A conferir'}</span></div></summary>${this.shareButton('monsters',entry.id,'✓ Liberado','Liberar')}<div class="sy-library-body"><p>${e(entry.summary)}</p>${chips([monsterTier(entry),...monsterRoles(entry),monsterNdBand(entry.nd),page(entry)])}${this.links(entry.matches)}${entry.candidates.length?'<p class="sy-note">Há documento com esse nome, mas de outro tipo de ficha. Não contado como ameaça.</p>':''}</div></details>`).join('')}</div>`;
   }
   itemCard(entry,readonly){
     const tags=[entry.category,entry.equipment,entry.grade?`${entry.grade}º grau`:null,entry.price!=null?currency(entry.price):null,entry.priceKind,entry.priceFormula,entry.rarity,entry.setting,entry.volume!=null?`${entry.volume} vol.`:null,entry.damage?`Dano ${entry.damage}`:null,entry.reduction?`RD ${entry.reduction}`:null,entry.range?`Alcance ${entry.range} m`:null,entry.slot,entry.charges?`${entry.charges} cargas`:null,entry.fragments?`${entry.fragments} fragmentos`:null,entry.imbued];
     const matches=findMatches(entry,this.catalog?.items??[],typesFor(entry));
-    return `<details class="sy-library-card" data-search="${e(nameKey(`${entry.name} ${entry.category} ${entry.equipment??''} ${entry.summary} ${(entry.aliases??[]).join(' ')}`))}" data-category="${e(entry.category)}"><summary>${cardFigure(matches[0]?.img||itemFallback(entry),entry.name,'compact')}<div class="sy-card-heading"><span><small>${e(entry.category)}${entry.equipment?` · ${e(entry.equipment)}`:''}</small><strong>${e(entry.name)}</strong></span><span class="sy-library-question" title="Abrir consulta" aria-hidden="true">?</span></div></summary>${readonly?'':this.shareButton('items',entry.id,'✓ Liberado','Liberar')}<div class="sy-library-body">${chips(tags)}<p>${e(entry.summary)}</p>${entry.descriptors?`<p><b>Descritores:</b> ${e(Array.isArray(entry.descriptors)?entry.descriptors.join(', '):entry.descriptors)}</p>`:''}${entry.note?`<p class="sy-alert">${e(entry.note)}</p>`:''}<small>${page(entry)}</small>${entry.referenceOnly?'<p class="sy-note">Entrada de referência; não é uma compra automática.</p>':''}${readonly?'':this.links(matches)}</div></details>`;
+    return `<details class="sy-library-card" data-search="${e(nameKey(`${entry.name} ${entry.category} ${entry.equipment??''} ${entry.summary} ${(entry.aliases??[]).join(' ')}`))}" data-category="${e(entry.category)}"><summary><div class="sy-card-heading">${thumb(matches[0]?.img||itemFallback(entry))}<span><small>${e(entry.category)}${entry.equipment?` · ${e(entry.equipment)}`:''}</small><strong>${e(entry.name)}</strong></span><span class="sy-library-question" title="Abrir consulta" aria-hidden="true">?</span></div></summary>${readonly?'':this.shareButton('items',entry.id,'✓ Liberado','Liberar')}<div class="sy-library-body">${chips(tags)}<p>${e(entry.summary)}</p>${entry.descriptors?`<p><b>Descritores:</b> ${e(Array.isArray(entry.descriptors)?entry.descriptors.join(', '):entry.descriptors)}</p>`:''}${entry.note?`<p class="sy-alert">${e(entry.note)}</p>`:''}<small>${page(entry)}</small>${entry.referenceOnly?'<p class="sy-note">Entrada de referência; não é uma compra automática.</p>':''}${readonly?'':this.links(matches)}</div></details>`;
   }
   renderItems(readonly=false){
     if(readonly){
       const shared=this.shared.items,list=BOOK_ITEMS.filter(i=>i.name!=='Ataque desarmado'&&shared.includes(i.id));
-      return `${this.modifications(true)}${this.filters([],'Buscar item liberado')}<div class="sy-library-grid">${list.map(entry=>this.itemCard(entry,true)).join('')||'<p class="sy-library-deferred">O mestre ainda não liberou nenhum item.</p>'}</div>`;
+      return `${this.filters([],'Buscar item liberado')}<div class="sy-library-grid">${list.map(entry=>this.itemCard(entry,true)).join('')||'<p class="sy-library-deferred">O mestre ainda não liberou nenhum item.</p>'}</div>`;
     }
     const visibleItems=BOOK_ITEMS.filter(i=>i.name!=='Ataque desarmado');
     const categories=[...new Set(visibleItems.map(i=>i.category))];
-    return `<p>Equipamentos, serviços e modificações do livro, com preços, volume e referências. Abra um cartão para consultar; vínculos abrem documentos existentes da mesa.</p><div class="sy-library-share-row">${this.shareButton('areas','items','✓ Aba Itens visível aos jogadores','Liberar a aba Itens aos jogadores')}</div>${this.modifications()}${this.filters(categories.map(c=>[c,c]))}<div class="sy-library-grid">${visibleItems.map(entry=>this.itemCard(entry,false)).join('')}</div>`;
+    return `<p>Equipamentos, serviços e modificações do livro, com preços, volume e referências. Abra um cartão para consultar; vínculos abrem documentos existentes da mesa.</p><div class="sy-library-share-row">${this.shareButton('areas','items','✓ Aba Itens visível aos jogadores','Liberar a aba Itens aos jogadores')}</div>${this.filters(categories.map(c=>[c,c]))}<div class="sy-library-grid">${visibleItems.map(entry=>this.itemCard(entry,false)).join('')}</div>`;
   }
-  modifications(readonly=false){
+  renderImbue(readonly=false){
     const imbueHelp=`<section class="sy-note"><strong>O que é imbuir?</strong><p>Imbuir torna o encantamento do sigilo permanente. Em vez de gastar cargas até acabar, o efeito fica sempre disponível ou recarrega no descanso longo, conforme o sigilo. O custo é pago uma vez por sigilo: 1º grau T$ 250 · 2º T$ 1.000 · 3º T$ 5.000 · 4º grau a conferir. A ordem não altera o preço.</p></section>`;
-    if(readonly)return `<details class="sy-library-guide"><summary>O que é imbuir?</summary>${imbueHelp}</details>`;
+    if(readonly)return `<p>Regras de imbuir liberadas pelo mestre.</p>${imbueHelp}`;
     const bases=this.modBases(),materials=BOOK_ITEMS.filter(item=>item.category==='Materiais especiais'&&item.price===300),equipment=this.modEquipment(),available=SIGILS.filter(sigil=>equipment&&(sigil.equipment===equipment||(equipment==='Escudo'&&sigil.equipment==='Arma'))&&!this.modBuilder.sigils.some(chosen=>chosen.id===sigil.id));
     let sheet=null,error='';try{sheet=this.modSheet();}catch(reason){error=reason.message;}
     const chosen=this.modBuilder.sigils.map((sigil,index)=>`<div class="sy-mod-choice"><span><strong>${e(sigil.name)}</strong><small>${e(sigil.slot)} · ${sigil.grade}º grau</small></span>${button('mod-imbue',String(index),sigil.imbue?'✓ Imbuído':'Imbuir')}${button('mod-remove',String(index),'Remover')}</div>`).join('');
     const worksheet=sheet?`<pre class="sy-mod-sheet">${e(sheet.text)}</pre>${sheet.result.warnings.map(warning=>`<p class="sy-alert">${e(warning)}</p>`).join('')}${button('mod-copy','','Copiar folha')}`:'';
-    return `<details class="sy-library-guide" open><summary>Montar item modificado</summary><p>Esta calculadora não cria nem altera Item no Foundry.</p><div class="sy-mod-controls"><label>Item base<select name="modBase"><option value="">Escolha…</option>${bases.map(item=>`<option value="${item.id}" ${this.modBuilder.baseId===item.id?'selected':''}>${e(item.name)} · ${item.price==null?'sem preço':currency(item.price)}</option>`).join('')}</select></label><label>Material especial opcional<select name="modMaterial"><option value="">Sem material</option>${materials.map(item=>`<option value="${item.id}" ${this.modBuilder.materialId===item.id?'selected':''}>${e(item.name)} · +T$ 300</option>`).join('')}</select></label></div>${chosen}<h4>Adicionar sigilo${equipment?` para ${e(equipment)}`:''}</h4><div class="sy-mod-sigils">${available.map(sigil=>`<article><span><strong>${e(sigil.name)}</strong><small>${e(sigil.slot)} · ${sigil.grade}º grau</small></span>${button('mod-add',sigil.id,'Adicionar')}</article>`).join('')||'<small>Escolha um item base ou o limite foi atingido.</small>'}</div>${error?`<p class="sy-alert">${e(error)}</p>`:worksheet}${imbueHelp}<details><summary>Consultar regras e tabelas usadas</summary>${MODIFICATION_GUIDES.map(i=>`<h4>${e(i.name)} <small>p. ${i.page}</small></h4><p>${e(i.summary)}</p>`).join('')}<table><thead><tr><th>Sigilo no item</th>${[1,2,3,4].map(n=>`<th>${n}º grau</th>`).join('')}</tr></thead><tbody>${SIGIL_COSTS.map((row,i)=>`<tr><th>${i+1}º sigilo</th>${row.map(v=>`<td>${currency(v)}</td>`).join('')}</tr>`).join('')}<tr><th>Imbuir</th>${IMBUE_COSTS.map(v=>`<td>${v==null?'A conferir*':currency(v)}</td>`).join('')}</tr></tbody></table></details></details>`;
+    return `<p>Monte e consulte a imbuência de sigilos sem alterar automaticamente nenhum Item da mesa.</p><div class="sy-library-share-row">${this.shareButton('areas','imbue','✓ Aba Imbuir visível aos jogadores','Liberar a aba Imbuir aos jogadores')}</div><details class="sy-library-guide" open><summary>Montar item modificado</summary><p>Esta calculadora não cria nem altera Item no Foundry.</p><div class="sy-mod-controls"><label>Item base<select name="modBase"><option value="">Escolha…</option>${bases.map(item=>`<option value="${item.id}" ${this.modBuilder.baseId===item.id?'selected':''}>${e(item.name)} · ${item.price==null?'sem preço':currency(item.price)}</option>`).join('')}</select></label><label>Material especial opcional<select name="modMaterial"><option value="">Sem material</option>${materials.map(item=>`<option value="${item.id}" ${this.modBuilder.materialId===item.id?'selected':''}>${e(item.name)} · +T$ 300</option>`).join('')}</select></label></div>${chosen}<h4>Adicionar sigilo${equipment?` para ${e(equipment)}`:''}</h4><div class="sy-mod-sigils">${available.map(sigil=>`<article><span><strong>${e(sigil.name)}</strong><small>${e(sigil.slot)} · ${sigil.grade}º grau</small></span>${button('mod-add',sigil.id,'Adicionar')}</article>`).join('')||'<small>Escolha um item base ou o limite foi atingido.</small>'}</div>${error?`<p class="sy-alert">${e(error)}</p>`:worksheet}${imbueHelp}<details><summary>Consultar regras e tabelas usadas</summary>${MODIFICATION_GUIDES.map(i=>`<h4>${e(i.name)} <small>p. ${i.page}</small></h4><p>${e(i.summary)}</p>`).join('')}<table><thead><tr><th>Sigilo no item</th>${[1,2,3,4].map(n=>`<th>${n}º grau</th>`).join('')}</tr></thead><tbody>${SIGIL_COSTS.map((row,i)=>`<tr><th>${i+1}º sigilo</th>${row.map(v=>`<td>${currency(v)}</td>`).join('')}</tr>`).join('')}<tr><th>Imbuir</th>${IMBUE_COSTS.map(v=>`<td>${v==null?'A conferir*':currency(v)}</td>`).join('')}</tr></tbody></table></details></details>`;
   }
 }

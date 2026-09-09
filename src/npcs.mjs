@@ -1,5 +1,5 @@
 import {MODULE_ID} from './adapter.mjs';
-import {PLACES} from './book-world.mjs';
+import {PLACES,REGIONS} from './book-world.mjs';
 import {normalize} from './rules.mjs';
 
 export const NPC_ROLES={merchant:'Mercador',ally:'Aliado',rival:'Rival',extra:'Figurante'};
@@ -17,6 +17,19 @@ export function placeIdFromFolderPath(path,places=PLACES){
   const names=path.map(normalize),leaf=names.at(-1);
   if(!names.some(name=>name===normalize('🤖 NPCs por Região')))return null;
   return places.find(place=>normalize(place.name)===leaf)?.id??null;
+}
+export function stripTags(html){
+  return String(html??'').replace(/<[^>]*>/g,'').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/&quot;/gi,'"').replace(/&#39;|&apos;/gi,"'").replace(/\s+/g,' ').trim();
+}
+export function hasWord(haystack,needle){
+  const hay=normalize(haystack),word=normalize(needle);return Boolean(word)&&` ${hay} `.includes(` ${word} `);
+}
+export function inferPlaceId(actor,places=PLACES){
+  const byFolder=placeIdFromFolderPath(folderPath(actor),places);if(byFolder)return byFolder;
+  const html=actor?.system?.details?.description??actor?.system?.biography??'',haystack=`${stripTags(html)} ${actor?.name??''}`;
+  const hits=places.filter(place=>hasWord(haystack,place.name));if(hits.length)return (hits.find(place=>place.regionId)??hits[0]).id;
+  const region=REGIONS.find(entry=>hasWord(haystack,entry.name)||hasWord(haystack,entry.id));
+  return region?.capital&&places.some(place=>place.id===region.capital)?region.capital:null;
 }
 export function npcFlag(actor){return actor?.flags?.[MODULE_ID]?.npc??null;}
 export function isGeneratedNpc(actor){
@@ -38,6 +51,10 @@ export function npcVisibility({role,active,shared=false,gm=false}){
 }
 export function initialNpcFlag(actor){
   return {role:'extra',placeId:placeIdFromFolderPath(folderPath(actor))??'',active:false,note:'',shop:{markup:1,note:'',stock:[]}};
+}
+export function adoptNpcFlag(actor){
+  const existing=npcFlag(actor);if(existing)return existing;
+  return {...initialNpcFlag(actor),placeId:inferPlaceId(actor)??''};
 }
 export function itemTypeForCategory(category){
   if(String(category).startsWith('Armas'))return 'weapon';

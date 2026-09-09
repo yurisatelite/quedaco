@@ -6,6 +6,7 @@ import {buildTrainingPlan,resolveTraining,actorTrainingUpdate} from './training.
 import {buildClassEquipmentPlan,buildBackgroundEquipmentPlan,resolveEquipmentPlan,mergeEquipmentResults,shopItems,resolvePurchases,totalVolume,itemVolume} from './equipment.mjs';
 import {MODULE_ID,escapeHTML as e,safeImage,createDraft,addResolvedPlan,addInventory,refillResources,applyHitPointProgression,finalizeClassProgression,finalizePathProgression} from './adapter.mjs';
 import {classProgression,requiresSpellcasting} from './progression.mjs';
+import {clampPan,zoomToPoint} from './map-view.mjs';
 const STEPS=['Conceito','Legado','Herança','Maldição','Antecedente','Classe','Progressão e benefícios','Atributos e vida','Perícias e proficiências','Dinheiro','Equipamento','Retrato e token','Revisão'];
 const TYPES={1:'legacy',2:'heritage',3:'curse',4:'background',5:'class'};
 const LABELS={legacy:'Legados',heritage:'Heranças',curse:'Maldições',background:'Antecedentes',class:'Classes',path:'Trilhas',feature:'Características',feat:'Talentos',ability:'Habilidades',spell:'Magias',weapon:'Armas',armor:'Armaduras',clothing:'Vestimentas',equipment:'Equipamentos',consumable:'Consumíveis',loot:'Outros itens',sigil:'Sigilos',seal:'Selos'};
@@ -23,12 +24,12 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   money(){try{const base=startingMoney(this.selected('class')?.name,this.selected('background')?.name,this.sums.class,this.sums.background);if(this.draft.moneyOverride!=null&&this.draft.moneyOverride>=0)return {...base,cash:this.draft.moneyOverride,wallet:wallet(this.draft.moneyOverride)};return base;}catch{return null;}}
   attrErrors(){const bases=[3,2,1,1,0,-1],values=Object.values(this.draft.attributes);const errors=validateAttributes(values,this.draft.method,this.draft.slots.map(i=>bases[i]),this.draft.boost);if(this.draft.method==='fixed'&&new Set(this.draft.slots).size!==6)errors.push('Use cada posição da distribuição uma única vez.');if(['conventional','ordered'].includes(this.draft.method)&&this.rolls.length!==6)errors.push('Role os seis conjuntos antes de continuar.');return errors;}
   async _renderHTML(){
-    const sharedAreas=game.user.isGM?[]:this.library.shared.areas.filter(a=>['npcs','map','monsters','items','quests'].includes(a));
+    const sharedAreas=game.user.isGM?[]:this.library.shared.areas.filter(a=>['npcs','map','monsters','items','imbue','quests'].includes(a));
     if(!game.user.isGM&&this.area!=='characters'&&!sharedAreas.includes(this.area))this.area='characters';
     if(!this.loading)this.visited.add(this.step);
     const selected=this.selected('class');let hp='—';try{hp=hitPoints(selected?.name,this.draft.attributes.con,this.draft.level,this.draft.hpMethod==='rolled'?this.draft.hpRolls:null);}catch{}
     const money=this.money(),purchaseMoney=money?resolvePurchases(this.catalog,money.cash,money.equipmentBudget,this.purchasesCash,this.purchasesBudget):null,displayWallet=purchaseMoney?wallet(Math.max(0,purchaseMoney.cashRemaining)):money?.wallet;
-    const areaLabels={npcs:'NPCs',map:'Mapa',monsters:'Monstros',items:'Itens',quests:'Quests'};
+    const areaLabels={npcs:'NPCs',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'};
     const areas=[['characters','Criação de Personagens'],...(game.user.isGM?Object.entries(areaLabels):sharedAreas.map(a=>[a,areaLabels[a]]))];
     const areaNav=areas.length>1?`<div class="sy-area-nav">${areas.map(([id,label])=>`<button data-op="area" data-area="${id}" aria-current="${this.area===id?'page':'false'}">${label}</button>`).join('')}</div>`:'';
     if(this.area!=='characters')return `<div class="sy-shell"><header><div class="sy-brand-lockup"><img src="modules/quedaco/assets/quedaco-dragon.png" alt=""><div><div class="sy-brand">QUEDAÇO</div><small>Controle de campanha para Skyfall RPG</small></div></div></header>${areaNav}${this.renderArea()}</div>`;
@@ -41,7 +42,19 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   _replaceHTML(result,content){content.innerHTML=result;this.library.filter(content);content.addEventListener('input',this._libraryInput??=(event)=>{if(event.target.name==='libraryQuery'||event.target.matches?.('[data-monster-facet]'))this.library.filter(event.currentTarget);});}
   _scroller(){return this.element?.querySelector?.('.sy-layout>main, .sy-shell>main')??this.element?.querySelector?.('.window-content')??null;}
   async rerender(preserve=true){if(!this.element)return;const scroller=this._scroller();if(preserve&&scroller)this._restoreScroll={top:scroller.scrollTop,left:scroller.scrollLeft};else this._restoreScroll={top:0,left:0};return this.render(true);}
-  _onRender(context,options){super._onRender(context,options);if(!this.element)return;const root=this.element,scroller=this._scroller();if(scroller&&this._restoreScroll){scroller.scrollTop=this._restoreScroll.top;scroller.scrollLeft=this._restoreScroll.left;this._restoreScroll=null;}if(this._scrollDetailIntoView){this._scrollDetailIntoView=false;root.querySelector?.('.sy-detail')?.scrollIntoView({block:'nearest',behavior:'smooth'});}root.addEventListener('click',this._click??=(event)=>this.handleClick(event));root.addEventListener('change',this._change??=(event)=>this.handleChange(event));root.addEventListener('input',this._input??=(event)=>{if(!['query','shopQuery'].includes(event.target.name))return;const name=event.target.name;clearTimeout(this._searchTimer);this._searchTimer=setTimeout(()=>{if(name==='query')this.query=event.target.value;else this.shopQuery=event.target.value;this.rerender(true);},180);});}
+  _onRender(context,options){super._onRender(context,options);if(!this.element)return;const root=this.element,scroller=this._scroller();if(scroller&&this._restoreScroll){scroller.scrollTop=this._restoreScroll.top;scroller.scrollLeft=this._restoreScroll.left;this._restoreScroll=null;}if(this._scrollDetailIntoView){this._scrollDetailIntoView=false;root.querySelector?.('.sy-detail')?.scrollIntoView({block:'nearest',behavior:'smooth'});}root.addEventListener('click',this._click??=(event)=>this.handleClick(event));root.addEventListener('change',this._change??=(event)=>this.handleChange(event));root.addEventListener('input',this._input??=(event)=>{if(!['query','shopQuery'].includes(event.target.name))return;const name=event.target.name;clearTimeout(this._searchTimer);this._searchTimer=setTimeout(()=>{if(name==='query')this.query=event.target.value;else this.shopQuery=event.target.value;this.rerender(true);},180);});this._bindMap(root);}
+  _bindMap(root){
+    this._mapObserver?.disconnect?.();this._mapObserver=null;
+    const viewport=root.querySelector?.('[data-map-viewport]'),world=viewport?.querySelector?.('.sy-map-world'),image=viewport?.querySelector?.('.sy-map-image-base');if(!viewport||!world||!image)return;
+    const apply=()=>{const width=image.clientWidth||viewport.clientWidth,height=image.clientHeight||viewport.clientHeight,viewW=viewport.clientWidth,viewH=viewport.clientHeight;this.library.state.map=clampPan(this.library.state.map,width,height,viewW,viewH);const {tx,ty,scale}=this.library.state.map;world.style.transform=`translate(${tx}px,${ty}px) scale(${scale})`;};
+    if(image.complete)requestAnimationFrame(apply);else image.addEventListener('load',apply,{once:true});
+    if(globalThis.ResizeObserver){this._mapObserver=new ResizeObserver(apply);this._mapObserver.observe(viewport);}
+    let dragging=false,last=null;
+    viewport.addEventListener('pointerdown',event=>{if(event.target.closest('button,a,input,select,textarea'))return;dragging=true;last={x:event.clientX,y:event.clientY};viewport.classList.add('is-panning');viewport.setPointerCapture?.(event.pointerId);});
+    viewport.addEventListener('pointermove',event=>{if(!dragging||!last)return;const dx=event.clientX-last.x,dy=event.clientY-last.y;last={x:event.clientX,y:event.clientY};const state=this.library.state.map;this.library.state.map={...state,tx:state.tx+dx,ty:state.ty+dy};apply();});
+    const stop=event=>{if(!dragging)return;dragging=false;last=null;viewport.classList.remove('is-panning');if(viewport.hasPointerCapture?.(event.pointerId))viewport.releasePointerCapture(event.pointerId);};viewport.addEventListener('pointerup',stop);viewport.addEventListener('pointercancel',stop);
+    viewport.addEventListener('wheel',event=>{if(event.target.closest('.sy-map-controls'))return;event.preventDefault();const rect=viewport.getBoundingClientRect(),point={x:event.clientX-rect.left,y:event.clientY-rect.top},factor=event.deltaY<0?1.15:1/1.15;this.library.state.map=zoomToPoint(this.library.state.map,point,factor);apply();},{passive:false});
+  }
   stepIssues(i){
     if(i===0)return this.draft.name.trim()?[]:['Informe o nome do personagem no Conceito.'];
     if(TYPES[i]){
@@ -58,9 +71,9 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   }
   stepDone(i){return !this.stepIssues(i).length;}
   renderArea(){
-    if(['npcs','map','monsters','items'].includes(this.area))return `${this.message?`<p class="sy-alert" role="status">${e(this.message)}</p>`:''}${this.library.render(this.area,!game.user.isGM)}`;
-    const definitions={npcs:['Mercadores','Aliados','Rivais','Figurantes'],map:['Regiões','Cidades e locais','Mapas e cenas','Encontros da região'],monsters:['Aquáticos','Terrestres','Aéreos','Outros'],items:['Armas','Armaduras','Equipamentos','Consumíveis','Itens modificados'],quests:['Disponíveis','Ativas','Concluídas']};
-    const titles={npcs:'NPCs',map:'Mapa',monsters:'Monstros',items:'Itens',quests:'Quests'},items=definitions[this.area]??[];
+    if(['npcs','map','monsters','items','imbue'].includes(this.area))return `${this.message?`<p class="sy-alert" role="status">${e(this.message)}</p>`:''}${this.library.render(this.area,!game.user.isGM)}`;
+    const definitions={npcs:['Mercadores','Aliados','Rivais','Figurantes'],map:['Regiões','Cidades e locais','Mapas e cenas','Encontros da região'],monsters:['Aquáticos','Terrestres','Aéreos','Outros'],items:['Armas','Armaduras','Equipamentos','Consumíveis'],quests:['Disponíveis','Ativas','Concluídas']};
+    const titles={npcs:'NPCs',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'},items=definitions[this.area]??[];
     return `<main class="sy-empty-area"><small>PAINEL HÍBRIDO DA MESTRA</small><h2>${titles[this.area]}</h2><p>Os cartões desta área serão índices do QUEDAÇO ligados aos documentos nativos da mesa.</p><div class="sy-empty-grid">${items.map(item=>`<section><span class="sy-done sy-pending">·</span><h3>${item}</h3><small>Aguardando preenchimento e vínculo com o Foundry.</small></section>`).join('')}</div></main>`;
   }
   async renderStep(){
@@ -176,6 +189,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
       else if(op==='lib-region-img'){const raw=button.dataset.id;if(raw.endsWith(':'))await this.library.setRegionImage(raw.slice(0,-1),'');else{const FP=foundry.applications.apps.FilePicker.implementation;new FP({type:'image',current:this.library.regionImages[raw]||'',callback:async path=>{await this.library.setRegionImage(raw,path);this.render(true);}}).render(true);}}
       else if(op.startsWith('lib-')){
         let id=button.dataset.id,data={};
+        if(['lib-map-focus','lib-map-zoom','lib-map-reset'].includes(op)){const viewport=button.closest('[data-map-viewport]'),image=viewport?.querySelector('.sy-map-image-base'),rect=viewport?.getBoundingClientRect();data={viewW:viewport?.clientWidth||800,viewH:viewport?.clientHeight||500,imgW:image?.clientWidth||viewport?.clientWidth||800,imgH:image?.clientHeight||viewport?.clientHeight||500,point:{x:(rect?.width||800)/2,y:(rect?.height||500)/2}};}
         if(op==='lib-npc-mark')id=button.closest('.sy-npc-add')?.querySelector('[name="npcActor"]')?.value||'';
         if(op.startsWith('lib-npc-')){
           const editor=button.closest('[data-npc-editor]');
@@ -217,7 +231,13 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   async handleChange(event){
     const {name,value}=event.target;if(!name)return;
     if(name==='libraryQuery'||name==='libraryCategory'){this.library.filter(this.element);return;}
-    if(event.target.matches?.('[data-monster-facet]')){this.library.filter(this.element);return;}
+    if(event.target.matches?.('[data-monster-facet]')){
+      const facet=event.target.dataset.monsterFacet,checked=Array.from(this.element.querySelectorAll(`[data-monster-facet="${facet}"]:checked`)).map(input=>input.value);
+      this.library.state.monsterFacets[facet]=checked;
+      const details=event.target.closest('.sy-facet'),count=details?.querySelector('.sy-facet-count');if(count)count.textContent=checked.length?` (${checked.length})`:'';if(details&&checked.length)details.open=true;
+      this.library.filter(this.element);return;
+    }
+    if(name==='npcPlaceFilter'){this.library.state.npcPlaceFilter=value;this.rerender(true);return;}
     if(name==='npcLinkFilter'){this.library.state.npcLink=value;this.rerender(true);return;}
     if(name==='modBase'){this.library.modBuilder={baseId:value,materialId:'',sigils:[]};this.rerender(true);return;}
     if(name==='modMaterial'){this.library.modBuilder.materialId=value;this.rerender(true);return;}

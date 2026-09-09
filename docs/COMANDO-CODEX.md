@@ -374,3 +374,105 @@ Botão `data-op="lib-generate-monster"` (GM):
 - **Proibido:** embutir a macro, a chave de API ou chamadas à API da Anthropic no
   módulo. Só `macro.execute()` de uma macro que já existe na mesa.
 - Teste: só a resolução do nome do setting (fallback para o default) numa função pura.
+
+---
+
+# T14 — Mapa dinâmico (zoom / pan / drill-down)
+
+Detalhe completo + pesquisa das ferramentas de fora em **`docs/T14-MAPA-DINAMICO.md`**.
+Fazer **só a FASE 1** (visor único com pan+zoom por ponteiro, pinos de região/cidade em
+%, drill-down região→cidade com zoom animado, painel de detalhe do local, breadcrumb,
+fallback quando não há imagem). FASE 2 (camadas, polígonos SVG, rotas, névoa, minimapa)
+fica para quando o Yuri pedir. Sem biblioteca externa. Testes puros: `clampPan`,
+`zoomToPoint`, `focusRegion`.
+
+# T15 — Caixinha "O que mudou" ao atualizar
+
+Detalhe em **`docs/T15-CAIXINHA-DE-NOVIDADES.md`**. `src/changelog.mjs` com `CHANGELOG`
+(entrada nova sempre no topo) + `isNewer` + `entriesSince`. No `ready`, se
+`lastSeenVersion` (client setting) != versão do módulo, abre um diálogo com as novidades
+e grava a versão **ao fechar**. Primeira instalação mostra só a entrada mais recente.
+Testes em `tests/changelog.test.mjs`. Adicionar "atualizar CHANGELOG" ao checklist de
+release.
+
+# T16 — NPCs: excluir, editar direto, e inferir o local
+
+Detalhe completo em **`docs/T16-NPCS-EDITAR-EXCLUIR-LOCALIZAR.md`**. Resumo:
+1. Op `lib-npc-delete` (GM, confirmação DialogV2, `actor.delete()`); botão "Excluir" em
+   todo cartão de NPC; nunca para `actor.hasPlayerOwner`.
+2. Fim do "marcar ator": cartão de NPC gerado já traz Ativar/Editar/Abrir ficha/Excluir;
+   "Editar" adota o flag automaticamente; botão "Adotar todos os detectados"; tirar a
+   caixa "Marcar um NPC existente" da vista padrão (mover pra um `<details>` recolhido).
+3. `inferPlaceId(actor, places)` em `src/npcs.mjs` — pasta → texto da ficha
+   (`system.details.description` p/ `character`, `system.biography` p/ `npc`) → nome do
+   ator → null. `adoptNpcFlag(actor)` grava o local inferido só na adoção, nunca
+   sobrescreve local manual. Dica "Local sugerido pela ficha" no editor +
+   `<select name="npcPlaceFilter">` na aba.
+4. Testes de `inferPlaceId`/`adoptNpcFlag`/`stripTags` em `tests/npcs.test.mjs`.
+
+A limpeza das ~200 duplicatas é **comando de console**
+(`docs/CONSOLE-LIMPAR-NPCS-DUPLICADOS.md`), **não** entra no módulo.
+
+# B5 — Monstros: miniatura inteira, sem corte
+
+Na aba **Monstros** (`renderMonsters` em `src/library.mjs`), o cartão usa
+`cardFigure(...,'compact')` → `.sy-card-figure` com `object-fit:cover` e altura 96–128px,
+que **corta** a criatura. Queremos ver o monstro inteiro.
+
+- Nova variante `sy-card-figure-full` só para monstros: `object-fit:contain`,
+  `object-position:center`, altura fixa alta (**300px**, ajustar se ficar exagerado),
+  fundo escuro (`#0f1620`) sobrando em cima/embaixo. Sem corte.
+- Trocar a chamada no `<summary>` do cartão de monstro para
+  `cardFigure(entry.matches[0]?.img||'icons/svg/mystery-man.svg', entry.name, 'full')`.
+- `cardFigure` passa a aceitar `size='full'`. As outras áreas não mudam.
+- Placeholder `mystery-man.svg` continua centralizado (fica pequeno no meio, tudo bem).
+
+# B6 — Filtros de monstro: abrir só ao clicar
+
+`monsterFilters()` renderiza um `<fieldset>` por faceta (Tipo, Papel, Porte,
+Deslocamento, ND, Conferência) **todos abertos** → muita caixa, sobrepondo o resto.
+
+- Trocar cada `<fieldset><legend>X</legend>…</fieldset>` por
+  `<details class="sy-facet"><summary>X</summary><div class="sy-check-grid">…</div></details>`,
+  **fechado** por padrão.
+- `.sy-monster-facets` vira uma linha/coluna compacta: cada `<details>` fechado é só o
+  rótulo (chip). Aberto, expande os checkboxes abaixo sem empurrar/cobrir os cartões.
+- Se alguma faceta tem checkbox marcado, mostrar no `<summary>` a contagem
+  (`Papel (2)`) e deixar esse `<details>` aberto ao re-renderizar.
+- **Não mexer** nos `<input type="checkbox" name="monsterFacet" data-monster-facet>` nem
+  em `filter()` / `monsterMatches` — só o invólucro e o CSS.
+
+# B7 — Itens: voltar para a miniatura pequena
+
+Regressão: `itemCard` passou a usar `cardFigure(...,'compact')` (faixa 96px cortada).
+Antes era a miniatura pequena `thumb()` (44px, inline, ao lado do nome) e estava certo.
+
+- No `<summary>` de `itemCard`, remover o `cardFigure(...)` e voltar ao
+  `thumb(matches[0]?.img||itemFallback(entry))` dentro do `.sy-card-heading`, antes do
+  bloco de nome (como era).
+- Só itens. Monstros mantêm a figura (agora `full`, B5). Mapa/NPC inalterados.
+
+# B8 — "Imbuir" como área própria no topo (separar dos Itens)
+
+Hoje o montador de item modificado + a explicação de imbuir vivem **dentro da aba
+Itens** (`renderItems` → `this.modifications()`). O Yuri quer isso como **entrada
+própria na navegação do topo**, sem misturar com o catálogo de itens.
+
+- `src/app.mjs`: `areaLabels` ganha `imbue:'Imbuir'`; entra na whitelist de
+  `sharedAreas` (`['npcs','map','monsters','items','quests','imbue']`) e no dispatch
+  `['npcs','map','monsters','items'].includes(this.area)` → incluir `'imbue'`.
+- `src/library.mjs`: `render(area)` → `area==='imbue' ? this.renderImbue(readonly) : …`;
+  `titles` ganha `imbue:'Imbuir'`.
+- Mover o corpo de `this.modifications()` para `renderImbue(readonly)`. A aba **Itens
+  deixa de chamar** `this.modifications()`.
+- `renderImbue` (GM): montador (item base + material + sigilos), lista de sigilos
+  escolhidos com botão Imbuir por sigilo, planilha de custo, bloco "O que é imbuir?",
+  e o `<details>` "Consultar regras e tabelas" (SIGIL_COSTS + IMBUE_COSTS). Readonly:
+  só o explicador "O que é imbuir?".
+- Share toggle próprio: `areas:imbue` ("✓ Aba Imbuir visível aos jogadores").
+- Os ops `lib-mod-*` e os handlers `modBase`/`modMaterial` em `app.mjs` continuam
+  iguais, só passam a ser exibidos na área nova.
+- **PRECISA DO YURI** se "imbuir os fragmentos" for outra mecânica do Skyfall (recurso
+  `system.fragments`) e não o imbuir de sigilo do T10 — nesse caso, perguntar antes.
+
+Entrega dos B5–B8 pode ir junto do T16 no mesmo bump (0.4.10).

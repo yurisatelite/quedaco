@@ -2,7 +2,10 @@ import {CreatorApp} from './app.mjs';
 import {MODULE_ID,assertCompatible} from './adapter.mjs';
 import {registerBranding,loadBranding} from './branding.mjs';
 import {registerLibrarySettings} from './library.mjs';
+import {CHANGELOG,entriesSince,isNewer} from './changelog.mjs';
 let app;
+const LAST_SEEN_VERSION='lastSeenVersion';
+const escape=value=>String(value??'').replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
 function openCreator(startArea='characters',focus={}){
   try{
     assertCompatible(game);
@@ -13,8 +16,19 @@ function openCreator(startArea='characters',focus={}){
     return app.start();
   }catch(error){ui.notifications.error(error.message);}
 }
-Hooks.once('init',()=>{registerBranding();registerLibrarySettings(game,()=>{if(app?.rendered)app.render(false);});});
-Hooks.once('ready',()=>{game.modules.get(MODULE_ID).api={open:openCreator,openCampaign:()=>openCreator('npcs')};void loadBranding();});
+function showChangelog(entries,current){
+  const content=`<div class="sy-changelog-content">${entries.map(entry=>`<section><small>VERSÃO ${escape(entry.version)} · ${escape(entry.date.split('-').reverse().join('/'))}</small><h2>${escape(entry.title)}</h2><ul>${entry.notes.map(note=>`<li>${escape(note)}</li>`).join('')}</ul></section>`).join('')}<a class="sy-changelog-link" href="https://github.com/yurisatelite/quedaco/releases" target="_blank" rel="noopener">Ver no GitHub</a></div>`;
+  const DialogV2=foundry.applications.api.DialogV2;
+  const dialog=new DialogV2({classes:['sy-changelog'],window:{title:'QUEDAÇO — Novidades'},position:{width:520},content,buttons:[{action:'close',label:'Fechar',default:true}]});
+  dialog.addEventListener('close',()=>{void game.settings.set(MODULE_ID,LAST_SEEN_VERSION,current);},{once:true});
+  dialog.render({force:true});
+}
+Hooks.once('init',()=>{registerBranding();registerLibrarySettings(game,()=>{if(app?.rendered)app.render(false);});game.settings.register(MODULE_ID,LAST_SEEN_VERSION,{scope:'client',config:false,type:String,default:''});});
+Hooks.once('ready',()=>{
+  const module=game.modules.get(MODULE_ID);module.api={open:openCreator,openCampaign:()=>openCreator('npcs')};void loadBranding();
+  const current=String(module.version??''),seen=String(game.settings.get(MODULE_ID,LAST_SEEN_VERSION)??'');
+  if(seen!==current&&isNewer(current,seen)){const fresh=entriesSince(CHANGELOG,seen);if(fresh.length)showChangelog(fresh,current);}
+});
 Hooks.on('renderActorDirectory',(application,html)=>{
   const root=html instanceof HTMLElement?html:html?.[0];if(!root||root.querySelector('[data-yuri-creator]'))return;
   const button=document.createElement('button');button.type='button';button.dataset.yuriCreator='';button.className='sy-launch';button.textContent='QUEDAÇO · Criar personagem';button.addEventListener('click',()=>openCreator('characters'));

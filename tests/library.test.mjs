@@ -64,6 +64,8 @@ test('GM sharing exposes only the chosen entries to players',async()=>{
 });
 test('region and city navigation produces working breadcrumbs; no image or scene import',async()=>{
   const library=new CampaignLibrary({user:{isGM:true}},{items:[]});
+  assert.doesNotMatch(library.render('map'),/data-map-viewport/);
+  assert.match(library.render('map'),/Configure “Imagem do mapa de Opath”/);
   await library.action('lib-region','mirmir');assert.match(library.render('map'),/Ir à capital: Kravokia/);
   await library.action('lib-place','kravokia');const html=library.render('map');assert.match(html,/data-id="mirmir"/);assert.match(html,/Kravokia/);assert.doesNotMatch(html,/<img/);
   await library.action('lib-map','scenes');assert.match(library.render('map'),/seleção manual/);
@@ -88,6 +90,26 @@ test('imagens de região e local ficam em settings separados e aparecem nos cart
   await library.action('lib-place','kravokia');
   assert.match(library.render('map'),/kravokia\.webp/);
 });
+test('mapa configurado usa visor único, foca região e abre detalhe de cidade',async()=>{
+  const store={opathMapImage:'worlds/teste/opath.webp',regionImages:{mirmir:'worlds/teste/mirmir.webp'},placeImages:{},sharedContent:{areas:['map'],map:['mirmir'],monsters:[],items:[],npcs:[]}};
+  const settings={get:(_module,key)=>store[key],set:async(_module,key,value)=>{store[key]=value;}};
+  const gm=new CampaignLibrary({user:{isGM:true},settings,actors:[],scenes:[]},{items:[]});
+  assert.match(gm.render('map'),/data-map-viewport/);
+  assert.match(gm.render('map'),/data-op="lib-map-focus" data-id="mirmir"/);
+  await gm.action('lib-map-focus','mirmir',{viewW:800,viewH:500});
+  assert.equal(gm.state.map.focus,'mirmir');
+  assert.match(gm.render('map'),/mirmir\.webp/);
+  assert.match(gm.render('map'),/data-op="lib-place" data-id="kravokia"/);
+  await gm.action('lib-place','kravokia');
+  assert.match(gm.render('map'),/Taverna do Morcego Perneta/);
+
+  const player=new CampaignLibrary({user:{isGM:false},settings,actors:[],scenes:[]},{items:[]});
+  const playerMap=player.render('map',true);
+  assert.match(playerMap,/data-id="mirmir"/);
+  assert.doesNotMatch(playerMap,/data-id="huma"/);
+  await player.action('lib-map-focus','huma',{viewW:800,viewH:500});
+  assert.equal(player.state.map.focus,null);
+});
 test('filtro de monstros usa OU na faceta e E entre facetas',()=>{
   const entry={creatureType:'Fera',role:'Complexo · Atirador, Bruto',movement:['terrestrial','aerial'],nd:6,status:'found'};
   assert.equal(monsterMatches(entry,{tipo:['Fera'],papel:['Defensor','Atirador'],desloc:['aerial']}),true);
@@ -106,4 +128,70 @@ test('mensagem de candidato de outro tipo permanece legível',()=>{
   const html=library.render('monsters');
   assert.match(html,/Há documento com esse nome, mas de outro tipo de ficha/);
   assert.doesNotMatch(html,/com\?/);
+});
+test('monstros usam imagem inteira e facetas recolhíveis preservam seleção',()=>{
+  const library=new CampaignLibrary({user:{isGM:true},actors:[]},{items:[]});
+  let html=library.render('monsters');
+  assert.match(html,/sy-card-figure-full/);
+  assert.match(html,/<details class="sy-facet"/);
+  assert.doesNotMatch(html,/<fieldset/);
+  library.state.monsterFacets.papel=['Atirador'];
+  html=library.render('monsters');
+  assert.match(html,/data-monster-facet-group="papel" open/);
+  assert.match(html,/data-monster-facet="papel" value="Atirador" checked/);
+  assert.match(html,/Papel<span class="sy-facet-count"> \(1\)<\/span>/);
+});
+test('itens usam miniatura compacta e Imbuir fica em área própria',()=>{
+  const store={areas:['imbue'],map:[],monsters:[],items:[],npcs:[]};
+  const settings={get:(_module,key)=>key==='sharedContent'?store:''};
+  const gm=new CampaignLibrary({user:{isGM:true},settings},{items:[]});
+  const items=gm.render('items');
+  assert.match(items,/sy-library-thumb/);
+  assert.doesNotMatch(items,/Montar item modificado/);
+  assert.doesNotMatch(items,/sy-card-figure-compact/);
+  assert.match(gm.render('imbue'),/Montar item modificado/);
+  assert.match(gm.render('imbue'),/Aba Imbuir visível aos jogadores/);
+  const player=new CampaignLibrary({user:{isGM:false},settings},{items:[]});
+  const readonly=player.render('imbue',true);
+  assert.match(readonly,/O que é imbuir/);
+  assert.doesNotMatch(readonly,/Montar item modificado/);
+});
+test('NPC detectado oferece edição direta e protege Actor com dono jogador',async()=>{
+  const root={id:'root',name:'🤖 Criados pela IA'},folder={id:'npcs',name:'NPCs',folder:root};
+  const makeActor=(id,hasPlayerOwner=false)=>({id,uuid:`Actor.${id}`,name:id==='a'?'Guia de Kravokia':'Companheiro',type:'character',folder,flags:{},hasPlayerOwner,
+    async update(change){const value=change['flags.quedaco.npc'];if(value)this.flags={quedaco:{npc:value}};},sheet:{render(){}}});
+  const first=makeActor('a'),owned=makeActor('b',true),library=new CampaignLibrary({user:{isGM:true},actors:[first,owned]},{items:[]});
+  const html=library.render('npcs');
+  assert.match(html,/Gerado pela macro · Kravokia/);
+  assert.match(html,/data-op="lib-npc-edit" data-id="a"/);
+  assert.match(html,/data-op="lib-npc-delete" data-id="a"/);
+  assert.doesNotMatch(html,/data-op="lib-npc-delete" data-id="b"/);
+  assert.doesNotMatch(html,/Escolha um Actor/);
+  await library.action('lib-npc-edit','a');
+  assert.equal(first.flags.quedaco.npc.placeId,'kravokia');
+  assert.equal(library.state.npcActor,'a');
+});
+test('exclusão de NPC confirma, limpa o editor e recusa Actor de jogador',async()=>{
+  let deleted=false;
+  const actor={id:'npc',uuid:'Actor.npc',name:'NPC temporário',type:'character',flags:{quedaco:{npc:{role:'extra',placeId:'',active:false,shop:{stock:[]}}}},hasPlayerOwner:false,async delete(){deleted=true;}};
+  const owned={...actor,id:'pc',uuid:'Actor.pc',name:'Personagem',hasPlayerOwner:true};
+  const previousFoundry=globalThis.foundry;
+  globalThis.foundry={applications:{api:{DialogV2:{confirm:async()=>true}}}};
+  try{
+    const library=new CampaignLibrary({user:{isGM:true},actors:[actor,owned]},{items:[]});library.state.npcActor='npc';
+    await library.action('lib-npc-delete','npc');
+    assert.equal(deleted,true);assert.equal(library.state.npcActor,null);
+    await assert.rejects(library.action('lib-npc-delete','pc'),/pertence a um jogador/);
+  }finally{globalThis.foundry=previousFoundry;}
+});
+test('filtro de NPC por local usa local manual ou inferido',()=>{
+  const flag=placeId=>({quedaco:{npc:{role:'extra',placeId,active:false,note:'',shop:{stock:[]}}}});
+  const actors=[
+    {id:'k',uuid:'Actor.k',name:'Morador de Kravokia',type:'character',flags:flag('kravokia')},
+    {id:'f',uuid:'Actor.f',name:'Morador da Foice',type:'character',flags:flag('foice')},
+    {id:'i',uuid:'Actor.i',name:'Guia de Kravokia',type:'character',flags:{},folder:{id:'npcs',name:'NPCs',folder:{id:'root',name:'🤖 Criados pela IA'}}}
+  ];
+  const library=new CampaignLibrary({user:{isGM:true},actors},{items:[]});library.state.npcPlaceFilter='kravokia';
+  const html=library.render('npcs');
+  assert.match(html,/Morador de Kravokia/);assert.match(html,/Guia de Kravokia/);assert.doesNotMatch(html,/Morador da Foice/);
 });

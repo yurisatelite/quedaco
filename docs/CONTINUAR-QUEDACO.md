@@ -4,7 +4,7 @@ Atualizado em 09/09/2026. Este é o ponto de entrada; não releia toda a convers
 
 ## Pedido atual do Yuri
 
-Separar pesquisa de implementação para reduzir repetição e consumo de contexto. Usar o cruzamento já registrado, implementar em etapas curtas e manter este documento atualizado. Nesta rodada foram feitas leitura, conferência pontual e documentação; nenhum código funcional ou release foi alterado.
+Separar pesquisa de implementação para reduzir repetição e consumo de contexto. Usar o cruzamento já registrado, implementar em etapas curtas e manter este documento atualizado.
 
 QUEDAÇO é um painel de auxílio ao mestre. A criação de personagens é uma área dele.
 
@@ -17,9 +17,9 @@ Os dois acessos devem reutilizar a mesma janela e preservar o personagem em elab
 
 ## Estado comprovado localmente
 
-- Pasta: `E:/CODEX-RPG`. Tag de referência anterior: `v0.4.8` (`4723271`).
-- Manifesto e package.json: **0.4.9** preparados localmente. Foundry 13 build 351 / Skyfall 1.0.1 são o ambiente confirmado anteriormente.
-- **65 testes passaram em 09/09/2026.** São testes locais; não demonstram funcionamento completo da ficha nativa.
+- Pasta: `E:/CODEX-RPG`. Tag de referência anterior: `v0.4.9` (`1895e13`).
+- Manifesto e package.json: **0.4.10** preparados localmente. Foundry 13 build 351 / Skyfall 1.0.1 são o ambiente confirmado anteriormente.
+- **80 testes passaram em 09/09/2026.** São testes locais; não demonstram funcionamento completo da ficha nativa.
 - O handoff de Claude informa que 0.4.1 e 0.4.2 foram publicadas e 0.4.0 ficou em draft. Essa publicação e a versão instalada no servidor **não foram verificadas novamente nesta rodada**. Não publicar o draft antigo 0.4.0.
 - Mundo remoto oficial: **Skyfall RPG**, em `https://yurisatelite2026.foundryserver.com/game`.
 - Manifesto de atualização: `https://github.com/yurisatelite/quedaco/releases/latest/download/module.json`.
@@ -98,6 +98,17 @@ recarregam o painel, e NPCs `character` nas pastas da macro são detectados com 
 derivado da pasta regional. `npm test` passou com 65 testes e o pacote foi gerado.
 Ainda falta a confirmação visual do Yuri no Foundry.
 
+**Registro — T15, T14 Fase 1, T16 e B5–B8 concluídas localmente (0.4.10, 09/09/2026):** cada
+usuário recebe uma caixinha com as novidades ainda não vistas, gravada somente ao
+fechar. O mapa configurado passou a usar um visor único com pan, zoom no cursor,
+reenquadramento, pinos de região e cidade, breadcrumb e detalhes ligados às cenas.
+Sem imagem de Opath, as listas anteriores continuam disponíveis. A Fase 2 do mapa
+permanece reservada. NPCs detectados agora podem ser adotados, editados e excluídos
+diretamente, com inferência e filtro de local; Actors com dono jogador ficam protegidos.
+Monstros usam imagem inteira e facetas recolhíveis, Itens recuperam a miniatura pequena,
+e Imbuir virou uma área própria. `npm test` passou com 80 testes; falta validação visual
+na mesa.
+
 1. **Validar 0.4.4 na mesa.** Esta versão corrige `openCreator` para sempre abrir a área solicitada, remove `onChange` duplicado do controle de cena, inclui seleção de trilha de reserva nos níveis 2 e 7, permite a mesma trilha duas vezes no plano e preserva/atribui `path-01` e `path-02` por UUID do compêndio. Os testes agora cobrem ambas as formas de trilha; falta confirmar no Actor real.
 2. **Acessos e permissões.** O botão lateral já existe; verificar sua posição e o hook no Foundry 13. Aplicar a matriz de acesso acima, inclusive nos manipuladores.
 3. **Progressão nativa, especialmente trilhas.** Criar ficha nível ≥3 e nível ≥7 com trilha; abrir a ficha e verificar níveis 2..N, primeira trilha, trilha avançada e segunda trilha. Não criar Actor oficial sem autorização expressa.
@@ -126,4 +137,4 @@ Ao encerrar, informar: etapa concluída, testes, validação real no Foundry, pe
 
 ## Prompt para colar em outra IA
 
-> Continue o QUEDAÇO em E:/CODEX-RPG. Leia primeiro docs/CONTINUAR-QUEDACO.md e siga a fila curta, começando pelos acessos e permissões. Aproveite os dados e índices existentes; não refaça o cruzamento completo do livro. Preserve o trabalho do Claude na versão local 0.4.2. O painel lateral é exclusivo do mestre; Atores → Criar personagem abre a criação na mesma janela, com todas as abas para GM e só criação para jogadores. Trabalhe uma etapa por vez, registre evidências e pendências no documento. Não altere Actors oficiais nem publique uma versão antiga. Se não tiver acesso à pasta, peça este documento e somente os arquivos necessários à etapa atual.
+> Continue o QUEDAÇO em E:/CODEX-RPG. Leia primeiro docs/CONTINUAR-QUEDACO.md e siga a fila curta. Aproveite os dados e índices existentes; não refaça o cruzamento completo do livro. Preserve a versão 0.4.10 e seus testes. O painel lateral é exclusivo do mestre; Atores → Criar personagem abre a criação na mesma janela. Trabalhe uma etapa por vez, registre evidências e pendências no documento. Não altere Actors oficiais nem publique uma versão antiga. Se não tiver acesso à pasta, peça este documento e somente os arquivos necessários à etapa atual.
