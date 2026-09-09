@@ -1,4 +1,4 @@
-import { ABILITIES, wallet } from './rules.mjs';
+import { ABILITIES, wallet, walletTotal } from './rules.mjs';
 export const MODULE_ID='quedaco';
 /** Adapter for the inspected Skyfall 1.0.1 schema. Never reimplements its effects. */
 export function assertCompatible(game) {
@@ -45,13 +45,38 @@ export async function addDocument(actor, document) {
   if (!created?.length) throw Error('O sistema não adicionou o conteúdo; revise as escolhas na ficha.');
   return created[0];
 }
-function embeddedSource(document,originId=null,level=null) {
+export function embeddedSource(document,originId=null,level=null) {
   const data=document.toObject();delete data._id;
   data._stats={...data._stats,compendiumSource:document.uuid};
   // Trilhas recebem o slot (path-01/path-02) do próprio ciclo de criação do Skyfall.
   if (originId&&document.type!=='path') data.system.origin=[originId];
   if(document.type==='class') {const target=Math.max(1,Math.min(12,Number(level)||1));data.system.level=target;data.system.initial=true;data.system.origin=classOrigins(target);data.system.hitDie.value=target;}
   return data;
+}
+export async function purchaseItem(buyer,merchantActor,entry,qty=1,resolveDocument=globalThis.fromUuid){
+  if(!buyer?.isOwner)throw Error('Você não tem acesso de edição ao comprador.');
+  if(!Number.isInteger(qty)||qty<1)throw Error('A quantidade deve ser um inteiro positivo.');
+  if(!String(entry?.uuid??'').startsWith('Compendium.'))throw Error('A loja só entrega itens vindos de compêndio.');
+  const document=await resolveDocument(entry.uuid);
+  if(!document)throw Error('O item do compêndio não foi encontrado.');
+  const shop=merchantActor?.flags?.[MODULE_ID]?.npc?.shop??{};
+  const stock=Array.from(shop.stock??[]),stockIndex=stock.findIndex(item=>item.uuid===entry.uuid);
+  const stockEntry=stockIndex>=0?stock[stockIndex]:entry;
+  if(Number.isFinite(stockEntry.qty)&&stockEntry.qty<qty)throw Error('A loja não possui essa quantidade.');
+  const basePrice=Number(document.system?.price??0),markup=Number(shop.markup??1);
+  const unit=entry.price==null?Math.round(basePrice*(Number.isFinite(markup)&&markup>0?markup:1)):Number(entry.price);
+  if(!Number.isSafeInteger(unit)||unit<0)throw Error('O preço deste item é inválido.');
+  const total=unit*qty,current=walletTotal(buyer.system?.currency??{});
+  if(current<total)throw Error('Moeda insuficiente.');
+  const source=embeddedSource(document);source.system={...source.system,quantity:qty};
+  await buyer.update({'system.currency':wallet(current-total)});
+  try{await buyer.createEmbeddedDocuments('Item',[source]);}
+  catch(error){await buyer.update({'system.currency':wallet(current)});throw error;}
+  if(stockIndex>=0&&Number.isFinite(stockEntry.qty)){
+    stock[stockIndex]={...stockEntry,qty:stockEntry.qty-qty};
+    await merchantActor.update({[`flags.${MODULE_ID}.npc.shop.stock`]:stock});
+  }
+  return {unit,total,remaining:current-total,source};
 }
 /** O _preCreate da classe reescreve origin para ['class-01']; refixa a lista completa por update. */
 export async function finalizeClassProgression(actor,targetLevel) {

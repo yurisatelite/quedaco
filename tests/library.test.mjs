@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {REGIONS,PLACES,BEYOND} from '../src/book-world.mjs';
 import {MONSTERS} from '../src/book-monsters.mjs';
-import {BOOK_ITEMS,CampaignLibrary,findMatches,monsterAudit} from '../src/library.mjs';
+import {BOOK_ITEMS,CampaignLibrary,DEFAULT_GENERATOR_MACRO,findMatches,generatorMacroName,itemFallback,monsterAudit,monsterCategory,monsterMatches} from '../src/library.mjs';
 import {IMBUE_COSTS} from '../src/book-items.mjs';
 
 test('every region, capital and local breadcrumb resolves within the geographic index',()=>{
@@ -67,4 +67,43 @@ test('region and city navigation produces working breadcrumbs; no image or scene
   await library.action('lib-region','mirmir');assert.match(library.render('map'),/Ir à capital: Kravokia/);
   await library.action('lib-place','kravokia');const html=library.render('map');assert.match(html,/data-id="mirmir"/);assert.match(html,/Kravokia/);assert.doesNotMatch(html,/<img/);
   await library.action('lib-map','scenes');assert.match(library.render('map'),/seleção manual/);
+});
+test('biblioteca esconde ataque desarmado e fornece imagens padrão por categoria',()=>{
+  const library=new CampaignLibrary({user:{isGM:true}},{items:[]});
+  assert.doesNotMatch(library.render('items'),/>Ataque desarmado</);
+  assert.match(itemFallback({category:'Munição'}),/ammunition/);
+  assert.match(itemFallback({category:'Consumíveis'}),/potions/);
+  assert.match(itemFallback({category:'Armas marciais'}),/sword/);
+  assert.match(library.render('monsters'),/icons\/svg\/mystery-man\.svg/);
+});
+test('imagens de região e local ficam em settings separados e aparecem nos cartões',async()=>{
+  const store={regionImages:{},placeImages:{}};
+  const settings={get:(_m,key)=>store[key]??{},set:async(_m,key,value)=>{store[key]=value;}};
+  const library=new CampaignLibrary({user:{isGM:true},settings},{items:[]});
+  await library.setRegionImage('mirmir','worlds/teste/mirmir.webp');
+  await library.setPlaceImage('kravokia','worlds/teste/kravokia.webp');
+  assert.equal(store.regionImages.mirmir,'worlds/teste/mirmir.webp');
+  assert.equal(store.placeImages.kravokia,'worlds/teste/kravokia.webp');
+  assert.match(library.render('map'),/mirmir\.webp/);
+  await library.action('lib-place','kravokia');
+  assert.match(library.render('map'),/kravokia\.webp/);
+});
+test('filtro de monstros usa OU na faceta e E entre facetas',()=>{
+  const entry={creatureType:'Fera',role:'Complexo · Atirador, Bruto',movement:['terrestrial','aerial'],nd:6,status:'found'};
+  assert.equal(monsterMatches(entry,{tipo:['Fera'],papel:['Defensor','Atirador'],desloc:['aerial']}),true);
+  assert.equal(monsterMatches(entry,{tipo:['Fera'],papel:['Defensor'],desloc:[]}),false);
+  assert.equal(monsterMatches(entry,{tipo:[],papel:[],porte:[],desloc:[],nd:[],conf:[]}),true);
+  assert.equal(monsterMatches(entry,{tipo:['Fera'],nd:['ND 1–4']}),false);
+  assert.match(monsterCategory(entry),/tipo:Fera\|papel:Atirador\|papel:Bruto\|porte:Complexo\|desloc:terrestrial\|desloc:aerial\|nd:ND 5–8\|conf:found/);
+});
+test('nome da macro geradora usa setting e fallback seguro',()=>{
+  assert.equal(generatorMacroName({get:()=>''}),DEFAULT_GENERATOR_MACRO);
+  assert.equal(generatorMacroName({get:()=> 'Minha macro'}),'Minha macro');
+});
+test('mensagem de candidato de outro tipo permanece legível',()=>{
+  const library=new CampaignLibrary({user:{isGM:true},settings:{get:()=>({areas:[],map:[],monsters:[],items:[],npcs:[]})},actors:[]},{items:[]});
+  library.actors=[{name:'Kraken',type:'character',uuid:'Actor.kraken',source:'Mundo'}];library.loaded=true;
+  const html=library.render('monsters');
+  assert.match(html,/Há documento com esse nome, mas de outro tipo de ficha/);
+  assert.doesNotMatch(html,/com\?/);
 });

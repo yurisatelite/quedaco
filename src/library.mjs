@@ -2,7 +2,9 @@ import {REGIONS,PLACES,BEYOND} from './book-world.mjs';
 import {BASE_ITEMS,MODIFICATION_GUIDES,SIGIL_COSTS,IMBUE_COSTS} from './book-items.mjs';
 import {SIGILS} from './book-sigils.mjs';
 import {MONSTERS} from './book-monsters.mjs';
-import {MODULE_ID} from './adapter.mjs';
+import {MODULE_ID,purchaseItem} from './adapter.mjs';
+import {NPC_LINK_TYPES,NPC_ROLES,initialNpcFlag,isGeneratedNpc,itemTypeForCategory,normalizeNpcLinks,npcFlag,npcLinkSummary,npcVisibility} from './npcs.mjs';
+import {modifiedItemSheet} from './item-mod.mjs';
 
 export const BOOK_ITEMS=[...BASE_ITEMS,...SIGILS];
 
@@ -10,14 +12,28 @@ export const BOOK_ITEMS=[...BASE_ITEMS,...SIGILS];
 export const SHARED_KEY='sharedContent';
 export const SCENES_KEY='placeScenes';
 export const PLACE_IMG_KEY='placeImages';
+export const REGION_IMG_KEY='regionImages';
 export const MAP_IMAGE_KEY='opathMapImage';
-export const emptyShare=()=>({areas:[],map:[],monsters:[],items:[]});
+export const ITEM_COMPENDIUM_KEY='itemCompendium';
+export const NPC_LINKS_KEY='npcLinks';
+export const NPC_GRAPH_KEY='npcGraph';
+export const GENERATOR_MACRO_KEY='generatorMacro';
+export const DEFAULT_GENERATOR_MACRO='Skyfall — Criador de Conteúdo';
+export const emptyShare=()=>({areas:[],map:[],monsters:[],items:[],npcs:[]});
+export const generatorMacroName=settings=>String(settings?.get?.(MODULE_ID,GENERATOR_MACRO_KEY)||DEFAULT_GENERATOR_MACRO);
 export function registerLibrarySettings(game,onChange){
   game.settings.register(MODULE_ID,SHARED_KEY,{scope:'world',config:false,type:Object,default:emptyShare(),onChange});
   game.settings.register(MODULE_ID,SCENES_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
   game.settings.register(MODULE_ID,PLACE_IMG_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
+  game.settings.register(MODULE_ID,REGION_IMG_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
   game.settings.register(MODULE_ID,MAP_IMAGE_KEY,{scope:'world',config:true,type:String,default:'',filePicker:'image',
     name:'Imagem do mapa de Opath',hint:'Arquivo no armazenamento da mesa (não acompanha o módulo). Aparece no topo do índice do Mapa.',onChange});
+  game.settings.register(MODULE_ID,ITEM_COMPENDIUM_KEY,{scope:'world',config:true,type:String,default:'',
+    name:'Compêndio de itens do QUEDAÇO',hint:'Collection do compêndio onde o mestre cria itens tabelados para lojas. Deixe vazio para desabilitar a criação.',onChange});
+  game.settings.register(MODULE_ID,NPC_LINKS_KEY,{scope:'world',config:false,type:Array,default:[],onChange});
+  game.settings.register(MODULE_ID,NPC_GRAPH_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
+  game.settings.register(MODULE_ID,GENERATOR_MACRO_KEY,{scope:'world',config:true,type:String,default:DEFAULT_GENERATOR_MACRO,
+    name:'Macro geradora de conteúdo',hint:'Nome da macro do mestre que o QUEDAÇO abre quando uma ameaça não existe na biblioteca.',onChange});
 }
 const e=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const nameKey=value=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9+]+/g,' ').trim().replace(/\s+/g,' ');
@@ -26,7 +42,17 @@ const currency=value=>`T$ ${Number(value).toLocaleString('pt-BR')}`;
 const button=(op,id,label)=>`<button data-op="lib-${op}" data-id="${e(id)}">${e(label)}</button>`;
 const chips=values=>`<div class="sy-library-chips">${values.filter(v=>v!==null&&v!==undefined&&v!=='').map(v=>`<span>${e(v)}</span>`).join('')}</div>`;
 const thumb=src=>src&&!/mystery-man|item-bag|svg\/(mystery|blank|item)/.test(String(src))?`<img class="sy-library-thumb" src="${e(src)}" alt="" loading="lazy">`:'';
+const cardFigure=(src,name,size='wide')=>src?`<div class="sy-card-figure sy-card-figure-${e(size)}"><img src="${e(src)}" alt="${e(name)}" loading="lazy"></div>`:'';
 const typesFor=entry=>entry.category==='Sigilos'?['sigil']:entry.category?.startsWith('Armas')?['weapon']:entry.category==='Armaduras e escudos'?['armor','weapon']:entry.category==='Vestimentas'?['clothing']:entry.category==='Consumíveis'?['consumable']:['weapon','armor','clothing','equipment','consumable','loot','seal'];
+export function itemFallback(entry){
+  const category=String(entry?.category??'');
+  if(category==='Munição')return 'icons/weapons/ammunition/arrow-head-war-flight.webp';
+  if(category.startsWith('Armas'))return 'icons/svg/sword.svg';
+  if(category==='Armaduras e escudos')return 'icons/equipment/chest/breastplate-layered-steel.webp';
+  if(category==='Vestimentas')return 'icons/equipment/back/cloak-heavy-fur-blue.webp';
+  if(category==='Consumíveis')return 'icons/consumables/potions/bottle-bulb-corked-glowing-red.webp';
+  return 'icons/containers/bags/pack-leather-white-tan.webp';
+}
 
 /** Exact normalized names and explicit aliases only; a match is not a mechanical audit. */
 export function findMatches(entry,documents,types){
@@ -40,14 +66,25 @@ export function monsterAudit(documents,failures=[],loaded=true){
     return {...entry,matches,candidates,status:matches.length?'found':!loaded||failures.length?'unverified':'missing'};
   });
 }
+const monsterRoles=entry=>(String(entry.role).split('·')[1]??'').split(',').map(value=>value.trim()).filter(Boolean);
+const monsterTier=entry=>String(entry.role).split('·')[0].trim();
+const monsterNdBand=nd=>nd<=4?'ND 1–4':nd<=8?'ND 5–8':nd<=12?'ND 9–12':'ND 13+';
+export function monsterFacetValues(entry){return {tipo:[entry.creatureType],papel:monsterRoles(entry),porte:[monsterTier(entry)],desloc:Array.from(entry.movement??[]),nd:[monsterNdBand(entry.nd)],conf:entry.status?[entry.status]:[]};}
+export function monsterMatches(entry,filters={}){
+  const values=monsterFacetValues(entry);
+  return Object.entries(filters).every(([facet,selected])=>!Array.isArray(selected)||!selected.length||selected.some(value=>(values[facet]??[]).includes(value)));
+}
+export function monsterCategory(entry){return Object.entries(monsterFacetValues(entry)).flatMap(([facet,values])=>values.map(value=>`${facet}:${value}`)).join('|');}
 
 export class CampaignLibrary {
-  constructor(game,catalog){this.game=game;this.catalog=catalog;this.actors=[];this.failures=[];this.loaded=false;this.state={mapView:'regions',region:null,place:null};}
+  constructor(game,catalog){this.game=game;this.catalog=catalog;this.actors=[];this.failures=[];this.loaded=false;this.state={mapView:'regions',region:null,place:null,npcRole:'all',npcLink:'all',npcActor:null};this.modBuilder={baseId:'',materialId:'',sigils:[]};}
   assertGM(){if(!this.game.user?.isGM)throw Error('Esta área está disponível somente para o mestre.');}
   get shared(){try{return {...emptyShare(),...(this.game.settings?.get(MODULE_ID,SHARED_KEY)||{})};}catch{return emptyShare();}}
   get placeScenes(){try{return {...(this.game.settings?.get(MODULE_ID,SCENES_KEY)||{})};}catch{return {};}}
   get placeImages(){try{return {...(this.game.settings?.get(MODULE_ID,PLACE_IMG_KEY)||{})};}catch{return {};}}
+  get regionImages(){try{return {...(this.game.settings?.get(MODULE_ID,REGION_IMG_KEY)||{})};}catch{return {};}}
   get mapImage(){try{return String(this.game.settings?.get(MODULE_ID,MAP_IMAGE_KEY)||'');}catch{return '';}}
+  get npcLinks(){try{return normalizeNpcLinks(this.game.settings?.get(MODULE_ID,NPC_LINKS_KEY)||[]);}catch{return [];}}
   async setPlaceScene(placeId,sceneId){
     this.assertGM();if(!placeId)return;
     const current={...(this.game.settings.get(MODULE_ID,SCENES_KEY)||{})};
@@ -60,9 +97,15 @@ export class CampaignLibrary {
     if(!path)delete current[placeId];else current[placeId]=String(path);
     await this.game.settings.set(MODULE_ID,PLACE_IMG_KEY,current);
   }
+  async setRegionImage(regionId,path){
+    this.assertGM();if(!regionId||!REGIONS.some(region=>region.id===regionId))return;
+    const current={...(this.game.settings.get(MODULE_ID,REGION_IMG_KEY)||{})};
+    if(!path)delete current[regionId];else current[regionId]=String(path);
+    await this.game.settings.set(MODULE_ID,REGION_IMG_KEY,current);
+  }
   async setShare(bucket,value){
     this.assertGM();
-    if(!['areas','map','monsters','items'].includes(bucket)||!value)return;
+    if(!['areas','map','monsters','items','npcs'].includes(bucket)||!value)return;
     const current={...emptyShare(),...(this.game.settings.get(MODULE_ID,SHARED_KEY)||{})};
     const list=Array.isArray(current[bucket])?[...current[bucket]]:[];
     const i=list.indexOf(value);if(i>=0)list.splice(i,1);else list.push(value);
@@ -95,8 +138,8 @@ export class CampaignLibrary {
     if(!document||document.visible===false)throw Error('Documento indisponível.');
     document.sheet.render(true);
   }
-  async action(op,id){
-    const openOps=['lib-map','lib-region','lib-place','lib-open-scene'];
+  async action(op,id,data={}){
+    const openOps=['lib-map','lib-region','lib-place','lib-open-scene','lib-npc-buy'];
     if(!openOps.includes(op))this.assertGM();
     if(op==='lib-map'){this.state={mapView:id,region:null,place:null};}
     if(op==='lib-region'){if(!REGIONS.some(i=>i.id===id))return;this.state={mapView:'regions',region:id,place:null};}
@@ -108,14 +151,110 @@ export class CampaignLibrary {
     if(op==='lib-scene'){const idx=String(id).indexOf(':');await this.setPlaceScene(String(id).slice(0,idx),String(id).slice(idx+1));}
     if(op==='lib-open-scene'){const scene=this.game.scenes?.get?.(id);if(scene)scene.view?.();}
     if(op==='lib-activate-scene'){this.assertGM();const scene=this.game.scenes?.get?.(id);if(scene)await scene.activate?.();}
+    if(op==='lib-npc-edit')this.state.npcActor=id||null;
+    if(op==='lib-npc-filter')this.state.npcRole=NPC_ROLES[id]?id:'all';
+    if(op==='lib-npc-link-filter')this.state.npcLink=NPC_LINK_TYPES[id]?id:'all';
+    if(op==='lib-npc-mark')await this.markNpc(id);
+    if(op==='lib-npc-save')await this.saveNpc(id,data);
+    if(op==='lib-npc-stock-add')await this.updateStock(id,data);
+    if(op==='lib-npc-stock-remove'){const [actorId,...uuid]=String(id).split('|');await this.updateStock(actorId,{remove:uuid.join('|')});}
+    if(op==='lib-npc-create-item')await this.createTableItem(id,data);
+    if(op==='lib-npc-link-add')await this.addNpcLink(id,data);
+    if(op==='lib-npc-link-remove')await this.removeNpcLink(Number(id));
+    if(op==='lib-mod-add'){
+      const sigil=SIGILS.find(item=>item.id===id);if(!sigil)throw Error('Sigilo não encontrado.');
+      const next=[...this.modBuilder.sigils,{id:sigil.id,name:sigil.name,grade:sigil.grade,slot:sigil.slot,imbue:false}];modifiedItemSheet(this.modBase(),this.modMaterial(),next);this.modBuilder.sigils=next;
+    }
+    if(op==='lib-mod-remove')this.modBuilder.sigils.splice(Number(id),1);
+    if(op==='lib-mod-imbue'){const index=Number(id);if(this.modBuilder.sigils[index])this.modBuilder.sigils[index]={...this.modBuilder.sigils[index],imbue:!this.modBuilder.sigils[index].imbue};}
+    if(op==='lib-mod-copy'){const sheet=this.modSheet();if(globalThis.navigator?.clipboard)await navigator.clipboard.writeText(sheet.text);}
+    if(op==='lib-generate-monster'){
+      const name=generatorMacroName(this.game.settings),macro=this.game.macros?.getName?.(name);
+      if(macro)await macro.execute();else ui.notifications.warn(`Macro '${name}' não encontrada. Configure o nome em Configurações do Módulo → QUEDAÇO.`);
+    }
+    if(op==='lib-npc-open'){const actor=this.actorById(id);actor?.sheet?.render(true);}
+    if(op==='lib-npc-active'){const actor=this.actorById(id),flag=npcFlag(actor);if(actor&&flag)await actor.update({[`flags.${MODULE_ID}.npc.active`]:!flag.active});}
+    if(op==='lib-npc-buy'){
+      const [actorId,...uuidParts]=String(id).split('|'),uuid=uuidParts.join('|'),actor=this.actorById(actorId),flag=npcFlag(actor),shared=this.shared.npcs.includes(actor?.uuid);
+      if(!actor||npcVisibility({...flag,shared,gm:this.game.user?.isGM})!=='shop')throw Error('Esta loja não está disponível.');
+      const entry=flag.shop?.stock?.find(item=>item.uuid===uuid);if(!entry)throw Error('Item fora do estoque.');
+      const buyer=this.game.user?.character;if(!buyer)throw Error('Escolha um personagem para seu usuário antes de comprar.');
+      await purchaseItem(buyer,actor,entry,Math.max(1,Number(data.qty)||1));
+    }
   }
+  actorById(id){return Array.from(this.game.actors??[]).find(actor=>actor.id===id||actor.uuid===id);}
+  npcActors(){return Array.from(this.game.actors??[]).filter(isGeneratedNpc);}
+  async saveNpc(actorId,data){
+    this.assertGM();const actor=this.actorById(actorId);if(!actor)throw Error('NPC não encontrado.');
+    const current=npcFlag(actor)??initialNpcFlag(actor),role=NPC_ROLES[data.role]?data.role:current.role;
+    const next={...current,role,placeId:PLACES.some(place=>place.id===data.placeId)?data.placeId:'',active:Boolean(data.active),note:String(data.note??''),shop:{...current.shop,markup:Math.max(.1,Number(data.markup)||1),note:String(data.shopNote??'')}};
+    await actor.update({[`flags.${MODULE_ID}.npc`]:next});this.state.npcActor=actor.id;
+  }
+  async markNpc(actorId){this.assertGM();const actor=this.actorById(actorId);if(!actor)throw Error('Escolha um Actor para marcar.');if(!npcFlag(actor))await actor.update({[`flags.${MODULE_ID}.npc`]:initialNpcFlag(actor)});this.state.npcActor=actor.id;}
+  async updateStock(actorId,change){
+    this.assertGM();const actor=this.actorById(actorId),flag=npcFlag(actor);if(!actor||!flag)throw Error('NPC não encontrado.');
+    const stock=Array.from(flag.shop?.stock??[]);
+    if(change.remove){const index=stock.findIndex(item=>item.uuid===change.remove);if(index>=0)stock.splice(index,1);}
+    else if(change.uuid&&String(change.uuid).startsWith('Compendium.')&&!stock.some(item=>item.uuid===change.uuid))stock.push({uuid:change.uuid,price:change.price==null?null:Math.max(0,Math.floor(change.price)),qty:change.qty==null?null:Math.max(0,Math.floor(change.qty)),note:String(change.note??'')});
+    await actor.update({[`flags.${MODULE_ID}.npc.shop.stock`]:stock});
+  }
+  async createTableItem(actorId,data){
+    this.assertGM();const collection=String(this.game.settings.get(MODULE_ID,ITEM_COMPENDIUM_KEY)||'');if(!collection)throw Error('Configure o compêndio de itens do QUEDAÇO nas Configurações do Módulo.');
+    const pack=this.game.packs?.get?.(collection)??Array.from(this.game.packs??[]).find(item=>item.collection===collection);if(!pack||pack.documentName!=='Item')throw Error('O compêndio configurado não é um compêndio de Item acessível.');
+    const name=String(data.name??'').trim(),book=BOOK_ITEMS.find(item=>nameKey(item.name)===nameKey(name));
+    const price=Math.max(0,Math.floor(data.price===''||data.price==null?Number(book?.price)||0:Number(data.price)||0)),capacity=Math.max(0,data.volume===''||data.volume==null?Number(book?.volume)||0:Number(data.volume)||0);if(!name)throw Error('Informe o nome do item.');
+    const document=await Item.create({name,type:itemTypeForCategory(data.category),img:itemFallback({category:data.category}),system:{price,quantity:1,capacity}},{pack:collection});
+    if(!document?.uuid)throw Error('O Foundry não criou o item no compêndio.');
+    await this.updateStock(actorId,{uuid:document.uuid,price:null,qty:null,note:''});return document;
+  }
+  async addNpcLink(actorId,data){
+    this.assertGM();const actor=this.actorById(actorId),target=String(data.target||data.text&&`txt:${data.text}`||'');if(!actor||!target)throw Error('Escolha ou informe o outro NPC.');
+    const links=normalizeNpcLinks([...this.npcLinks,{from:actor.uuid,to:target,type:data.type,note:data.note}]);await this.game.settings.set(MODULE_ID,NPC_LINKS_KEY,links);
+  }
+  async removeNpcLink(index){this.assertGM();const links=this.npcLinks;if(Number.isInteger(index)&&index>=0&&index<links.length){links.splice(index,1);await this.game.settings.set(MODULE_ID,NPC_LINKS_KEY,links);}}
+  modBases(){return BOOK_ITEMS.filter(item=>item.name!=='Ataque desarmado'&&!item.referenceOnly&&(item.category.startsWith('Armas')||item.category==='Armaduras e escudos'||item.category==='Vestimentas'));}
+  modBase(){return this.modBases().find(item=>item.id===this.modBuilder.baseId)??null;}
+  modMaterial(){return BOOK_ITEMS.find(item=>item.id===this.modBuilder.materialId&&item.category==='Materiais especiais'&&item.price===300)??null;}
+  modEquipment(){const base=this.modBase();if(!base)return '';if(base.category.startsWith('Armas'))return 'Arma';if(base.name.startsWith('Escudo'))return 'Escudo';if(base.category==='Armaduras e escudos')return 'Armadura';if(base.category==='Vestimentas')return 'Vestimenta';return '';}
+  modSheet(){return modifiedItemSheet(this.modBase(),this.modMaterial(),this.modBuilder.sigils);}
   render(area,readonly=false){
     if(!readonly)this.assertGM();
     else if(!this.shared.areas.includes(area))return `<main class="sy-library"><small>CONSULTA DA CAMPANHA</small><h2>${area}</h2><p class="sy-library-deferred">O mestre ainda não liberou este conteúdo.</p></main>`;
-    const titles={map:'Mapa',monsters:'Monstros',items:'Itens'};
-    return `<main class="sy-library"><small>${readonly?'LIBERADO PELO MESTRE':'CONSULTA DA CAMPANHA'}</small><h2>${titles[area]}</h2>${area==='map'?this.renderMap(readonly):area==='monsters'?this.renderMonsters(readonly):this.renderItems(readonly)}</main>`;
+    const titles={npcs:'NPCs',map:'Mapa',monsters:'Monstros',items:'Itens'};
+    const body=area==='npcs'?this.renderNpcs(readonly):area==='map'?this.renderMap(readonly):area==='monsters'?this.renderMonsters(readonly):this.renderItems(readonly);
+    return `<main class="sy-library"><small>${readonly?'LIBERADO PELO MESTRE':'CONSULTA DA CAMPANHA'}</small><h2>${titles[area]}</h2>${body}</main>`;
   }
-  card(entry,op,share=null){return `<article class="sy-library-card" data-search="${e(nameKey([entry.name,entry.kind,entry.summary,...(entry.highlights??[])].join(' ')))}" data-category="${e(entry.regionId??'')}"><small>${e(entry.kind??'Região')} · p. ${entry.page}</small><h3>${e(entry.name)}</h3><p>${e(entry.summary)}</p>${button(op,entry.id,op==='region'?'Explorar região':'Abrir local')}${share?this.shareButton(share,entry.id,'✓ Liberado','Liberar'):''}</article>`;}
+  renderNpcs(readonly=false){
+    const all=this.npcActors(),shared=this.shared.npcs;
+    const marked=all.filter(actor=>npcFlag(actor));
+    const detected=all.filter(actor=>!npcFlag(actor));
+    const linkedKeys=type=>new Set(this.npcLinks.filter(link=>type==='all'||link.type===type).flatMap(link=>[link.from,link.to]));
+    const keys=linkedKeys(this.state.npcLink);
+    const visible=(readonly?marked.filter(actor=>npcVisibility({...npcFlag(actor),shared:shared.includes(actor.uuid)})):marked.filter(actor=>this.state.npcRole==='all'||npcFlag(actor).role===this.state.npcRole)).filter(actor=>this.state.npcLink==='all'||keys.has(actor.uuid));
+    const placeName=id=>PLACES.find(place=>place.id===id)?.name||'Sem local';
+    const nameFor=key=>key.startsWith('txt:')?key.slice(4):this.actorById(key)?.name??key;
+    const stockCard=(actor,player)=>{const flag=npcFlag(actor),stock=flag.shop?.stock??[];if(flag.role!=='merchant')return '';return `<div class="sy-shop-stock">${flag.shop?.note?`<p>${e(flag.shop.note)}</p>`:''}${stock.map(item=>{const entry=this.catalog?.entry?.(item.uuid)??this.catalog?.items?.find(i=>i.uuid===item.uuid),name=entry?.name??item.uuid,price=item.price??entry?.system?.price??0;return `<article><span><strong>${e(name)}</strong><small>T$ ${e(price)}${item.qty==null?'':' · '+e(item.qty)+' restantes'}</small></span>${player?`<input type="number" min="1" value="1" aria-label="Quantidade"><button data-op="lib-npc-buy" data-id="${e(actor.id)}|${e(item.uuid)}|1">Comprar</button>`:''}</article>`;}).join('')||'<small>Estoque vazio.</small>'}</div>`;};
+    const cards=visible.map(actor=>{const flag=npcFlag(actor),mode=npcVisibility({...flag,shared:shared.includes(actor.uuid),gm:!readonly}),links=npcLinkSummary(actor.uuid,this.npcLinks,nameFor);return `<article class="sy-library-card sy-npc-card">${cardFigure(actor.img||'icons/svg/mystery-man.svg',actor.name,'compact')}${readonly?'':this.shareButton('npcs',actor.uuid,'✓ Liberado','Liberar')}<div class="sy-library-card-content"><small>${e(NPC_ROLES[flag.role])} · ${e(placeName(flag.placeId))}${flag.active?' · Ativo':' · Inativo'}</small><h3>${e(actor.name)}</h3>${links.length?`<p class="sy-npc-links">${e(links.join(' · '))}</p>`:''}${flag.note?`<p>${e(flag.note)}</p>`:''}${mode==='shop'?stockCard(actor,true):''}${readonly?'':`<div class="sy-library-tabs">${button('npc-active',actor.id,flag.active?'Desativar':'Ativar')}${button('npc-edit',actor.id,'Editar')}${button('npc-open',actor.id,'Abrir ficha')}</div>`}</div></article>`;}).join('');
+    if(readonly)return `<div class="sy-library-grid">${cards||'<p class="sy-library-deferred">Nenhum NPC está disponível agora.</p>'}</div>`;
+    const unmarked=Array.from(this.game.actors??[]).filter(actor=>!npcFlag(actor));
+    const add=`<section class="sy-library-guide sy-npc-add"><h3>Marcar um NPC existente</h3><select name="npcActor"><option value="">Escolha um Actor…</option>${unmarked.map(actor=>`<option value="${e(actor.id)}">${e(actor.name)}</option>`).join('')}</select>${button('npc-mark','','Marcar como NPC')}</section>`;
+    const filters=`<div class="sy-library-tabs">${[['all','Todos'],...Object.entries(NPC_ROLES)].map(([id,label])=>`<button data-op="lib-npc-filter" data-id="${id}" aria-current="${this.state.npcRole===id?'page':'false'}">${label}</button>`).join('')}</div><label>Filtrar por vínculo<select name="npcLinkFilter"><option value="all">Todos</option>${Object.entries(NPC_LINK_TYPES).map(([id,label])=>`<option value="${id}" ${this.state.npcLink===id?'selected':''}>${label}</option>`).join('')}</select></label>`;
+    const editor=this.renderNpcEditor(this.actorById(this.state.npcActor));
+    const detectedCards=detected.map(actor=>{const initial=initialNpcFlag(actor);return `<article class="sy-library-card">${cardFigure(actor.img||'icons/svg/mystery-man.svg',actor.name,'compact')}<div class="sy-library-card-content"><small>Detectado pela macro · ${e(placeName(initial.placeId))}</small><h3>${e(actor.name)}</h3><p>Actor ${e(actor.type)} ainda não marcado no QUEDAÇO.</p>${button('npc-mark',actor.id,'Vincular ao painel')}</div></article>`;}).join('');
+    return `<p>NPCs ligados a cidades, lojas e ao controle do mestre. Actors das pastas da macro também aparecem aqui para serem marcados.</p><div class="sy-library-share-row">${this.shareButton('areas','npcs','✓ Aba NPCs visível aos jogadores','Liberar a aba NPCs aos jogadores')}</div>${detected.length?`<h3>Detectados nas pastas da macro</h3><div class="sy-library-grid">${detectedCards}</div>`:''}${add}${filters}${editor}<div class="sy-library-grid">${cards||'<p class="sy-library-deferred">Nenhum NPC marcado nesta seção.</p>'}</div>`;
+  }
+  renderNpcEditor(actor){
+    const flag=npcFlag(actor);if(!actor||!flag)return '';
+    const stock=flag.shop?.stock??[],compendium=String(this.game.settings.get(MODULE_ID,ITEM_COMPENDIUM_KEY)||'');
+    const catalogItems=(this.catalog?.items??[]).filter(item=>String(item.uuid).startsWith('Compendium.')&&['weapon','armor','clothing','equipment','consumable','loot'].includes(item.type));
+    const marked=this.npcActors().filter(item=>npcFlag(item)&&item.uuid!==actor.uuid),links=this.npcLinks;
+    const linkRows=links.map((link,index)=>({link,index})).filter(({link})=>link.from===actor.uuid||link.to===actor.uuid).map(({link,index})=>`<div><span>${e(NPC_LINK_TYPES[link.type])} · ${e(link.from===actor.uuid?link.to:link.from)}${link.note?` · ${e(link.note)}`:''}</span>${button('npc-link-remove',String(index),'Remover')}</div>`).join('');
+    return `<section class="sy-library-detail sy-npc-editor" data-npc-editor="${e(actor.id)}"><h3>Editar · ${e(actor.name)}</h3><div class="sy-npc-form"><label>Papel<select name="npcRole">${Object.entries(NPC_ROLES).map(([id,label])=>`<option value="${id}" ${flag.role===id?'selected':''}>${label}</option>`).join('')}</select></label><label>Local<select name="npcPlace"><option value="">Sem local</option>${PLACES.map(place=>`<option value="${e(place.id)}" ${flag.placeId===place.id?'selected':''}>${e(place.name)}</option>`).join('')}</select></label><label><input type="checkbox" name="npcActive" ${flag.active?'checked':''}> Ativo na campanha</label><label>Nota<textarea name="npcNote">${e(flag.note??'')}</textarea></label><label>Margem da loja<input type="number" name="npcMarkup" min="0.1" step="0.1" value="${e(flag.shop?.markup??1)}"></label><label>Apresentação da loja<textarea name="npcShopNote">${e(flag.shop?.note??'')}</textarea></label></div>${button('npc-save',actor.id,'Salvar NPC')}<h4>Vínculos</h4><div class="sy-npc-stock">${linkRows||'<small>Nenhum vínculo.</small>'}</div><div class="sy-npc-link-add"><select name="npcLinkType">${Object.entries(NPC_LINK_TYPES).map(([id,label])=>`<option value="${id}">${label}</option>`).join('')}</select><select name="npcLinkTarget"><option value="">Outro NPC…</option>${marked.map(item=>`<option value="${e(item.uuid)}">${e(item.name)}</option>`).join('')}</select><input name="npcLinkText" placeholder="Ou nome fora da mesa"><input name="npcLinkNote" placeholder="Nota opcional">${button('npc-link-add',actor.id,'Adicionar vínculo')}</div><h4>Estoque de compêndio</h4><div class="sy-npc-stock">${stock.map(item=>`<div><code>${e(item.uuid)}</code><span>${item.price==null?'Preço do item':currency(item.price)} · ${item.qty==null?'sem limite':e(item.qty)+' un.'}</span>${button('npc-stock-remove',`${actor.id}|${item.uuid}`,'Remover')}</div>`).join('')||'<small>Estoque vazio.</small>'}</div><div class="sy-npc-stock-add"><select name="npcStockUuid"><option value="">Adicionar item…</option>${catalogItems.map(item=>`<option value="${e(item.uuid)}">${e(item.name)} · ${e(item.source)}</option>`).join('')}</select><input name="npcStockPrice" type="number" min="0" placeholder="Preço opcional"><input name="npcStockQty" type="number" min="0" placeholder="Qtd. vazia = infinita">${button('npc-stock-add',actor.id,'Adicionar ao estoque')}</div><h4>Criar item tabelado</h4>${compendium?`<div class="sy-npc-new-item"><input name="npcItemName" placeholder="Nome"><select name="npcItemCategory">${[...new Set(BOOK_ITEMS.map(item=>item.category))].map(category=>`<option>${e(category)}</option>`).join('')}</select><input name="npcItemPrice" type="number" min="0" placeholder="Preço em T$"><input name="npcItemVolume" type="number" min="0" step="0.1" placeholder="Volume">${button('npc-create-item',actor.id,'Criar no compêndio e adicionar')}</div>`:'<p class="sy-alert">Configure “Compêndio de itens do QUEDAÇO” para criar itens tabelados. Nenhum item solto de Mundo será criado.</p>'}</section>`;
+  }
+  card(entry,op,share=null){
+    const image=op==='region'?this.regionImages[entry.id]:this.placeImages[entry.id];
+    return `<article class="sy-library-card" data-search="${e(nameKey([entry.name,entry.kind,entry.summary,...(entry.highlights??[])].join(' ')))}" data-category="${e(entry.regionId??'')}">${cardFigure(image,entry.name)}${share?this.shareButton(share,entry.id,'✓ Liberado','Liberar'):''}<div class="sy-library-card-content"><small>${e(entry.kind??'Região')} · p. ${entry.page}</small><h3>${e(entry.name)}</h3><p>${e(entry.summary)}</p>${button(op,entry.id,op==='region'?'Explorar região':'Abrir local')}</div></article>`;
+  }
   scenePicker(place){
     const linked=this.placeScenes[place.id],scenes=Array.from(this.game.scenes??[]);
     const actions=linked?`<div class="sy-library-share-row">${button('open-scene',linked,'Abrir cena')}${button('activate-scene',linked,'Ativar para os jogadores')}${button('scene',`${place.id}:`,'Desvincular')}</div>`:'';
@@ -141,7 +280,7 @@ export class CampaignLibrary {
       }
       if(region&&sharedRegions.includes(region.id)){
         const capital=PLACES.find(i=>i.id===region.capital);
-        return `${visibleRegions.length+loosePlaces.length>1?button('map','regions','← Tudo que foi liberado'):''}<section class="sy-library-detail"><small>${page(region)}</small><h3>${e(region.name)}</h3><p>${e(region.summary)}</p><h4>Governo</h4><p>${e(region.government)}</p><h4>Comércio</h4><p>${e(region.trade)}</p><h4>Destaques</h4>${chips(region.highlights)}${capital?button('place',capital.id,`Ir à capital: ${capital.name}`):''}</section><h3>Cidades e locais</h3><div class="sy-library-grid">${PLACES.filter(i=>i.regionId===region.id).map(i=>this.card(i,'place')).join('')}</div>`;
+        return `${visibleRegions.length+loosePlaces.length>1?button('map','regions','← Tudo que foi liberado'):''}${this.regionDetail(region,false)}<h3>Cidades e locais</h3><div class="sy-library-grid">${PLACES.filter(i=>i.regionId===region.id).map(i=>this.card(i,'place')).join('')}</div>`;
       }
       const cards=[...visibleRegions.map(i=>this.card(i,'region')),...loosePlaces.map(i=>this.card(i,'place'))].join('');
       return `${banner}<div class="sy-library-grid">${cards||'<p class="sy-library-deferred">O mestre ainda não liberou nenhuma região.</p>'}</div>`;
@@ -151,65 +290,80 @@ export class CampaignLibrary {
     let body='';
     if(place){
       const parent=[...PLACES,...BEYOND].find(i=>i.id===place.parentId);
-      body=`<div class="sy-library-breadcrumb">${button('map',mapView,'← Voltar ao índice')}${region?button('region',region.id,region.name):''}${parent?button('place',parent.id,parent.name):''}</div>${this.placeDetail(place,true)}<div class="sy-library-share-row">${this.shareButton('map',place.id,'✓ Local liberado aos jogadores','Liberar este local aos jogadores')}</div>${this.scenePicker(place)}<div class="sy-library-grid">${[...PLACES,...BEYOND].filter(i=>i.parentId===place.id).map(i=>this.card(i,'place','map')).join('')}</div>`;
+      body=`<div class="sy-library-breadcrumb">${button('map',mapView,'← Voltar ao índice')}${region?button('region',region.id,region.name):''}${parent?button('place',parent.id,parent.name):''}</div>${this.placeDetail(place,true)}${this.scenePicker(place)}<div class="sy-library-grid">${[...PLACES,...BEYOND].filter(i=>i.parentId===place.id).map(i=>this.card(i,'place','map')).join('')}</div>`;
     }else if(region){
       const capital=PLACES.find(i=>i.id===region.capital);
-      body=`${button('map','regions','← Todas as regiões')}<section class="sy-library-detail"><small>${page(region)}</small><h3>${e(region.name)}</h3><p>${e(region.summary)}</p><h4>Governo</h4><p>${e(region.government)}</p><h4>Comércio</h4><p>${e(region.trade)}</p><h4>Destaques</h4>${chips(region.highlights)}${capital?button('place',capital.id,`Ir à capital: ${capital.name}`):''}<div class="sy-library-share-row">${this.shareButton('map',region.id,'✓ Região liberada aos jogadores (com suas cidades)','Liberar região aos jogadores (com suas cidades)')}</div></section><h3>Cidades e locais da região</h3><div class="sy-library-grid">${PLACES.filter(i=>i.regionId===region.id).map(i=>this.card(i,'place','map')).join('')}</div><section class="sy-library-deferred"><h4>Mapas, cenas e encontros</h4><p>Reservados para seleção manual do mestre.</p></section>`;
+      body=`${button('map','regions','← Todas as regiões')}${this.regionDetail(region,true)}<h3>Cidades e locais da região</h3><div class="sy-library-grid">${PLACES.filter(i=>i.regionId===region.id).map(i=>this.card(i,'place','map')).join('')}</div><section class="sy-library-deferred"><h4>Mapas, cenas e encontros</h4><p>Reservados para seleção manual do mestre.</p></section>`;
     }else if(mapView==='scenes'||mapView==='encounters')body='<p class="sy-library-deferred">Aguardando a seleção manual do mestre.</p>';
     else{const entries=mapView==='places'?PLACES:mapView==='beyond'?BEYOND:REGIONS;body=`${this.filters(mapView==='places'?REGIONS.map(i=>[i.id,i.name]):[],`Buscar ${mapView==='regions'?'região':'local'}`)}<div class="sy-library-grid">${entries.map(i=>this.card(i,mapView==='regions'?'region':'place',mapView==='beyond'?null:'map')).join('')}</div>`;}
     return `${banner}<div class="sy-library-share-row">${shareArea}</div><nav class="sy-library-tabs" aria-label="Mapa">${tabs.map(([id,label])=>`<button data-op="lib-map" data-id="${id}" aria-current="${mapView===id?'page':'false'}">${label}</button>`).join('')}</nav>${body}`;
   }
+  regionDetail(region,gm=false){
+    const img=this.regionImages[region.id],capital=PLACES.find(i=>i.id===region.capital);
+    const controls=gm?`<div class="sy-library-share-row">${button('region-img',region.id,img?'Trocar imagem':'Definir imagem')}${img?button('region-img',`${region.id}:`,'Remover imagem'):''}</div>`:'';
+    return `<section class="sy-library-detail">${gm?this.shareButton('map',region.id,'✓ Liberado','Liberar'):''}${cardFigure(img,region.name)}<small>${page(region)}</small><h3>${e(region.name)}</h3><p>${e(region.summary)}</p><h4>Governo</h4><p>${e(region.government)}</p><h4>Comércio</h4><p>${e(region.trade)}</p><h4>Destaques</h4>${chips(region.highlights)}${capital?button('place',capital.id,`Ir à capital: ${capital.name}`):''}${controls}</section>`;
+  }
   placeDetail(place,gm=false){
     const img=this.placeImages[place.id];
-    const figure=img?`<img class="sy-library-figure" src="${e(img)}" alt="${e(place.name)}" loading="lazy">`:'';
     const controls=gm?`<div class="sy-library-share-row">${button('place-img',place.id,img?'Trocar imagem':'Definir imagem')}${img?button('place-img',`${place.id}:`,'Remover imagem'):''}</div>`:'';
-    return `<section class="sy-library-detail"><small>${page(place)} · ${e(place.kind??'Local')}</small><h3>${e(place.name)}</h3>${figure}<p>${e(place.summary)}</p>${place.highlights?.length?`<h4>Destaques</h4>${chips(place.highlights)}`:''}${controls}</section>`;
+    return `<section class="sy-library-detail">${gm?this.shareButton('map',place.id,'✓ Liberado','Liberar'):''}${cardFigure(img,place.name)}<small>${page(place)} · ${e(place.kind??'Local')}</small><h3>${e(place.name)}</h3><p>${e(place.summary)}</p>${place.highlights?.length?`<h4>Destaques</h4>${chips(place.highlights)}`:''}${controls}</section>`;
   }
   filters(categories,label='Buscar por nome ou descrição',groups=null){
     const opts=groups?groups.filter(g=>g.items.length).map(g=>`<optgroup label="${e(g.label)}">${g.items.map(([id,name])=>`<option value="${e(id)}">${e(name)}</option>`).join('')}</optgroup>`).join(''):categories.map(([id,name])=>`<option value="${e(id)}">${e(name)}</option>`).join('');
     const hasSelect=groups?groups.some(g=>g.items.length):categories.length;
     return `<div class="sy-library-filters"><label>${label}<input name="libraryQuery" type="search" autocomplete="off"></label>${hasSelect?`<label>${groups?'Filtro':'Categoria'}<select name="libraryCategory"><option value="">${groups?'Todos':'Todas'}</option>${opts}</select></label>`:''}<small class="sy-library-count" role="status"></small></div><p class="sy-library-no-results" hidden>Nenhuma entrada corresponde aos filtros.</p>`;
   }
+  monsterFilters(groups){
+    return `<div class="sy-library-filters sy-monster-filter"><label>Buscar monstro por nome, tipo ou papel<input name="libraryQuery" type="search" autocomplete="off"></label><small class="sy-library-count" role="status"></small></div><div class="sy-monster-facets">${groups.map(group=>`<fieldset><legend>${e(group.label)}</legend><div class="sy-check-grid">${group.items.map(([value,label])=>`<label><input type="checkbox" name="monsterFacet" data-monster-facet="${e(group.facet)}" value="${e(value)}">${e(label)}</label>`).join('')}</div></fieldset>`).join('')}</div><section class="sy-library-no-results sy-generate-monster" hidden><p>Nenhuma ameaça do livro combina com esses filtros.</p>${button('generate-monster','','Gerar um monstro assim')}<small>Depois de gerar, clique em Conferir Foundry novamente.</small></section>`;
+  }
   filter(root){
     const query=nameKey(root.querySelector('[name="libraryQuery"]')?.value),category=root.querySelector('[name="libraryCategory"]')?.value??'';
-    let count=0;for(const card of root.querySelectorAll('[data-search]')){card.hidden=!(card.dataset.search.includes(query)&&(!category||(card.dataset.category??'').split('|').includes(category)));if(!card.hidden)count++;}
+    const facets={};for(const input of root.querySelectorAll('[data-monster-facet]:checked'))(facets[input.dataset.monsterFacet]??=[]).push(input.value);
+    let count=0;for(const card of root.querySelectorAll('[data-search]')){const tokens=(card.dataset.category??'').split('|'),facetMatch=Object.entries(facets).every(([facet,selected])=>selected.some(value=>tokens.includes(`${facet}:${value}`)));card.hidden=!(card.dataset.search.includes(query)&&(!category||tokens.includes(category))&&facetMatch);if(!card.hidden)count++;}
     const label=root.querySelector('.sy-library-count');if(label)label.textContent=`${count} entradas`;
     const empty=root.querySelector('.sy-library-no-results');if(empty)empty.hidden=count!==0;
   }
   links(matches){return matches.length?`<div class="sy-library-links">${matches.map(m=>button('open',m.uuid,`Abrir no Foundry · ${m.source}`)).join('')}</div>`:'<small>Sem correspondência exata no catálogo acessível.</small>';}
   renderMonsters(readonly=false){
-    const roleList=entry=>(entry.role.split('·')[1]??'').split(',').map(s=>s.trim()).filter(Boolean);
-    const tierOf=entry=>entry.role.split('·')[0].trim();
-    const ndBand=nd=>nd<=4?'ND 1–4':nd<=8?'ND 5–8':nd<=12?'ND 9–12':'ND 13+';
     if(readonly){
       const shared=this.shared.monsters,list=MONSTERS.filter(m=>shared.includes(m.id));
-      return `${this.filters([],'Buscar ameaça liberada')}<div class="sy-library-grid">${list.map(entry=>`<details class="sy-library-card" data-search="${e(nameKey(`${entry.name} ${entry.creatureType} ${entry.role} ${entry.summary}`))}" data-category=""><summary><span><small>ND ${entry.nd} · ${e(entry.creatureType)}</small><strong>${e(entry.name)}</strong></span><span class="sy-library-question" aria-hidden="true">?</span></summary><p>${e(entry.summary)}</p>${chips([tierOf(entry),...roleList(entry),ndBand(entry.nd),page(entry)])}</details>`).join('')||'<p class="sy-library-deferred">O mestre ainda não liberou nenhuma ameaça.</p>'}</div>`;
+      return `${this.filters([],'Buscar ameaça liberada')}<div class="sy-library-grid">${list.map(entry=>`<details class="sy-library-card" data-search="${e(nameKey(`${entry.name} ${entry.creatureType} ${entry.role} ${entry.summary}`))}" data-category=""><summary><div class="sy-card-heading"><span><small>ND ${entry.nd} · ${e(entry.creatureType)}</small><strong>${e(entry.name)}</strong></span><span class="sy-library-question" aria-hidden="true">?</span></div></summary><div class="sy-library-body"><p>${e(entry.summary)}</p>${chips([monsterTier(entry),...monsterRoles(entry),monsterNdBand(entry.nd),page(entry)])}</div></details>`).join('')||'<p class="sy-library-deferred">O mestre ainda não liberou nenhuma ameaça.</p>'}</div>`;
     }
     const report=this.report(),audit=monsterAudit(this.actors,this.failures,this.loaded);
     const types=[...new Set(MONSTERS.map(m=>m.creatureType))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-    const roles=[...new Set(MONSTERS.flatMap(roleList))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-    const tiers=[...new Set(MONSTERS.map(tierOf))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    const roles=[...new Set(MONSTERS.flatMap(monsterRoles))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    const tiers=[...new Set(MONSTERS.map(monsterTier))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
     const filterGroups=[
-      {label:'Tipo de criatura',items:types.map(t=>[t,t])},
-      {label:'Papel',items:roles.map(r=>[r,r])},
-      {label:'Porte do bloco',items:tiers.map(t=>[t,t])},
-      {label:'Nível de Desafio',items:['ND 1–4','ND 5–8','ND 9–12','ND 13+'].map(b=>[b,b])},
-      {label:'Conferência na mesa',items:[['missing','Ficha pendente'],['found','Encontrados'],['unverified','A conferir']]}
+      {facet:'tipo',label:'Tipo de criatura',items:types.map(t=>[t,t])},
+      {facet:'papel',label:'Papel',items:roles.map(r=>[r,r])},
+      {facet:'porte',label:'Porte',items:tiers.map(t=>[t,t])},
+      {facet:'desloc',label:'Deslocamento',items:[['terrestrial','Terrestre'],['aquatic','Aquático'],['aerial','Aéreo']]},
+      {facet:'nd',label:'Nível de Desafio',items:['ND 1–4','ND 5–8','ND 9–12','ND 13+'].map(b=>[b,b])},
+      {facet:'conf',label:'Conferência na mesa',items:[['missing','Ficha pendente'],['found','Encontrado'],['unverified','A conferir']]}
     ];
-    return `<p>${MONSTERS.length} blocos do livro. Encontrados por nome e tipo: <strong>${report.found.length}</strong>. Fichas pendentes: <strong>${report.missing.length}</strong>. Sem verificação completa: <strong>${report.unverified.length}</strong>.</p><p class="sy-note">Encontrar o nome não confirma os valores da ficha. As fichas pendentes aguardam sua revisão antes de serem criadas. Os filtros usam as classificações do livro: tipo de criatura, papel, porte (Simples/Complexo/Chefão) e Nível de Desafio.</p><div class="sy-library-share-row">${this.shareButton('areas','monsters','✓ Aba Monstros visível aos jogadores','Liberar a aba Monstros aos jogadores')}</div><div class="sy-library-tabs">${button('refresh','','Conferir Foundry novamente')}${button('report','','Exportar conferência')}</div>${this.failures.length?`<p class="sy-alert">${this.failures.length} compêndio(s) não puderam ser consultados; ausências ainda não confirmadas.</p>`:''}${this.filters([],'Buscar monstro por nome, tipo ou papel',filterGroups)}<div class="sy-library-grid">${audit.map(entry=>`<details class="sy-library-card" data-search="${e(nameKey(`${entry.name} ${entry.creatureType} ${entry.role} ND ${entry.nd} ${entry.summary}`))}" data-category="${e([entry.creatureType,...roleList(entry),tierOf(entry),ndBand(entry.nd),entry.status].join('|'))}"><summary>${thumb(entry.matches[0]?.img)}<span><small>ND ${entry.nd} · ${e(entry.creatureType)}</small><strong>${e(entry.name)}</strong></span><span class="sy-library-status ${entry.status==='found'?'sy-library-found':''}" title="${entry.status==='found'?'Correspondência por nome e tipo':'Aguardando revisão'}">${entry.status==='found'?'✓ Encontrado':entry.status==='missing'?'Ficha pendente':'A conferir'}</span></summary><p>${e(entry.summary)}</p>${chips([tierOf(entry),...roleList(entry),ndBand(entry.nd),page(entry)])}<div class="sy-library-share-row">${this.shareButton('monsters',entry.id,'✓ Liberado aos jogadores','Liberar aos jogadores')}</div>${this.links(entry.matches)}${entry.candidates.length?'<p class="sy-note">Há documento com esse nome, mas de outro tipo de ficha. Não contado como ameaça.</p>':''}</details>`).join('')}</div>`;
+    return `<p>${MONSTERS.length} blocos do livro. Encontrados por nome e tipo: <strong>${report.found.length}</strong>. Fichas pendentes: <strong>${report.missing.length}</strong>. Sem verificação completa: <strong>${report.unverified.length}</strong>.</p><p class="sy-note">Encontrar o nome não confirma os valores da ficha. As fichas pendentes aguardam sua revisão antes de serem criadas. Os filtros usam as classificações do livro: tipo de criatura, papel, porte, deslocamento e Nível de Desafio.</p><div class="sy-library-share-row">${this.shareButton('areas','monsters','✓ Aba Monstros visível aos jogadores','Liberar a aba Monstros aos jogadores')}</div><div class="sy-library-tabs">${button('refresh','','Conferir Foundry novamente')}${button('report','','Exportar conferência')}</div>${this.failures.length?`<p class="sy-alert">${this.failures.length} compêndio(s) não puderam ser consultados; ausências ainda não confirmadas.</p>`:''}${this.monsterFilters(filterGroups)}<div class="sy-library-grid">${audit.map(entry=>`<details class="sy-library-card" data-search="${e(nameKey(`${entry.name} ${entry.creatureType} ${entry.role} ND ${entry.nd} ${entry.summary}`))}" data-category="${e(monsterCategory(entry))}"><summary>${cardFigure(entry.matches[0]?.img||'icons/svg/mystery-man.svg',entry.name,'compact')}<div class="sy-card-heading"><span><small>ND ${entry.nd} · ${e(entry.creatureType)}</small><strong>${e(entry.name)}</strong></span><span class="sy-library-status ${entry.status==='found'?'sy-library-found':''}" title="${entry.status==='found'?'Correspondência por nome e tipo':'Aguardando revisão'}">${entry.status==='found'?'✓ Encontrado':entry.status==='missing'?'Ficha pendente':'A conferir'}</span></div></summary>${this.shareButton('monsters',entry.id,'✓ Liberado','Liberar')}<div class="sy-library-body"><p>${e(entry.summary)}</p>${chips([monsterTier(entry),...monsterRoles(entry),monsterNdBand(entry.nd),page(entry)])}${this.links(entry.matches)}${entry.candidates.length?'<p class="sy-note">Há documento com esse nome, mas de outro tipo de ficha. Não contado como ameaça.</p>':''}</div></details>`).join('')}</div>`;
   }
   itemCard(entry,readonly){
     const tags=[entry.category,entry.equipment,entry.grade?`${entry.grade}º grau`:null,entry.price!=null?currency(entry.price):null,entry.priceKind,entry.priceFormula,entry.rarity,entry.setting,entry.volume!=null?`${entry.volume} vol.`:null,entry.damage?`Dano ${entry.damage}`:null,entry.reduction?`RD ${entry.reduction}`:null,entry.range?`Alcance ${entry.range} m`:null,entry.slot,entry.charges?`${entry.charges} cargas`:null,entry.fragments?`${entry.fragments} fragmentos`:null,entry.imbued];
     const matches=findMatches(entry,this.catalog?.items??[],typesFor(entry));
-    return `<details class="sy-library-card" data-search="${e(nameKey(`${entry.name} ${entry.category} ${entry.equipment??''} ${entry.summary} ${(entry.aliases??[]).join(' ')}`))}" data-category="${e(entry.category)}"><summary>${thumb(matches[0]?.img)}<span><small>${e(entry.category)}${entry.equipment?` · ${e(entry.equipment)}`:''}</small><strong>${e(entry.name)}</strong></span><span class="sy-library-question" title="Abrir consulta" aria-hidden="true">?</span></summary><div class="sy-library-body">${chips(tags)}<p>${e(entry.summary)}</p>${entry.descriptors?`<p><b>Descritores:</b> ${e(Array.isArray(entry.descriptors)?entry.descriptors.join(', '):entry.descriptors)}</p>`:''}${entry.note?`<p class="sy-alert">${e(entry.note)}</p>`:''}<small>${page(entry)}</small>${entry.referenceOnly?'<p class="sy-note">Entrada de referência; não é uma compra automática.</p>':''}${readonly?'':`<div class="sy-library-share-row">${this.shareButton('items',entry.id,'✓ Liberado aos jogadores','Liberar aos jogadores')}</div>${this.links(matches)}`}</div></details>`;
+    return `<details class="sy-library-card" data-search="${e(nameKey(`${entry.name} ${entry.category} ${entry.equipment??''} ${entry.summary} ${(entry.aliases??[]).join(' ')}`))}" data-category="${e(entry.category)}"><summary>${cardFigure(matches[0]?.img||itemFallback(entry),entry.name,'compact')}<div class="sy-card-heading"><span><small>${e(entry.category)}${entry.equipment?` · ${e(entry.equipment)}`:''}</small><strong>${e(entry.name)}</strong></span><span class="sy-library-question" title="Abrir consulta" aria-hidden="true">?</span></div></summary>${readonly?'':this.shareButton('items',entry.id,'✓ Liberado','Liberar')}<div class="sy-library-body">${chips(tags)}<p>${e(entry.summary)}</p>${entry.descriptors?`<p><b>Descritores:</b> ${e(Array.isArray(entry.descriptors)?entry.descriptors.join(', '):entry.descriptors)}</p>`:''}${entry.note?`<p class="sy-alert">${e(entry.note)}</p>`:''}<small>${page(entry)}</small>${entry.referenceOnly?'<p class="sy-note">Entrada de referência; não é uma compra automática.</p>':''}${readonly?'':this.links(matches)}</div></details>`;
   }
   renderItems(readonly=false){
     if(readonly){
-      const shared=this.shared.items,list=BOOK_ITEMS.filter(i=>shared.includes(i.id));
-      return `${this.modifications()}${this.filters([],'Buscar item liberado')}<div class="sy-library-grid">${list.map(entry=>this.itemCard(entry,true)).join('')||'<p class="sy-library-deferred">O mestre ainda não liberou nenhum item.</p>'}</div>`;
+      const shared=this.shared.items,list=BOOK_ITEMS.filter(i=>i.name!=='Ataque desarmado'&&shared.includes(i.id));
+      return `${this.modifications(true)}${this.filters([],'Buscar item liberado')}<div class="sy-library-grid">${list.map(entry=>this.itemCard(entry,true)).join('')||'<p class="sy-library-deferred">O mestre ainda não liberou nenhum item.</p>'}</div>`;
     }
-    const categories=[...new Set(BOOK_ITEMS.map(i=>i.category))];
-    return `<p>Equipamentos, serviços e modificações do livro, com preços, volume e referências. Abra um cartão para consultar; vínculos abrem documentos existentes da mesa.</p><div class="sy-library-share-row">${this.shareButton('areas','items','✓ Aba Itens visível aos jogadores','Liberar a aba Itens aos jogadores')}</div>${this.modifications()}${this.filters(categories.map(c=>[c,c]))}<div class="sy-library-grid">${BOOK_ITEMS.map(entry=>this.itemCard(entry,false)).join('')}</div>`;
+    const visibleItems=BOOK_ITEMS.filter(i=>i.name!=='Ataque desarmado');
+    const categories=[...new Set(visibleItems.map(i=>i.category))];
+    return `<p>Equipamentos, serviços e modificações do livro, com preços, volume e referências. Abra um cartão para consultar; vínculos abrem documentos existentes da mesa.</p><div class="sy-library-share-row">${this.shareButton('areas','items','✓ Aba Itens visível aos jogadores','Liberar a aba Itens aos jogadores')}</div>${this.modifications()}${this.filters(categories.map(c=>[c,c]))}<div class="sy-library-grid">${visibleItems.map(entry=>this.itemCard(entry,false)).join('')}</div>`;
   }
-  modifications(){return `<details class="sy-library-guide"><summary>Como consultar itens modificados</summary><p>Materiais, sigilos, sinapses e artefatos estão nas categorias abaixo. Esta consulta não aplica modificações à ficha.</p>${MODIFICATION_GUIDES.map(i=>`<h4>${e(i.name)} <small>p. ${i.page}</small></h4><p>${e(i.summary)}</p>`).join('')}<h4>Preço de aplicação de sigilos · p. 243</h4><table><thead><tr><th>Sigilo no item</th>${[1,2,3,4].map(n=>`<th>${n}º grau</th>`).join('')}</tr></thead><tbody>${SIGIL_COSTS.map((row,i)=>`<tr><th>${i+1}º sigilo</th>${row.map(v=>`<td>${currency(v)}</td>`).join('')}</tr>`).join('')}<tr><th>Imbuir</th>${IMBUE_COSTS.map(v=>`<td>${v==null?'A conferir*':currency(v)}</td>`).join('')}</tr></tbody></table><p class="sy-note">* O custo de 4º grau está impresso como “T$ 1.2000”. Mantido sem interpretação até esclarecimento. Divergências específicas aparecem nos cartões.</p></details>`;}
+  modifications(readonly=false){
+    const imbueHelp=`<section class="sy-note"><strong>O que é imbuir?</strong><p>Imbuir torna o encantamento do sigilo permanente. Em vez de gastar cargas até acabar, o efeito fica sempre disponível ou recarrega no descanso longo, conforme o sigilo. O custo é pago uma vez por sigilo: 1º grau T$ 250 · 2º T$ 1.000 · 3º T$ 5.000 · 4º grau a conferir. A ordem não altera o preço.</p></section>`;
+    if(readonly)return `<details class="sy-library-guide"><summary>O que é imbuir?</summary>${imbueHelp}</details>`;
+    const bases=this.modBases(),materials=BOOK_ITEMS.filter(item=>item.category==='Materiais especiais'&&item.price===300),equipment=this.modEquipment(),available=SIGILS.filter(sigil=>equipment&&(sigil.equipment===equipment||(equipment==='Escudo'&&sigil.equipment==='Arma'))&&!this.modBuilder.sigils.some(chosen=>chosen.id===sigil.id));
+    let sheet=null,error='';try{sheet=this.modSheet();}catch(reason){error=reason.message;}
+    const chosen=this.modBuilder.sigils.map((sigil,index)=>`<div class="sy-mod-choice"><span><strong>${e(sigil.name)}</strong><small>${e(sigil.slot)} · ${sigil.grade}º grau</small></span>${button('mod-imbue',String(index),sigil.imbue?'✓ Imbuído':'Imbuir')}${button('mod-remove',String(index),'Remover')}</div>`).join('');
+    const worksheet=sheet?`<pre class="sy-mod-sheet">${e(sheet.text)}</pre>${sheet.result.warnings.map(warning=>`<p class="sy-alert">${e(warning)}</p>`).join('')}${button('mod-copy','','Copiar folha')}`:'';
+    return `<details class="sy-library-guide" open><summary>Montar item modificado</summary><p>Esta calculadora não cria nem altera Item no Foundry.</p><div class="sy-mod-controls"><label>Item base<select name="modBase"><option value="">Escolha…</option>${bases.map(item=>`<option value="${item.id}" ${this.modBuilder.baseId===item.id?'selected':''}>${e(item.name)} · ${item.price==null?'sem preço':currency(item.price)}</option>`).join('')}</select></label><label>Material especial opcional<select name="modMaterial"><option value="">Sem material</option>${materials.map(item=>`<option value="${item.id}" ${this.modBuilder.materialId===item.id?'selected':''}>${e(item.name)} · +T$ 300</option>`).join('')}</select></label></div>${chosen}<h4>Adicionar sigilo${equipment?` para ${e(equipment)}`:''}</h4><div class="sy-mod-sigils">${available.map(sigil=>`<article><span><strong>${e(sigil.name)}</strong><small>${e(sigil.slot)} · ${sigil.grade}º grau</small></span>${button('mod-add',sigil.id,'Adicionar')}</article>`).join('')||'<small>Escolha um item base ou o limite foi atingido.</small>'}</div>${error?`<p class="sy-alert">${e(error)}</p>`:worksheet}${imbueHelp}<details><summary>Consultar regras e tabelas usadas</summary>${MODIFICATION_GUIDES.map(i=>`<h4>${e(i.name)} <small>p. ${i.page}</small></h4><p>${e(i.summary)}</p>`).join('')}<table><thead><tr><th>Sigilo no item</th>${[1,2,3,4].map(n=>`<th>${n}º grau</th>`).join('')}</tr></thead><tbody>${SIGIL_COSTS.map((row,i)=>`<tr><th>${i+1}º sigilo</th>${row.map(v=>`<td>${currency(v)}</td>`).join('')}</tr>`).join('')}<tr><th>Imbuir</th>${IMBUE_COSTS.map(v=>`<td>${v==null?'A conferir*':currency(v)}</td>`).join('')}</tr></tbody></table></details></details>`;
+  }
 }

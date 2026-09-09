@@ -17,9 +17,9 @@ Os dois acessos devem reutilizar a mesma janela e preservar o personagem em elab
 
 ## Estado comprovado localmente
 
-- Pasta: `E:/CODEX-RPG`. Commit de referência: `75d6d5b`.
-- Manifesto e package.json: **0.4.3** local, ainda a validar na mesa. Foundry 13 build 351 / Skyfall 1.0.1 são o ambiente confirmado anteriormente.
-- **45 testes passaram em 09/09/2026.** São testes locais; não demonstram funcionamento completo da ficha nativa.
+- Pasta: `E:/CODEX-RPG`. Tag de referência anterior: `v0.4.8` (`4723271`).
+- Manifesto e package.json: **0.4.9** preparados localmente. Foundry 13 build 351 / Skyfall 1.0.1 são o ambiente confirmado anteriormente.
+- **65 testes passaram em 09/09/2026.** São testes locais; não demonstram funcionamento completo da ficha nativa.
 - O handoff de Claude informa que 0.4.1 e 0.4.2 foram publicadas e 0.4.0 ficou em draft. Essa publicação e a versão instalada no servidor **não foram verificadas novamente nesta rodada**. Não publicar o draft antigo 0.4.0.
 - Mundo remoto oficial: **Skyfall RPG**, em `https://yurisatelite2026.foundryserver.com/game`.
 - Manifesto de atualização: `https://github.com/yurisatelite/quedaco/releases/latest/download/module.json`.
@@ -88,6 +88,15 @@ confirmação na mesa, pois não é reproduzível fora dela.
 SVG provisório foi removido e a sombra externa foi suavizada para não duplicar o brilho
 da própria imagem. `npm test` passou com 49 testes. Falta confirmação visual no
 Foundry após a instalação.
+
+**Registro — T4–T13 concluídas localmente (0.4.9, 09/09/2026):** cartões, imagens
+configuráveis de regiões, catálogo de itens, painel e vínculos de NPCs, lojas e o
+montador de item modificado foram incorporados ao painel. Monstros agora têm filtros
+por facetas com E entre facetas e OU dentro da mesma faceta; resultado vazio pode
+executar somente a macro configurada pelo mestre. Actors criados ou atualizados
+recarregam o painel, e NPCs `character` nas pastas da macro são detectados com local
+derivado da pasta regional. `npm test` passou com 65 testes e o pacote foi gerado.
+Ainda falta a confirmação visual do Yuri no Foundry.
 
 1. **Validar 0.4.4 na mesa.** Esta versão corrige `openCreator` para sempre abrir a área solicitada, remove `onChange` duplicado do controle de cena, inclui seleção de trilha de reserva nos níveis 2 e 7, permite a mesma trilha duas vezes no plano e preserva/atribui `path-01` e `path-02` por UUID do compêndio. Os testes agora cobrem ambas as formas de trilha; falta confirmar no Actor real.
 2. **Acessos e permissões.** O botão lateral já existe; verificar sua posição e o hook no Foundry 13. Aplicar a matriz de acesso acima, inclusive nos manipuladores.

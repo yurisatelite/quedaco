@@ -38,7 +38,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
       <aside><small>SEU PERSONAGEM</small><h3>${e(this.draft.name||'Novo aventureiro')}</h3>${this.draft.portrait?`<img class="sy-portrait" src="${e(safeImage(this.draft.portrait))}" alt="Retrato">`:''}<div class="sy-stats"><div>Vida<strong>${hp} PV</strong></div><div>Ênfase<strong>${selected?this.draft.level*3:'—'} PE</strong></div></div><small>Nível ${this.draft.level}</small><dl>${['legacy','heritage','curse','background','class'].map(t=>`<dt>${LABELS[t]}</dt><dd>${e(this.selected(t)?.name??'—')}</dd>`).join('')}</dl><h3>Bolsa</h3><div class="sy-stats">${['k','p','t'].map(k=>`<div>${k.toUpperCase()}$<strong>${number(displayWallet?.[k])}</strong></div>`).join('')}</div>${money?.debt?`<p>Dívida: T$ ${money.debt}</p>`:''}${money?.equipmentBudget?`<p>Verba de exploração: T$ ${purchaseMoney?.budgetRemaining??money.equipmentBudget}</p>`:''}<small>Dinheiro e verba para equipamento são separados.</small></aside></div>
       <footer><button data-op="previous" ${this.step===0?'disabled':''}>← Voltar</button><small>${this.actor?'Ficha criada na mesa':'Nenhuma ficha criada ainda'}</small><button class="sy-primary" data-op="next" ${this.step===STEPS.length-1?'disabled':''}>Continuar →</button></footer></div>`;
   }
-  _replaceHTML(result,content){content.innerHTML=result;this.library.filter(content);content.addEventListener('input',this._libraryInput??=(event)=>{if(event.target.name==='libraryQuery')this.library.filter(event.currentTarget);});}
+  _replaceHTML(result,content){content.innerHTML=result;this.library.filter(content);content.addEventListener('input',this._libraryInput??=(event)=>{if(event.target.name==='libraryQuery'||event.target.matches?.('[data-monster-facet]'))this.library.filter(event.currentTarget);});}
   _scroller(){return this.element?.querySelector?.('.sy-layout>main, .sy-shell>main')??this.element?.querySelector?.('.window-content')??null;}
   async rerender(preserve=true){if(!this.element)return;const scroller=this._scroller();if(preserve&&scroller)this._restoreScroll={top:scroller.scrollTop,left:scroller.scrollLeft};else this._restoreScroll={top:0,left:0};return this.render(true);}
   _onRender(context,options){super._onRender(context,options);if(!this.element)return;const root=this.element,scroller=this._scroller();if(scroller&&this._restoreScroll){scroller.scrollTop=this._restoreScroll.top;scroller.scrollLeft=this._restoreScroll.left;this._restoreScroll=null;}if(this._scrollDetailIntoView){this._scrollDetailIntoView=false;root.querySelector?.('.sy-detail')?.scrollIntoView({block:'nearest',behavior:'smooth'});}root.addEventListener('click',this._click??=(event)=>this.handleClick(event));root.addEventListener('change',this._change??=(event)=>this.handleChange(event));root.addEventListener('input',this._input??=(event)=>{if(!['query','shopQuery'].includes(event.target.name))return;const name=event.target.name;clearTimeout(this._searchTimer);this._searchTimer=setTimeout(()=>{if(name==='query')this.query=event.target.value;else this.shopQuery=event.target.value;this.rerender(true);},180);});}
@@ -58,7 +58,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   }
   stepDone(i){return !this.stepIssues(i).length;}
   renderArea(){
-    if(['map','monsters','items'].includes(this.area))return `${this.message?`<p class="sy-alert" role="status">${e(this.message)}</p>`:''}${this.library.render(this.area,!game.user.isGM)}`;
+    if(['npcs','map','monsters','items'].includes(this.area))return `${this.message?`<p class="sy-alert" role="status">${e(this.message)}</p>`:''}${this.library.render(this.area,!game.user.isGM)}`;
     const definitions={npcs:['Mercadores','Aliados','Rivais','Figurantes'],map:['Regiões','Cidades e locais','Mapas e cenas','Encontros da região'],monsters:['Aquáticos','Terrestres','Aéreos','Outros'],items:['Armas','Armaduras','Equipamentos','Consumíveis','Itens modificados'],quests:['Disponíveis','Ativas','Concluídas']};
     const titles={npcs:'NPCs',map:'Mapa',monsters:'Monstros',items:'Itens',quests:'Quests'},items=definitions[this.area]??[];
     return `<main class="sy-empty-area"><small>PAINEL HÍBRIDO DA MESTRA</small><h2>${titles[this.area]}</h2><p>Os cartões desta área serão índices do QUEDAÇO ligados aos documentos nativos da mesa.</p><div class="sy-empty-grid">${items.map(item=>`<section><span class="sy-done sy-pending">·</span><h3>${item}</h3><small>Aguardando preenchimento e vínculo com o Foundry.</small></section>`).join('')}</div></main>`;
@@ -173,7 +173,20 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     try{const {op,uuid,type,kind}=button.dataset;
       if(op==='area'){const target=button.dataset.area;if(target!=='characters'&&!game.user.isGM&&!this.library.shared.areas.includes(target))throw Error('Esta área ainda não foi liberada pelo mestre.');this.area=target;if(this.area==='monsters'&&game.user.isGM)await this.library.loadActors();}
       if(op==='lib-place-img'){const raw=button.dataset.id;if(raw.endsWith(':'))await this.library.setPlaceImage(raw.slice(0,-1),'');else{const FP=foundry.applications.apps.FilePicker.implementation;new FP({type:'image',current:this.library.placeImages[raw]||'',callback:async path=>{await this.library.setPlaceImage(raw,path);this.render(true);}}).render(true);}}
-      else if(op.startsWith('lib-'))await this.library.action(op,button.dataset.id);
+      else if(op==='lib-region-img'){const raw=button.dataset.id;if(raw.endsWith(':'))await this.library.setRegionImage(raw.slice(0,-1),'');else{const FP=foundry.applications.apps.FilePicker.implementation;new FP({type:'image',current:this.library.regionImages[raw]||'',callback:async path=>{await this.library.setRegionImage(raw,path);this.render(true);}}).render(true);}}
+      else if(op.startsWith('lib-')){
+        let id=button.dataset.id,data={};
+        if(op==='lib-npc-mark')id=button.closest('.sy-npc-add')?.querySelector('[name="npcActor"]')?.value||'';
+        if(op.startsWith('lib-npc-')){
+          const editor=button.closest('[data-npc-editor]');
+          if(op==='lib-npc-save'&&editor)data={role:editor.querySelector('[name="npcRole"]')?.value,placeId:editor.querySelector('[name="npcPlace"]')?.value,active:editor.querySelector('[name="npcActive"]')?.checked,note:editor.querySelector('[name="npcNote"]')?.value,markup:editor.querySelector('[name="npcMarkup"]')?.value,shopNote:editor.querySelector('[name="npcShopNote"]')?.value};
+          if(op==='lib-npc-stock-add'&&editor)data={uuid:editor.querySelector('[name="npcStockUuid"]')?.value,price:editor.querySelector('[name="npcStockPrice"]')?.value===''?null:Number(editor.querySelector('[name="npcStockPrice"]')?.value),qty:editor.querySelector('[name="npcStockQty"]')?.value===''?null:Number(editor.querySelector('[name="npcStockQty"]')?.value)};
+          if(op==='lib-npc-create-item'&&editor)data={name:editor.querySelector('[name="npcItemName"]')?.value,category:editor.querySelector('[name="npcItemCategory"]')?.value,price:editor.querySelector('[name="npcItemPrice"]')?.value,volume:editor.querySelector('[name="npcItemVolume"]')?.value};
+          if(op==='lib-npc-link-add'&&editor)data={type:editor.querySelector('[name="npcLinkType"]')?.value,target:editor.querySelector('[name="npcLinkTarget"]')?.value,text:editor.querySelector('[name="npcLinkText"]')?.value,note:editor.querySelector('[name="npcLinkNote"]')?.value};
+          if(op==='lib-npc-buy'){const row=button.closest('article');data={qty:row?.querySelector('input[type="number"]')?.value};}
+        }
+        await this.library.action(op,id,data);
+      }
       if(op==='step'||op==='previous'||op==='next'){const previous=this.step;if(op==='next'&&this.step===7&&!this.attrErrors().length)this.attributesFinalized=true;this.step=op==='step'?Number(button.dataset.index):this.step+(op==='next'?1:-1);this.attentionStep=op==='step'&&!this.stepDone(this.step)?this.step:op==='next'&&!this.stepDone(previous)?previous:null;this.query='';this.detail=null;}
       if(op==='select'){this.draft.selections[type]=uuid;if(type==='curse')this.draft.noCurse=false;this.benefitPlan=null;this.benefitChoices={};this.trainingPlan=null;this.trainingChoices={};this.equipmentPlan=null;this.equipmentChoices={};this.purchasesCash.clear();this.purchasesBudget.clear();if(type==='class'||type==='background')this.sums[type]=null;if(type==='legacy'){delete this.draft.selections.heritage;this.heritageOptions=await this.catalog.linkedItems(uuid,{type:'heritage',level:0});}this.attentionStep=null;this.detail=uuid;}
       if(op==='noCurse'){delete this.draft.selections.curse;this.draft.noCurse=true;this.attentionStep=null;this.detail=null;}
@@ -204,6 +217,10 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   async handleChange(event){
     const {name,value}=event.target;if(!name)return;
     if(name==='libraryQuery'||name==='libraryCategory'){this.library.filter(this.element);return;}
+    if(event.target.matches?.('[data-monster-facet]')){this.library.filter(this.element);return;}
+    if(name==='npcLinkFilter'){this.library.state.npcLink=value;this.rerender(true);return;}
+    if(name==='modBase'){this.library.modBuilder={baseId:value,materialId:'',sigils:[]};this.rerender(true);return;}
+    if(name==='modMaterial'){this.library.modBuilder.materialId=value;this.rerender(true);return;}
     if(['name','biography','spellcasting'].includes(name))this.draft[name]=value;
     if(name==='level'){this.draft.level=Math.max(1,Math.min(12,Number(value)||1));this.draft.hpRolls=[];this.benefitPlan=null;this.benefitChoices={};this.attributesFinalized=false;}
     if(name==='hpMethod'){this.draft.hpMethod=value;this.draft.hpRolls=[];}
