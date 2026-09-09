@@ -67,7 +67,7 @@ test('region and city navigation produces working breadcrumbs; no image or scene
   assert.doesNotMatch(library.render('map'),/data-map-viewport/);
   assert.match(library.render('map'),/Configure “Imagem do mapa de Opath”/);
   await library.action('lib-region','mirmir');assert.match(library.render('map'),/Ir à capital: Kravokia/);
-  await library.action('lib-place','kravokia');const html=library.render('map');assert.match(html,/data-id="mirmir"/);assert.match(html,/Kravokia/);assert.doesNotMatch(html,/<img/);
+  await library.action('lib-place','kravokia');const html=library.render('map');assert.match(html,/data-id="mirmir"/);assert.match(html,/Kravokia/);assert.match(html,/icons\/svg\/village\.svg/);
   await library.action('lib-map','scenes');assert.match(library.render('map'),/seleção manual/);
 });
 test('biblioteca esconde ataque desarmado e fornece imagens padrão por categoria',()=>{
@@ -96,7 +96,7 @@ test('aba Quests é pública e segue os documentos observáveis do Forien',async
   const player=new CampaignLibrary(game,{items:[]});
   const html=player.render('quests',true);
   assert.match(html,/Salvar Kravokia/);assert.match(html,/Abrir quest/);assert.doesNotMatch(html,/Nova quest/);
-  assert.match(html,/sy-card-figure-full/);assert.match(html,/data-fallback-src="icons\/svg\/book\.svg"/);
+  assert.match(html,/sy-card-figure-full/);assert.match(html,/src="icons\/svg\/book\.svg"/);
   await player.action('lib-quest-open','q1');assert.equal(API.opened,'q1');
 });
 test('mapa configurado usa visor único, foca região e abre detalhe de cidade',async()=>{
