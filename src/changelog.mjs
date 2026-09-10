@@ -1,5 +1,14 @@
 export const CHANGELOG = [
   {
+    version:'0.4.24',
+    date:'2026-09-10',
+    title:'Estrutura das Guildas e auto-tag de NPCs',
+    notes:[
+      'Membro de guilda passa a ser só ficha de jogador — NPCs e monstros não contam mais. O nível da guilda é o do jogador-membro de maior nível (mínimo 2), calculado na hora e mantido em sincronia com a ficha do sistema.',
+      'Novo botão "Taguear pela bio" no painel de NPCs: deduz o papel (Diplomata, Guarda, Clero, Ferreiro, Mercador, Espião…) do texto da biografia. "Re-taguear todos" força a reclassificação.'
+    ]
+  },
+  {
     version:'0.4.23',
     date:'2026-09-10',
     title:'Filtros das Guildas e barra de abas com ícones',
