@@ -1255,3 +1255,67 @@ enquadramento:
   custando fragmento (os não imbuídos) para o jogador entender o que imbuir resolve.
 - Se "imbuir fragmentos" for outra ação do Skyfall (infundir fragmento avulso no item,
   fora do imbuir de sigilo) — **PRECISA DO YURI** confirmar o que é exatamente.
+
+---
+
+# T37 — Guildas e Hansas (Apêndice B)
+
+Skyfall tem **Ator `type:"guild"`** nativo (schema com `abilities` cunning/knowledge/
+crafting/reputation, `seals`, `level`, `motto`, `members[]`) + itens `Seal` e
+`GuildAbility` + `GuildSheet`. **Não reimplementar nada disso.** O QUEDAÇO só indexa,
+mostra e liga aos NPCs.
+
+Já existe um parser local: `tools/parse-guilds.mjs` → `.local/guildas.json` (174 orgs:
+139 guildas + 35 hansas) e `.local/guildas-foundry.json` (Actors `type:"guild"` prontos
+para importar num compêndio da mesa; cada um traz `flags.quedaco.appendix =
+{kind:'guilda'|'hansa', creator, symbol, seals[], patron, focus, legend, description,
+truths, plot}`). **O texto do apêndice não entra no repositório** — o Yuri importa o
+JSON num compêndio da mesa.
+
+## 37.1 — Área "Guildas" (nova, como `imbue`)
+- `areaLabels.guildas='Guildas'`; whitelist de sharedAreas; dispatch em `app.mjs` e
+  `render()` de `library.mjs`; `titles.guildas='Guildas'`.
+- `renderGuilds(readonly)`: lê os Atores `type:"guild"` de `game.actors` (e compêndios
+  configurados, se houver). Cartão: brasão (`actor.img` ou ícone), nome, badge
+  **Guilda** (⚜, azul) ou **Hansa** (☠, vermelho) via
+  `actor.flags.quedaco.appendix.kind` (fallback: heurística pelo nome do compêndio),
+  selos/mecenas em chips, dogmas (lista), descrição/verdades curtas. Botão "Abrir ficha"
+  (abre o `GuildSheet` nativo) e — se `appendix` presente — "Ver detalhes" expande
+  symbol/plot/legend.
+- Filtro **Guilda / Hansa / Todas** + busca por nome/criador/selo.
+- Compartilhável por item (`shareButton('guildas', actor.uuid, …)`) e a aba toda
+  (`areas:guildas`).
+- Bloco de ajuda (GM): "Importe `.local/guildas-foundry.json` num compêndio da mesa
+  (Compêndios → Importar) para popular esta lista."
+
+## 37.2 — Tag de guilda no NPC
+- `flag.guildUuid` (uuid de um Ator `guild`) **ou** `flag.guildText` (nome livre, para
+  guilda ainda não criada).
+- Editor de NPC: `<select name="npcGuild">` com "Sem guilda" + os Atores `guild`
+  ordenados (guildas antes, hansas depois), + `<input name="npcGuildText">` "ou nome
+  livre". `saveNpc` grava `guildUuid`/`guildText` (segue o padrão de `linkTarget`).
+- Cartão do NPC: chip **⚜/☠ \<nome da guilda\>** na linha-meta (ao lado de papel e
+  local), cor azul (guilda) / vermelha (hansa).
+- Filtro na aba NPCs: `<select name="npcGuildFilter">` "Todas as guildas" + as que têm
+  ao menos um NPC. Estado `state.npcGuildFilter`, op `lib-npc-guild-filter`.
+- `npcVisibility` / regras de share inalteradas.
+
+## 37.3 — Guildas no Dossiê da Região / detalhe do local
+- Campo GM no Ator guild: `flags.quedaco.guildPlace` (um `placeId`), editável na área
+  Guildas (`<select>` de locais) — o apêndice não dá sede (quase todas são Alberich).
+- `regionDossier` / `placeDetail` ganham bloco **"Guildas presentes"**: Atores `guild`
+  cujo `guildPlace` é aquele local, **ou** cujos NPCs ligados (`flag.guildUuid`) têm
+  `placeId`/`regionId` naquela área. Cada uma: brasão + nome + badge, abre a ficha.
+
+## 37.4 — Puro + testes (`tests/`)
+- `guildKind(actor)` → `'guilda'|'hansa'` (usa `appendix.kind`; fallback por heurística).
+- `npcGuildLabel(flag, actorsById)` → `{icon,label,kind}` ou `null`.
+- `guildsForPlace(guildActors, npcs, placeId, regionId)` → lista.
+- Teste: NPC com `guildUuid` mostra o chip certo; hansa vira ☠ vermelho; filtro por
+  guilda; `guildsForPlace` cruza sede + NPCs.
+
+## 37.5 — Regras de sempre
+Nada do apêndice (texto/JSON) no repositório; só código. O QUEDAÇO **não cria** Ator
+`guild` — só lê os que a mesa importou (o Yuri importa o `.local/guildas-foundry.json`).
+Se quiser um atalho, um `.local/importar-guildas.js` (macro que o Yuri roda uma vez:
+`CompendiumCollection` alvo + `Actor.createDocuments(JSON)`).
