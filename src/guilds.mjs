@@ -2,6 +2,22 @@ const normalize=value=>String(value??'').normalize('NFD').replace(/[\u0300-\u036
 
 export const guildKind=actor=>actor?.type==='guild';
 
+// Estrutura: membro de guilda é só ficha de jogador (character com dono jogador).
+export const isPlayerCharacter=actor=>Boolean(actor)&&actor.type==='character'&&actor.hasPlayerOwner===true;
+export function guildMembers(guild,resolve){
+  const list=Array.isArray(guild?.system?.members)?guild.system.members:[];
+  return list.filter(entry=>isPlayerCharacter(entry?.uuid?resolve?.(entry.uuid):null));
+}
+// Nível da guilda = maior nível entre os membros-jogador, mínimo 2.
+export function guildLevel(guild,resolve){
+  let max=0;
+  for(const entry of guildMembers(guild,resolve)){
+    const level=Number(resolve?.(entry.uuid)?.system?.level?.value)||0;
+    if(level>max)max=level;
+  }
+  return Math.max(2,max);
+}
+
 export function npcGuildLabel(flag={},guilds=[]){
   const guild=guilds.find(actor=>actor?.uuid===flag.guildUuid||actor?.id===flag.guildUuid);
   return guild?.name||String(flag.guild??'').trim();

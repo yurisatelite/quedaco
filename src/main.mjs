@@ -5,6 +5,7 @@ import {registerLibrarySettings} from './library.mjs';
 import {CHANGELOG,entriesSince,isNewer} from './changelog.mjs';
 import {bindForienQuestHooks} from './forien-quests.mjs';
 import {registerArcaneOverload} from './arcane-overload.mjs';
+import {guildLevel} from './guilds.mjs';
 let app;
 const LAST_SEEN_VERSION='lastSeenVersion';
 const escape=value=>String(value??'').replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
@@ -55,3 +56,14 @@ async function refreshOpenPanel(){
 }
 Hooks.on('createActor',()=>{void refreshOpenPanel();});
 Hooks.on('updateActor',()=>{void refreshOpenPanel();});
+// Estrutura da guilda: system.level = maior nível entre os membros-jogador (mín. 2).
+async function syncGuildLevels(){
+  if(!game.user?.isGM)return;
+  const guilds=(game.actors??[]).filter(actor=>actor.type==='guild');if(!guilds.length)return;
+  const resolve=uuid=>{try{return fromUuidSync(uuid);}catch{return null;}};
+  for(const guild of guilds){const wanted=guildLevel(guild,resolve);if(Number(guild.system?.level)!==wanted)await guild.update({'system.level':wanted});}
+}
+Hooks.on('updateActor',(actor,changed)=>{
+  if(actor.type==='guild'&&foundry.utils.hasProperty(changed,'system.members'))void syncGuildLevels();
+  else if(actor.type==='character'&&foundry.utils.hasProperty(changed,'system.level'))void syncGuildLevels();
+});

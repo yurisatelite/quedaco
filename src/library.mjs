@@ -16,7 +16,7 @@ import {ForienQuestIntegration,QUEST_STATUSES,questCounts} from './forien-quests
 import {generatorScope} from './generator.mjs';
 import {normalizeMonsterInput,toSkyfallNpc} from './monster-convert.mjs';
 import {rollLevel} from './npc-level.mjs';
-import {guildKind,guildsForPlace,npcGuildLabel,cleanSeal,guildThemes,GUILD_STANCES} from './guilds.mjs';
+import {guildKind,guildsForPlace,npcGuildLabel,cleanSeal,guildThemes,GUILD_STANCES,guildMembers,guildLevel} from './guilds.mjs';
 
 export const BOOK_ITEMS=[...BASE_ITEMS,...SIGILS];
 
@@ -511,9 +511,11 @@ export class CampaignLibrary {
     const text=`${stripTags(guild.system?.motto||'')} ${ap.description||''} ${ap.focus||''} ${ap.truths||''}`;
     return {ap,gp,seals,tipo:ap.kind==='hansa'?'hansa':'guilda',tema:guildThemes(text),stance:GUILD_STANCES[gp.stance]?gp.stance:'desconhecida'};
   }
+  resolveActor(uuid){try{return globalThis.fromUuidSync?.(uuid)??this.actorById(uuid);}catch{return this.actorById(uuid);}}
   renderGuilds(readonly=false){
     const shared=this.shared.guilds,guilds=this.guildActors().filter(guild=>!readonly||shared.includes(guild.uuid));
     const abilityLabels={cunning:'Astúcia',knowledge:'Conhecimento',crafting:'Ofício',reputation:'Reputação'};
+    const resolve=uuid=>this.resolveActor(uuid);
     const sealSet=new Map();for(const g of guilds)for(const s of this.guildFacets(g).seals)sealSet.set(nameKey(s),s);
     const sel=this.state.guildFacets??{};
     const facetGroups=[
@@ -525,12 +527,13 @@ export class CampaignLibrary {
     ];
     const facetsHtml=`<div class="sy-monster-facets">${facetGroups.map(group=>{const chosen=sel[group.facet]??[];return `<details class="sy-facet" ${chosen.length?'open':''}><summary>${e(group.label)}<span class="sy-facet-count">${chosen.length?` (${chosen.length})`:''}</span></summary><div class="sy-check-grid">${group.items.map(([value,label])=>`<label><input type="checkbox" data-guild-facet="${e(group.facet)}" value="${e(value)}" ${chosen.includes(value)?'checked':''}>${e(label)}</label>`).join('')}</div></details>`;}).join('')}</div>`;
     const cards=guilds.map(guild=>{
-      const system=guild.system??{},f=this.guildFacets(guild),motto=stripTags(system.motto??''),members=Array.isArray(system.members)?system.members.length:0;
+      const system=guild.system??{},f=this.guildFacets(guild),motto=stripTags(system.motto??'');
+      const membros=guildMembers(guild,resolve).length,nivel=guildLevel(guild,resolve);
       const abilities=Object.entries(abilityLabels).map(([key,label])=>`${label} ${system.abilities?.[key]?.value??'—'}`);
       const st=GUILD_STANCES[f.stance];
       const tokens=[`tipo:${f.tipo}`,...f.seals.map(s=>`selo:${nameKey(s)}`),...f.tema.map(t=>`tema:${t}`),`relacao:${f.stance}`,`liberada:${shared.includes(guild.uuid)?'sim':'nao'}`].join('|');
       const stancePick=readonly?'':`<select class="sy-guild-stance" name="guildStance" data-id="${e(guild.uuid)}" title="Relação com o grupo">${Object.entries(GUILD_STANCES).map(([k,v])=>`<option value="${k}" ${f.stance===k?'selected':''}>${v.label}</option>`).join('')}</select>`;
-      return `<article class="sy-library-card sy-guild-card" data-search="${e(nameKey(`${guild.name} ${motto} ${f.ap.creator??''} ${f.ap.description??''}`))}" data-category="${e(tokens)}"><div class="sy-library-card-content">${thumb(this.image('guild',guild.name,guild.img,'icons/svg/village.svg'))}<small>${f.tipo==='hansa'?'Hansa':'Guilda'} · Nível ${e(system.level?.value??system.level??'—')} · ${members} membro(s)</small><h3>${e(guild.name)}</h3>${f.ap.symbol?`<p class="sy-guild-symbol">🔰 ${e(f.ap.symbol)}</p>`:''}${motto?`<p>${e(motto)}</p>`:''}${f.seals.length?chips(f.seals):''}${chips(abilities)}<div class="sy-library-tabs"><span class="sy-guild-stance-dot" style="--sy-role:${e(st.color)}" title="${e(st.label)}"></span>${stancePick}${button('open',guild.uuid,'Abrir ficha')}${readonly?'':this.shareButton('guilds',guild.uuid,'✓ Liberada','Liberar aos jogadores')}</div></div></article>`;
+      return `<article class="sy-library-card sy-guild-card" data-search="${e(nameKey(`${guild.name} ${motto} ${f.ap.creator??''} ${f.ap.description??''}`))}" data-category="${e(tokens)}"><div class="sy-library-card-content">${thumb(this.image('guild',guild.name,guild.img,'icons/svg/village.svg'))}<small>${f.tipo==='hansa'?'Hansa':'Guilda'} · Nível ${e(nivel)} · ${membros} jogador(es)</small><h3>${e(guild.name)}</h3>${f.ap.symbol?`<p class="sy-guild-symbol">🔰 ${e(f.ap.symbol)}</p>`:''}${motto?`<p>${e(motto)}</p>`:''}${f.seals.length?chips(f.seals):''}${chips(abilities)}<div class="sy-library-tabs"><span class="sy-guild-stance-dot" style="--sy-role:${e(st.color)}" title="${e(st.label)}"></span>${stancePick}${button('open',guild.uuid,'Abrir ficha')}${readonly?'':this.shareButton('guilds',guild.uuid,'✓ Liberada','Liberar aos jogadores')}</div></div></article>`;
     }).join('');
     const importer=readonly?'':`<details class="sy-library-guide"><summary>Importar guildas do apêndice</summary><p class="sy-note">Cole aqui o conteúdo de <code>.local/guildas-foundry.json</code> (gerado por <code>tools/parse-guilds.mjs</code>) ou deixe o arquivo em <code>Data/modules/quedaco/.local/</code> e clique sem colar nada. Cria os Actors <code>guild</code> numa pasta "Guildas · Apêndice B"; pula as que já existem.</p><textarea name="guildImport" rows="4" placeholder='[ { "type": "guild", "name": "...", ... } ]'></textarea><div class="sy-library-tabs">${button('guild-import','','Importar')}</div></details>`;
     return `<p>Guildas e Hansas registradas como fichas nativas do Skyfall.</p>${readonly?'':`<div class="sy-library-share-row">${this.shareButton('areas','guilds','✓ Aba Guildas visível aos jogadores','Liberar a aba Guildas aos jogadores')}</div>`}${importer}${this.filters([],'Buscar por nome, criador ou descrição')}${facetsHtml}<div class="sy-library-grid">${cards||'<p class="sy-library-deferred">Nenhuma guilda disponível.</p>'}</div>`;

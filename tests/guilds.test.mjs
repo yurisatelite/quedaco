@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {guildKind,guildsForPlace,npcGuildLabel} from '../src/guilds.mjs';
+import {guildKind,guildsForPlace,npcGuildLabel,guildMembers,guildLevel} from '../src/guilds.mjs';
 
 test('guild helpers recognize native Skyfall guild actors and labels',()=>{
   const guild={id:'g1',uuid:'Actor.g1',type:'guild',name:'Hansa Rubra'};
@@ -15,4 +15,19 @@ test('guildsForPlace resolves uuid and free-text memberships without duplicates'
   const npcs=[{placeId:'p1',guildUuid:'Actor.g1'},{regionId:'r1',guild:'Ordem Azul'},{placeId:'p2',guild:'Hansa Rubra'}];
   assert.deepEqual(guildsForPlace({npcs,guilds,regionId:'r1',places}).map(g=>g.name),['Hansa Rubra','Ordem Azul']);
   assert.deepEqual(guildsForPlace({npcs,guilds,placeId:'p2',places}).map(g=>g.name),['Hansa Rubra']);
+});
+
+test('guildMembers só conta ficha de jogador; guildLevel usa o maior nível (mín. 2)',()=>{
+  const pcs={
+    'Actor.p1':{type:'character',hasPlayerOwner:true,system:{level:{value:5}}},
+    'Actor.p2':{type:'character',hasPlayerOwner:true,system:{level:{value:9}}},
+    'Actor.npc':{type:'character',hasPlayerOwner:false,system:{level:{value:20}}},
+    'Actor.mob':{type:'npc',hasPlayerOwner:false,system:{level:{value:15}}}
+  };
+  const resolve=uuid=>pcs[uuid]??null;
+  const guild={system:{members:[{uuid:'Actor.p1'},{uuid:'Actor.p2'},{uuid:'Actor.npc'},{uuid:'Actor.mob'}]}};
+  assert.deepEqual(guildMembers(guild,resolve).map(m=>m.uuid),['Actor.p1','Actor.p2']);
+  assert.equal(guildLevel(guild,resolve),9);
+  assert.equal(guildLevel({system:{members:[]}},resolve),2);
+  assert.equal(guildLevel({system:{members:[{uuid:'Actor.mob'}]}},resolve),2);
 });
