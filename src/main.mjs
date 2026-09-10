@@ -36,10 +36,9 @@ Hooks.on('renderActorDirectory',(application,html)=>{
   const button=document.createElement('button');button.type='button';button.dataset.yuriCreator='';button.className='sy-launch';button.textContent='QUEDAÇO · Criar personagem';button.addEventListener('click',()=>openCreator('characters'));
   const target=root.querySelector('.directory-header')??root;target.prepend(button);
 });
-// Botão no menu lateral de controles de cena — só para o mestre; abre o painel completo em NPCs.
+// Botão no menu lateral de controles de cena — para todos. Mestre abre o painel de campanha; jogador cai na criação de personagens.
 Hooks.on('getSceneControlButtons',(controls)=>{
-  if(!game.user?.isGM)return;
-  const tool={name:'quedaco',title:'QUEDAÇO — Controle de campanha',icon:'fa-solid fa-dragon',button:true,order:99,onClick:()=>openCreator('npcs')};
+  const tool={name:'quedaco',title:'QUEDAÇO',icon:'fa-solid fa-dragon',button:true,order:99,onClick:()=>openCreator(game.user?.isGM?'npcs':'characters')};
   if(Array.isArray(controls)){const group=controls.find(c=>c.name==='tokens')??controls[0];group?.tools?.push(tool);}
   else{const group=controls.tokens??Object.values(controls)[0];if(group?.tools)group.tools[tool.name]=tool;}
 });

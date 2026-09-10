@@ -1,5 +1,14 @@
 export const CHANGELOG = [
   {
+    version:'0.4.17',
+    date:'2026-09-10',
+    title:'Botão do menu lateral liberado para os jogadores',
+    notes:[
+      'O botão do QUEDAÇO no menu lateral de controles de cena agora aparece para todos: o mestre abre o painel de campanha, o jogador vai direto para a criação de personagens.',
+      'O botão na aba de Atores continua indo direto para a criação de personagens.'
+    ]
+  },
+  {
     version:'0.4.16',
     date:'2026-09-10',
     title:'A forja do Ferreiro cria o item',
