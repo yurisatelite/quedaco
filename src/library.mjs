@@ -31,6 +31,7 @@ export const MAP_HOTSPOTS_KEY='mapHotspots';
 export const MAP_HIDDEN_KEY='mapHidden';
 export const MONSTER_HABITATS_KEY='monsterHabitats';
 export const REGION_RUMORS_KEY='regionRumors';
+export const GEN_DONE_KEY='generatedArchetypes';
 export const ASSET_ROOT_KEY='assetRoot';
 export const ITEM_COMPENDIUM_KEY='itemCompendium';
 export const NPC_LINKS_KEY='npcLinks';
@@ -50,6 +51,7 @@ export function registerLibrarySettings(game,onChange){
   game.settings.register(MODULE_ID,MAP_HIDDEN_KEY,{scope:'world',config:false,type:Array,default:null,onChange});
   game.settings.register(MODULE_ID,MONSTER_HABITATS_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
   game.settings.register(MODULE_ID,REGION_RUMORS_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
+  game.settings.register(MODULE_ID,GEN_DONE_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
   game.settings.register(MODULE_ID,MAP_IMAGE_KEY,{scope:'world',config:true,type:String,default:'',filePicker:'image',
     name:'Imagem do mapa de Opath',hint:'Arquivo no armazenamento da mesa (não acompanha o módulo). Aparece no topo do índice do Mapa.',onChange});
   game.settings.register(MODULE_ID,ITEM_COMPENDIUM_KEY,{scope:'world',config:true,type:String,default:'',
@@ -135,6 +137,15 @@ export class CampaignLibrary {
   get mapHidden(){try{const value=this.game.settings?.get(MODULE_ID,MAP_HIDDEN_KEY);return Array.isArray(value)?new Set(value):defaultHiddenPlaces(PLACES);}catch{return defaultHiddenPlaces(PLACES);}}
   async setMapHidden(id,hidden){this.assertGM();if(!id)return;const set=new Set(this.mapHidden);if(hidden)set.add(String(id));else set.delete(String(id));await this.game.settings.set(MODULE_ID,MAP_HIDDEN_KEY,[...set]);}
   get monsterHabitats(){try{return {...(this.game.settings?.get(MODULE_ID,MONSTER_HABITATS_KEY)||{})};}catch{return {};}}
+  get generatedArchetypes(){try{return {...(this.game.settings?.get(MODULE_ID,GEN_DONE_KEY)||{})};}catch{return {};}}
+  archetypeDone(regionId,archetype){const list=this.generatedArchetypes[regionId];return Array.isArray(list)&&list.includes(archetype);}
+  async markArchetypeDone(regionId,archetype,on){
+    this.assertGM();if(!regionId||!archetype)return;
+    const map=this.generatedArchetypes,list=new Set(Array.isArray(map[regionId])?map[regionId]:[]);
+    if(on)list.add(archetype);else list.delete(archetype);
+    if(list.size)map[regionId]=[...list];else delete map[regionId];
+    await this.game.settings.set(MODULE_ID,GEN_DONE_KEY,map);
+  }
   async setMonsterHabitat(monsterId,regionId,on){this.assertGM();if(!monsterId||!regionId)return;const map=this.monsterHabitats,list=new Set(Array.isArray(map[monsterId])?map[monsterId]:[]);if(on)list.add(regionId);else list.delete(regionId);map[monsterId]=[...list];if(!map[monsterId].length)delete map[monsterId];await this.game.settings.set(MODULE_ID,MONSTER_HABITATS_KEY,map);}
   get regionRumors(){try{return {...(this.game.settings?.get(MODULE_ID,REGION_RUMORS_KEY)||{})};}catch{return {};}}
   async addRegionRumor(regionId,text){this.assertGM();if(!regionId||!String(text).trim())return;const map=this.regionRumors,list=Array.isArray(map[regionId])?[...map[regionId]]:[];list.push({id:`r${Date.now().toString(36)}`,text:String(text).trim(),shared:false});map[regionId]=list;await this.game.settings.set(MODULE_ID,REGION_RUMORS_KEY,map);}
@@ -177,15 +188,24 @@ export class CampaignLibrary {
     const updates=[];
     for(const actor of this.npcActors()){
       if(actor.hasPlayerOwner)continue;
-      const flag=npcFlag(actor)??adoptNpcFlag(actor);
-      if(!force&&flag.role&&flag.role!=='extra')continue;
-      const role=roleFromText(`${actor.name} ${stripTags(actor.system?.biography??actor.system?.details?.description??'')}`);
-      if(role===flag.role)continue;
-      updates.push({_id:actor.id,[`flags.${MODULE_ID}.npc`]:{...flag,role}});
+      const flag=npcFlag(actor)??adoptNpcFlag(actor),next={...flag};let changed=false;
+      if(force||!flag.role||flag.role==='extra'){
+        const role=roleFromText(`${actor.name} ${stripTags(actor.system?.biography??actor.system?.details?.description??'')}`);
+        if(role!==flag.role){next.role=role;changed=true;}
+      }
+      if(force||!flag.placeId){
+        const pid=inferPlaceId(actor);
+        if(pid&&pid!==flag.placeId){next.placeId=pid;const pr=PLACES.find(place=>place.id===pid)?.regionId;if(pr)next.regionId=pr;changed=true;}
+      }
+      if((force||!next.regionId)&&!next.placeId){
+        const rid=inferRegionId(actor);
+        if(rid&&rid!==next.regionId){next.regionId=rid;changed=true;}
+      }
+      if(changed)updates.push({_id:actor.id,[`flags.${MODULE_ID}.npc`]:next});
     }
-    if(!updates.length){globalThis.ui?.notifications?.info?.('Nenhum NPC para re-taguear.');return 0;}
+    if(!updates.length){globalThis.ui?.notifications?.info?.('Nada para taguear.');return 0;}
     await Actor.updateDocuments(updates);
-    globalThis.ui?.notifications?.info?.(`${updates.length} NPC(s) tagueado(s) pela bio.`);
+    globalThis.ui?.notifications?.info?.(`${updates.length} NPC(s) tagueado(s) — papel, região e local pela pasta e pela bio.`);
     return updates.length;
   }
   async rollNpcLevels(min,max,force=false){
@@ -369,9 +389,10 @@ export class CampaignLibrary {
       await this.runGenerator(generatorScope({kind:'npc',archetype:'habitante',count:amount}));
     }
     if(op==='lib-generate-npc-batch'){
-      const maximum=id==='all'?Infinity:Math.max(1,Math.floor(Number(id)||1)),jobs=REGIONS.flatMap(region=>npcCoverage(region,this.npcActors()).missing.map(archetype=>({region,archetype}))).slice(0,maximum);
+      const maximum=id==='all'?Infinity:Math.max(1,Math.floor(Number(id)||1)),jobs=REGIONS.flatMap(region=>npcCoverage(region,this.npcActors()).missing.filter(archetype=>!this.archetypeDone(region.id,archetype)).map(archetype=>({region,archetype}))).slice(0,maximum);
       await this.runGeneratorBatch(jobs);
     }
+    if(op==='lib-gen-arch-done'){const cut=String(id).indexOf('|');const rid=String(id).slice(0,cut),arch=String(id).slice(cut+1);await this.markArchetypeDone(rid,arch,!this.archetypeDone(rid,arch));}
     if(op==='lib-monster-import')await this.importMonster(data.text);
     if(op==='lib-generate-monster'){
       const facets=Object.values(this.state.monsterFacets??{}).flat().filter(Boolean),archetype=facets.length?facets.join(', '):'ameaça';
@@ -546,10 +567,11 @@ export class CampaignLibrary {
       return `<article class="sy-library-card sy-npc-card sy-npc-outline-${outline} ${editing?'is-editing':''} ${live?'is-live':''} ${mode==='shop'||mode==='forge'?'sy-npc-card-full':''}" style="--sy-region:${e(color)}" draggable="true" data-drag-actor="${e(actor.uuid)}" title="Arraste para a cena ou diálogo">${shareIcon}<div class="sy-library-card-content"><div class="sy-npc-card-grid">${avatarFor(this.image('npc',actor.name,actor.img,'icons/svg/mystery-man.svg'))}<span class="sy-npc-identity"><strong>${e(actor.name)}</strong><small>${npcRoleChip(flag.role)} <span class="sy-npc-location"><i></i>${e(location)}${outline==='itinerant'?' · errante':''}</span>${level!=null?` <span class="sy-npc-level" title="Nível">NV ${e(level)}</span>`:''}</small></span></div>${actions}${remove}${mode==='shop'?stockCard(actor,flag,true):mode==='forge'?this.renderForge(actor):''}</div></article>`;
     }).join('');
     if(readonly)return `<div class="sy-library-grid">${cards||'<p class="sy-library-deferred">Nenhum NPC está disponível agora.</p>'}</div>`;
-    const filters=`<div class="sy-npc-toolbar"><div class="sy-library-tabs">${[['all','Todos'],...Object.entries(NPC_ROLES)].map(([id,label])=>`<button data-op="lib-npc-filter" data-id="${id}" aria-current="${this.state.npcRole===id?'page':'false'}">${id==='all'?e(label):npcRoleChip(id)}</button>`).join('')}</div><div class="sy-npc-filters"><label>Local<select name="npcPlaceFilter"><option value="all">Todos os locais</option>${sortByName(PLACES.filter(place=>availablePlaceIds.has(place.id))).map(place=>`<option value="${e(place.id)}" ${placeFilter===place.id?'selected':''}>${e(place.name)}</option>`).join('')}</select></label><label>Vínculo<select name="npcLinkFilter"><option value="all">Todos</option>${Object.entries(NPC_LINK_TYPES).map(([id,label])=>`<option value="${id}" ${this.state.npcLink===id?'selected':''}>${label}</option>`).join('')}</select></label><span class="sy-npc-level-range"><label>Nível mín.<input type="number" name="npcLevelMin" min="1" max="12" value="1"></label><label>Nível máx.<input type="number" name="npcLevelMax" min="1" max="12" value="12"></label><button data-op="lib-npc-roll-levels">Sortear níveis ausentes</button>${button('npc-roll-levels','force','Sortear todos')}${button('npc-autotag','','Taguear pela bio')}${button('npc-autotag','force','Re-taguear todos')}</span><span class="sy-npc-level-range"><label>Gerar avulsos<input type="number" name="npcGenCount" min="1" max="20" value="5"></label><button data-op="lib-generate-npc-bulk">Gerar NPCs</button></span></div></div>`;
-    const coverage=REGIONS.map(region=>({region,...npcCoverage(region,all)}));
-    const missingCount=coverage.reduce((sum,item)=>sum+item.missing.length,0),batch=missingCount?`<div class="sy-library-share-row">${button('generate-npc-batch','5',`Criar ${Math.min(5,missingCount)} próximos`)}${button('generate-npc-batch','all',`Criar todos os ${missingCount}`)}</div>`:'';
-    const audit=`<details class="sy-library-guide sy-npc-coverage"><summary>Cobertura regional de NPCs · ${missingCount} lacunas</summary>${batch}${coverage.map(item=>`<section><strong style="color:${e(this.regionColor(item.region.id))}">${e(item.region.name)}</strong>${item.missing.length?`<div class="sy-library-tabs">${item.missing.map(archetype=>button('generate-npc',`${item.region.id}||${archetype}`,`Criar ${archetype}`)).join('')}</div>`:'<small> ✓ cobertura sugerida presente</small>'}</section>`).join('')}<p class="sy-note">As sugestões vêm dos temas da região no livro. A macro recebe região, local, arquétipo e prompt prontos; revise a ficha gerada antes de usar.</p></details>`;
+    const filters=`<div class="sy-npc-toolbar"><div class="sy-library-tabs">${[['all','Todos'],...Object.entries(NPC_ROLES)].map(([id,label])=>`<button data-op="lib-npc-filter" data-id="${id}" aria-current="${this.state.npcRole===id?'page':'false'}">${id==='all'?e(label):npcRoleChip(id)}</button>`).join('')}</div><div class="sy-npc-filters"><label>Local<select name="npcPlaceFilter"><option value="all">Todos os locais</option>${sortByName(PLACES.filter(place=>availablePlaceIds.has(place.id))).map(place=>`<option value="${e(place.id)}" ${placeFilter===place.id?'selected':''}>${e(place.name)}</option>`).join('')}</select></label><label>Vínculo<select name="npcLinkFilter"><option value="all">Todos</option>${Object.entries(NPC_LINK_TYPES).map(([id,label])=>`<option value="${id}" ${this.state.npcLink===id?'selected':''}>${label}</option>`).join('')}</select></label><span class="sy-npc-level-range"><label>Nível mín.<input type="number" name="npcLevelMin" min="1" max="12" value="1"></label><label>Nível máx.<input type="number" name="npcLevelMax" min="1" max="12" value="12"></label><button data-op="lib-npc-roll-levels">Sortear níveis ausentes</button>${button('npc-roll-levels','force','Sortear todos')}${button('npc-autotag','','Taguear tudo (papel/região/local)')}${button('npc-autotag','force','Re-taguear todos')}</span><span class="sy-npc-level-range"><label>Gerar avulsos<input type="number" name="npcGenCount" min="1" max="20" value="5"></label><button data-op="lib-generate-npc-bulk">Gerar NPCs</button></span></div></div>`;
+    const coverage=REGIONS.map(region=>{const c=npcCoverage(region,all);return {region,...c,pendentes:c.missing.filter(a=>!this.archetypeDone(region.id,a)),feitos:c.missing.filter(a=>this.archetypeDone(region.id,a))};});
+    const missingCount=coverage.reduce((sum,item)=>sum+item.pendentes.length,0),batch=missingCount?`<div class="sy-library-share-row">${button('generate-npc-batch','5',`Criar ${Math.min(5,missingCount)} próximos`)}${button('generate-npc-batch','all',`Criar todos os ${missingCount}`)}</div>`:'';
+    const archRow=(rid,archetype,done)=>done?`<span class="sy-arch-done">✓ ${e(archetype)} ${button('gen-arch-done',`${rid}|${archetype}`,'↺')}</span>`:`${button('generate-npc',`${rid}||${archetype}`,`Criar ${archetype}`)}${button('gen-arch-done',`${rid}|${archetype}`,'✓')}`;
+    const audit=`<details class="sy-library-guide sy-npc-coverage"><summary>Cobertura regional de NPCs · ${missingCount} lacunas</summary>${batch}${coverage.map(item=>`<section><strong style="color:${e(this.regionColor(item.region.id))}">${e(item.region.name)}</strong>${(item.pendentes.length||item.feitos.length)?`<div class="sy-library-tabs">${item.pendentes.map(a=>archRow(item.region.id,a,false)).join('')}${item.feitos.map(a=>archRow(item.region.id,a,true)).join('')}</div>`:'<small> ✓ cobertura sugerida presente</small>'}</section>`).join('')}<p class="sy-note">O "✓" marca o arquétipo como feito e o "Criar N próximos" pula ele. As sugestões vêm dos temas da região no livro.</p></details>`;
     const editor=this.renderNpcEditor(this.actorById(this.state.npcActor));
     return `<p>NPCs ligados a cidades, lojas e ao controle do mestre. Todos os Actors das pastas da macro aparecem direto nesta lista; alterações só são gravadas quando você salva.</p><div class="sy-library-share-row">${button('export-tokens','npcs','Exportar fichas para casar tokens')}${this.shareButton('areas','npcs','✓ Aba NPCs visível aos jogadores','Liberar a aba NPCs aos jogadores')}</div>${audit}${filters}<div class="sy-library-grid">${cards||'<p class="sy-library-deferred">Nenhum NPC encontrado nesta seção.</p>'}</div>${editor}`;
   }

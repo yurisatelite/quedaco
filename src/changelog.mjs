@@ -2,9 +2,11 @@ export const CHANGELOG = [
   {
     version:'0.4.26',
     date:'2026-09-10',
-    title:'Fim da chuva de erros de imagem',
+    title:'Taguear tudo, cobertura com check e fim dos erros de imagem',
     notes:[
-      'Os cartões de NPC e monstro agora mostram a imagem própria da ficha primeiro; a pasta da mesa fica só como reserva. Acaba o monte de "404 Not Found" no console ao abrir o painel quando você não subiu os arquivos de token.'
+      'O botão "Taguear tudo" no painel de NPCs agora preenche papel, região (pela pasta) e local (pela bio) de uma vez, não só o papel.',
+      'Na cobertura regional, cada arquétipo tem um "✓" para marcar como feito; o "Criar N próximos" pula os marcados.',
+      'Os cartões de NPC e monstro mostram a imagem própria da ficha primeiro; a pasta da mesa fica só como reserva. Acaba o monte de "404 Not Found" no console ao abrir o painel.'
     ]
   },
   {
