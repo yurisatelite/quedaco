@@ -4,10 +4,22 @@ import {normalize} from './rules.mjs';
 
 export const NPC_ROLE_STYLE={
   merchant:{label:'Mercador',icon:'fa-coins',color:'#d8ad4c'},
+  smith:{label:'Ferreiro',icon:'fa-hammer',color:'#d08048'},
   ally:{label:'Aliado',icon:'fa-shield-halved',color:'#50b878'},
   rival:{label:'Rival',icon:'fa-khanda',color:'#d95858'},
   extra:{label:'Figurante',icon:'fa-masks-theater',color:'#9aa5b1'},
-  smith:{label:'Ferreiro',icon:'fa-hammer',color:'#d08048'}
+  diplomat:{label:'Diplomata',icon:'fa-handshake',color:'#6ab0d6'},
+  guard:{label:'Guarda',icon:'fa-shield',color:'#7f8c9b'},
+  clergy:{label:'Clero',icon:'fa-hands-praying',color:'#e6d3a3'},
+  scholar:{label:'Erudito',icon:'fa-book-open',color:'#a98fd0'},
+  noble:{label:'Nobre',icon:'fa-crown',color:'#e2c044'},
+  spy:{label:'Espião',icon:'fa-user-secret',color:'#667080'},
+  healer:{label:'Curandeiro',icon:'fa-kit-medical',color:'#5fc9a3'},
+  artisan:{label:'Artesão',icon:'fa-screwdriver-wrench',color:'#c98a5b'},
+  authority:{label:'Autoridade',icon:'fa-gavel',color:'#b9762f'},
+  usurer:{label:'Agiota',icon:'fa-sack-dollar',color:'#caa64a'},
+  mercenary:{label:'Mercenário',icon:'fa-crosshairs',color:'#cc6a5a'},
+  informant:{label:'Informante',icon:'fa-comment-dots',color:'#8fa4b5'}
 };
 export const NPC_ROLES=Object.fromEntries(Object.entries(NPC_ROLE_STYLE).map(([id,value])=>[id,value.label]));
 export const NPC_ROOTS=['🤖 Criados pela IA','🤖 NPCs por Região'];
@@ -76,8 +88,7 @@ export function npcVisibility({role,shared=false,gm=false,forge={}}){
   if(!gm&&!shared)return false;
   if(role==='merchant')return 'shop';
   if(role==='smith'&&forge.enabled!==false)return 'forge';
-  if(role==='ally'||role==='extra'||role==='rival')return 'identity';
-  return false;
+  return 'identity';
 }
 export function npcCardOutline(flag={}){if(flag?.placeId)return 'city';if(flag?.regionId||flag?.itinerant)return 'itinerant';return 'none';}
 export function initialNpcFlag(actor){

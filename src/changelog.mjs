@@ -1,5 +1,16 @@
 export const CHANGELOG = [
   {
+    version:'0.4.20',
+    date:'2026-09-10',
+    title:'Cartão de NPC enxuto e editor reorganizado',
+    notes:[
+      'O cartão de NPC agora mostra nível, PV, PE e Pontos de Sombra em destaque, além de fichas de Legado, Herança, Classe, Trilha, Maldição, Antecedente e da guilda/hansa com miniatura.',
+      'O cartão deixou de ter o seletor de papel e o botão "Abrir ficha": ficam só "Liberar aos jogadores" e "Editar". A lixeira foi para o canto inferior direito e a liberação virou uma bolinha verde no canto.',
+      'O editor ganhou "Abrir ficha" no cabeçalho; Vínculos, Estoque e Criar item ficam recolhidos; os campos de loja aparecem só para Mercador e os de forja só para Ferreiro; a região acompanha o local automaticamente.',
+      'Novos papéis: Diplomata, Guarda, Clero, Erudito, Nobre, Espião, Curandeiro, Artesão, Autoridade, Agiota, Mercenário e Informante. As listas de papel, região e local agora vêm em ordem alfabética.'
+    ]
+  },
+  {
     version:'0.4.19',
     date:'2026-09-10',
     title:'Retratos de NPC pela pasta da mesa',

@@ -204,7 +204,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
         if(op==='lib-monster-habitat-add'){const wrap=button.closest('.sy-dossier-add');data={monsterId:wrap?.querySelector('[name="habitatMonster"]')?.value??''};}
         if(op.startsWith('lib-npc-')){
           const editor=button.closest('[data-npc-editor]');
-          if(op==='lib-npc-save'&&editor)data={role:editor.querySelector('[name="npcRole"]')?.value,regionId:editor.querySelector('[name="npcRegion"]')?.value,placeId:editor.querySelector('[name="npcPlace"]')?.value,note:editor.querySelector('[name="npcNote"]')?.value,tokenVisible:editor.querySelector('[name="npcTokenVisible"]')?.checked,markup:editor.querySelector('[name="npcMarkup"]')?.value,shopNote:editor.querySelector('[name="npcShopNote"]')?.value,forgeEnabled:editor.querySelector('[name="npcForgeEnabled"]')?.checked,forgeMarkup:editor.querySelector('[name="npcForgeMarkup"]')?.value};
+          if(op==='lib-npc-save'&&editor){const g=n=>editor.querySelector(`[name="${n}"]`),chk=n=>{const el=g(n);return el?(el.type==='checkbox'?el.checked:el.value==='on'):false;};data={role:g('npcRole')?.value,regionId:g('npcRegion')?.value,placeId:g('npcPlace')?.value,guild:g('npcGuild')?.value,note:g('npcNote')?.value,tokenVisible:chk('npcTokenVisible'),markup:g('npcMarkup')?.value,shopNote:g('npcShopNote')?.value,forgeEnabled:chk('npcForgeEnabled'),forgeMarkup:g('npcForgeMarkup')?.value};}
           if(op==='lib-npc-stock-add'&&editor)data={uuid:editor.querySelector('[name="npcStockUuid"]')?.value,price:editor.querySelector('[name="npcStockPrice"]')?.value===''?null:Number(editor.querySelector('[name="npcStockPrice"]')?.value),qty:editor.querySelector('[name="npcStockQty"]')?.value===''?null:Number(editor.querySelector('[name="npcStockQty"]')?.value)};
           if(op==='lib-npc-create-item'&&editor)data={name:editor.querySelector('[name="npcItemName"]')?.value,category:editor.querySelector('[name="npcItemCategory"]')?.value,price:editor.querySelector('[name="npcItemPrice"]')?.value,volume:editor.querySelector('[name="npcItemVolume"]')?.value};
           if(op==='lib-npc-link-suggest'&&editor){const row=button.closest('[data-link-type]');data={type:row?.dataset.linkType,target:row?.querySelector('[name="npcLinkSuggestion"]')?.value,note:'da bio'};}
@@ -251,6 +251,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
       this.library.filter(this.element);return;
     }
     if(name==='npcRoleQuick'){try{await this.library.action('lib-npc-role',event.target.dataset.id,{role:value});}catch(error){ui.notifications.warn(error.message);}this.rerender(true);return;}
+    if(name==='npcRole'&&event.target.closest?.('[data-npc-editor]')){this.library.state.npcEditRole=value;this.rerender(true);return;}
     if(name==='npcPlaceFilter'){this.library.state.npcPlaceFilter=value;this.rerender(true);return;}
     if(name==='npcLinkFilter'){this.library.state.npcLink=value;this.rerender(true);return;}
     if(name==='modBase'){this.library.modBuilder={baseId:value,materialId:'',sigils:[],tab:this.library.modBuilder.tab??'prefixo'};this.rerender(true);return;}
