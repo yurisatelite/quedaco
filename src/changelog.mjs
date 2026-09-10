@@ -1,5 +1,16 @@
 export const CHANGELOG = [
   {
+    version:'0.4.21',
+    date:'2026-09-10',
+    title:'Cartão de NPC mínimo e sobrecarga arcana automática',
+    notes:[
+      'O cartão de NPC agora tem só o essencial: tipo, local, nível e "Editar". "Liberar aos jogadores" virou o ícone de olho no canto superior. PV, PE, Pontos de Sombra e as fichas de Legado, Herança, Classe, Trilha, Maldição e Antecedente foram para dentro de "Editar".',
+      'Sobrecarga arcana: ao equipar um item cujos sigilos passam do limite de Fragmentos Arcanos do portador, o QUEDAÇO rola Nd6 de dano Energético e aplica na ficha — o sistema base só exibia um aviso. Dá para desligar em Configurações do Módulo.',
+      '"Liberar tudo deste local" e "Liberar tudo da região": um clique libera o ponto no mapa, os NPCs de lá e as ameaças marcadas na região.',
+      'Um lápis sobre a imagem de região ou local troca a arte direto pela figura. As caixinhas de filtro de monstro não puxam mais a cor amarela do tema.'
+    ]
+  },
+  {
     version:'0.4.20',
     date:'2026-09-10',
     title:'Cartão de NPC enxuto e editor reorganizado',
