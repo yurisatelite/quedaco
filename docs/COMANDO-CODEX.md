@@ -1386,3 +1386,125 @@ espaço de trabalho daquela região**.
 `.local/testar-geracao.js` (diagnóstico de console) e `.local/macro-hook-quedaco.js`
 (trecho para o topo da macro: lê `scope.quedaco` e blinda fetch/JSON.parse). Não vão no
 repositório. O QUEDAÇO já deve chamar a macro sem `await` que trave (T30).
+
+---
+
+# 6ª rodada — v0.4.19: redesenho do cartão/editor de NPC + região
+
+O Yuri não mexeu em nada desde a v0.4.18. Tudo abaixo entra na **v0.4.19**.
+Objetivo geral: "toda vez que eu chegar numa cidade ou região, já saber o que tem lá
+sem caçar em blocos de texto".
+
+## T41 — Cartão de NPC enxuto + editor completo
+
+### 41.1 — Cartão pequeno: só o essencial, resto sai
+Tirar do cartão: o `<select>` de papel (T20.8) e o botão **Abrir ficha**. O cartão fica:
+- avatar (foto — ver T26/41.6), **nome**, **nível em destaque**, **vida**, **pontos de
+  sombra gastos** (ler da ficha Skyfall: `actor.system.resources.hp`,
+  `system.resources.shadow`, nível = Σ classes).
+- chips (com imagem, do catálogo já tagueado): **Legado**, **Herança**, **Classe**,
+  **Trilha**, **Maldição**, **Antecedente** — dos itens do ator (`type` legacy/heritage/
+  class/path/curse/background).
+- chip de **Papel** (T21) + chip de **Local** (ponto colorido, T22) + chip de
+  **Guilda/Hansa** (⚜/☠, T37).
+- **liberar aos jogadores = bolinha verde com ✓ no canto superior** (o mesmo
+  `sy-share-toggle` já usado no Mapa/Itens) — **acaba o botão "Liberar"** de texto.
+- **lixeira vermelha fixa no canto inferior direito** (`position:absolute;right;bottom`).
+- Botões que sobram no cartão: só **Editar**. (Abrir ficha vai pro editor.)
+- Espaço: cartões mais baixos, grid `minmax(300px,1fr)`, sem áreas vazias.
+
+### 41.2 — Editor: cabeçalho e ações
+No `.sy-npc-editor-head`, ao lado de **Fechar edição**, botão **Abrir ficha** em
+destaque (`.sy-primary`). O papel só muda aqui (select `npcRole`), nunca no cartão.
+
+### 41.3 — Editor: seções colapsadas
+`Vínculos`, `Estoque de compêndio`, `Criar item tabelado` viram `<details>` **fechados**
+(clicar na setinha abre). No topo, aberto por padrão: Papel, Região, Local, Nota,
+"jogadores podem ver o token", nível/vida (leitura), e os chips de legado/características.
+
+### 41.4 — Forja só para Ferreiro
+`Forja habilitada` + `Margem da forja` **só aparecem quando `flag.role==='smith'`**.
+Some para todos os outros papéis.
+
+### 41.5 — Região automática a partir da cidade
+- Se `flag.placeId` está setado → `regionId` = `PLACES.find(placeId).regionId`,
+  **automático**, e o `<select>` de Região fica travado/derivado (mostra a região, não
+  deixa escolher outra).
+- Se tem `regionId` e **não** tem `placeId` → Local fica **em branco** (errante).
+- `saveNpc` já resolve region a partir de place; garantir que o editor reflita isso sem
+  o mestre precisar tocar.
+
+### 41.6 — Fotos automáticas dos NPCs sem retrato (T26 aplicado)
+Rodar o casador do T26 contra a lista atual de NPCs: `imageKeywords(actor.bio + papel)`
+→ `pickToken(index)` → arquivo. Entregar `tools/pick-tokens.mjs` funcionando + o botão
+"Exportar fichas para casar tokens" que já existe. O Yuri roda, sobe
+`.local/tokens-escolhidos/` para `<assetRoot>/tokens/`, e `resolveImage` preenche.
+Enquanto não há arquivo: `mystery-man`, cartão nunca quebrado. (Índice já em
+`.local/tokens-skyfall-index.json`.)
+
+### 41.7 — Inventário do personagem no editor
+Bloco (colapsado) **"Inventário"**: lista os itens do ator; zona de drop para
+**arrastar itens** (de compêndio / da barra de itens) e adicionar ao ator
+(`{type:'Item',uuid}` → `actor.createEmbeddedDocuments`). Nunca item solto de Mundo se
+vier de fora de um compêndio autorizado — avisar.
+
+### 41.8 — Mais papéis de NPC (ver o que o Skyfall tem)
+Figurante/Aliado/Rival/Mercador/Ferreiro é pouco. Adicionar, conferindo termos que o
+Skyfall/livro usa: **Diplomata, Guarda, Sacerdote/Clero, Estudioso/Erudito, Nobre,
+Espião, Curandeiro, Artesão, Autoridade, Agiota, Mercenário, Informante**. Cada um com
+ícone+cor em `NPC_ROLE_STYLE`. `NPC_ROLES` deriva das chaves (já é assim).
+
+### 41.9 — Todo `<select>` em ordem alfabética
+Local, Região, papel, vínculo, guilda, item… todo `<select>` do QUEDAÇO ordenado por
+rótulo (`localeCompare('pt')`). Fazer um helper `sortedOptions(pairs)`.
+
+### 41.10 — Filtro de guilda + tag no cartão
+Do T37: `guildUuid`/`guildText` no `saveNpc`, `<select name="npcGuild">` no editor
+(ordenado, guildas antes de hansas), chip no cartão, `<select name="npcGuildFilter">`
+na `sy-npc-toolbar`.
+
+### Testes
+- `sortedOptions` ordena por pt-BR.
+- editor esconde forja quando role != smith.
+- placeId setado → region derivada e select travado.
+- cartão contém a bolinha de share e a lixeira, não o botão "Liberar" nem o select de papel.
+
+## B15 — Checkbox com amarelo (de novo)
+
+Print: faceta "Porte" → "Chefão" marcado fica **laranja/amarelo** com borda laranja, em
+vez do azul limpo. B9 não pegou tudo. Forçar, com `!important`, o estado marcado das
+checkboxes de faceta de monstro para o esquema ciano:
+```
+.sy-creator .sy-monster-facets label.is-selected,
+.sy-creator .sy-monster-facets input:checked{border-color:#35cee9!important;background:#143b4b!important;color:#eafaff!important}
+.sy-creator .sy-monster-facets input:checked::before{background:#35cee9!important;transform:scale(1)}
+```
+Conferir também se algum `--sy-role`/`--sy-region` está vazando como borda no `label`.
+
+## B16 — Imagem vazia ao abrir um local no mapa + lápis
+
+Print: Tatsumari → Sodori → aparece embaixo uma **imagem padrão vazia**. Ok ter o
+placeholder, mas o `placeDetail` (e depois o workspace do T40) precisa ter o **lápis de
+"trocar imagem"** sempre visível sobre a figura (não só como botão de texto). Ícone
+`fa-pencil` no canto da `cardFigure`, `data-op="lib-place-img" data-id="<id>"`.
+
+## Amend T31 — ocultar de verdade (não só do mapa)
+
+Além de `mapHidden` (some do mapa), um `quedaco.placesDisabled` (Set): local
+**desativado** não aparece nas listas do workspace da região nem nos selects, fica só
+num "Ocultos" recolhido com botão "Reativar". Ex.: Tormund → Torá e Noátorá → Ocultar.
+Toggle no `placeDetail` e no Atlas: "Ocultar do mapa" (mapHidden) e "Desativar local"
+(placesDisabled) separados.
+
+## Amend T40 — expandir cidades da região
+
+No workspace da região, o painel **Locais** mostra os cartões das cidades **bonitos**
+(imagem + resumo + chips), não a miniatura lateral. Botão **"Expandir"** por região no
+Atlas → sai o menu lateral e entra o workspace grande (T40). Missões **tagueadas** por
+local/região para ligar tudo (já em T33/T40 — reforço).
+
+## Amend — filtros de monstro com espaço sobrando
+
+Print 2: a faixa de facetas de monstro tem muito espaço vazio à direita. Compactar:
+`.sy-monster-facets` como `flex` de chips que quebram linha, cada `<details>` fechado
+ocupa só o rótulo; sem `grid` de colunas largas fixas.
