@@ -1319,3 +1319,70 @@ Nada do apêndice (texto/JSON) no repositório; só código. O QUEDAÇO **não c
 `guild` — só lê os que a mesa importou (o Yuri importa o `.local/guildas-foundry.json`).
 Se quiser um atalho, um `.local/importar-guildas.js` (macro que o Yuri roda uma vez:
 `CompendiumCollection` alvo + `Actor.createDocuments(JSON)`).
+
+---
+
+# 5ª rodada — fragmentos, sigilos que dão magia, liberar em massa, workspace de região
+
+## T35 (reforço) — sobrecarga arcana não aplica dano
+
+O Yuri confirma: usar/equipar item acima do limite de Fragmentos Arcanos **não** causa
+o dano automático. Não existe "item" que conserte — é lacuna de automação do sistema.
+QUEDAÇO cobre com hook `updateItem` (ver T35). Prioridade alta.
+
+## T38 — Sigilos que concedem magia/habilidade: aplicar na ficha ao forjar
+
+Alguns prefixos/sufixos têm particularidades — **alguns concedem uma magia ou truque**
+(o texto está em `src/book-sigils.mjs` / no `effect.descriptive` do sigilo de compêndio).
+Hoje o QUEDAÇO cria o item com `system.sigils`, mas não adiciona o que o sigilo concede.
+
+- `src/sigil-grants.mjs` (puro): `sigilGrants(sigil)` → lista de `{type:'spell'|'ability'|'descriptor', name, uuid?}` a partir de um padrão no texto do sigilo ("concede o truque X", "permite conjurar X", "ganha o descritor Y"). Onde não der para casar por texto, cai vazio.
+- No `executeForge` / `purchaseForgedItem` (T28): depois de criar o item, para cada sigilo escolhido com `sigilGrants` não-vazio, criar na ficha os itens concedidos (buscar por nome nos compêndios de magia/habilidade da mesa; se não achar, só avisar no chat "o sigilo X concede Y — adicione manualmente").
+- Marcar de onde veio: `flags.quedaco.fromSigil = <nome do sigilo>` nos itens concedidos, para poder remover junto quando o sigilo sai.
+- **PRECISA DO YURI:** confirmar quais sigilos concedem o quê (uma passada no `book-sigils.mjs` marcando `grants: [...]`), já que o texto do livro varia.
+- Testes: `sigilGrants` para um sigilo que concede truque, um que concede descritor, e um que não concede nada.
+
+## T39 — Liberar NPCs/missões em massa por local e por região
+
+Cenário do Yuri: os jogadores estão no Deserto de Mirmir, dentro de Kravokia. A região é
+grande demais para eles saberem de todo mundo; ele quer liberar **só a cidade** — e nela,
+**todos os NPCs de uma vez**.
+
+- No detalhe do **local** (`placeDetail`) e no Atlas, botão **"Liberar tudo desta
+  cidade"** (GM): compartilha o próprio local + todos os NPCs com `flag.placeId` desse
+  local + as quests cujo `location` casa. Botão irmão **"Recolher tudo desta cidade"**.
+- No **Dossiê da Região** / Atlas, **"Liberar tudo da região"**: região + todos os
+  locais + NPCs com `regionId`/`placeId` na região + quests da região. (Já existe
+  `map-share-all` para regiões/tudo; estender para NPCs e quests, e granular por local.)
+- Implementar via um método `shareBundle({placeId?|regionId?, npcs:true, quests:true, on})`
+  que junta os `setShare`/`setNpcShare` numa tacada; op `lib-share-bundle`.
+- Confirmação leve (`DialogV2.confirm`) mostrando quantos itens vão ser liberados.
+
+## T40 — Workspace da Região (entrar numa região = área própria)
+
+Hoje, ao focar uma região, o mapa dá zoom mas o painel continua o mesmo e os NPCs ficam
+espremidos na coluna estreita da direita. O Yuri quer que **entrar numa região abra um
+espaço de trabalho daquela região**.
+
+- **Ao escolher uma região** (pino, Atlas, breadcrumb): o mapa **trava com zoom** naquela
+  região, com botão **"‹ Voltar ao continente"**; e a aba passa a ser **da região**.
+- **Sub-menu no topo da região** (como o `sy-library-tabs`): **Locais · NPCs · Ameaças ·
+  Missões · Mapas · Rumores**. Cada painel em **largura total** (não na gaveta estreita),
+  com toggle "liberar aos jogadores" por item (o Dossiê do T33 vira este workspace).
+- **Vários mapas (Scenes) por região**, não um por local: lista de cenas vinculadas à
+  região com **adicionar** (picker de Scene) e **remover**. Setting
+  `quedaco.regionScenes = { regionId: [sceneId, ...] }`. O painel "Mapas" mostra
+  miniaturas, "Abrir" / "Ativar para jogadores" / "Desvincular" por cena.
+- O `renderDossier` do T33 é reaproveitado como o conteúdo dos painéis; o que muda é o
+  **enquadramento** (largura total + sub-nav + mapa travado) em vez de gaveta.
+- Layout: quando há região focada, `sy-map-layout` vira 1 coluna (mapa fino no topo ou
+  lateral compacto) + workspace em baixo/ao lado ocupando o resto.
+- Estado: `state.regionWorkspace = { regionId, tab }`. `state.map.focus` continua guiando
+  o zoom.
+- Absorve a queixa "NPCs apertados no canto" — no workspace eles têm largura total.
+
+## Macro do Yuri — arquivos de apoio entregues
+
+`.local/testar-geracao.js` (diagnóstico de console) e `.local/macro-hook-quedaco.js`
+(trecho para o topo da macro: lê `scope.quedaco` e blinda fetch/JSON.parse). Não vão no
+repositório. O QUEDAÇO já deve chamar a macro sem `await` que trave (T30).
