@@ -1,5 +1,13 @@
 export const CHANGELOG = [
   {
+    version:'0.4.26',
+    date:'2026-09-10',
+    title:'Fim da chuva de erros de imagem',
+    notes:[
+      'Os cartões de NPC e monstro agora mostram a imagem própria da ficha primeiro; a pasta da mesa fica só como reserva. Acaba o monte de "404 Not Found" no console ao abrir o painel quando você não subiu os arquivos de token.'
+    ]
+  },
+  {
     version:'0.4.25',
     date:'2026-09-10',
     title:'Importar monstros em lote e conserto dos filtros de Guilda',
