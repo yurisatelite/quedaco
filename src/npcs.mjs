@@ -61,6 +61,30 @@ export function inferPlaceId(actor,places=PLACES){
   const region=REGIONS.find(entry=>hasWord(haystack,entry.name)||hasWord(haystack,entry.id));
   return region?.capital&&places.some(place=>place.id===region.capital)?region.capital:null;
 }
+// Papel do NPC deduzido do texto da bio/nome. Devolve 'extra' quando nada bate.
+const ROLE_HINTS=[
+  ['merchant',/mercador|com[eé]rci|lojist|vendedor|negociante|feirante|caravan/i],
+  ['smith',/ferreir|forja|armeir|maquinist|bigorna/i],
+  ['diplomat',/diplomat|embaixador|negociador|conselheir|emiss[aá]ri|mediador/i],
+  ['guard',/guarda|sentinela|patrulh|vigia|mil[íi]ci|soldad|guarni[çc]/i],
+  ['clergy',/cl[eé]rig|sacerdot|padre|monge|devot|templ[aá]ri|profeta|or[aá]culo|pregador/i],
+  ['scholar',/erudit|estudioso|acad[eê]mic|pesquisador|bibliotec[aá]ri|s[aá]bio|professor|arquivist/i],
+  ['noble',/nobre|aristocrat|bar[aã]o|duqu|fidalg|herdeir/i],
+  ['spy',/espi[aã]o|infiltrad|agente secret|batedor|olheir/i],
+  ['healer',/curandeir|m[eé]dic|botic[aá]ri|enfermeir|apotec[aá]ri|cirurgi|parteira/i],
+  ['artisan',/artes[aã]|art[ií]fice|joalheir|alfaiat|carpinteir|escultor|pintor|oleir|tecel/i],
+  ['authority',/prefeit|governador|ju[íi]z|magistrad|xerife|autoridade|regente/i],
+  ['usurer',/agiot|usur[aá]ri|emprestador|banqueir|penhor|cobrador de d[íi]vida/i],
+  ['mercenary',/mercen[aá]ri|ca[çc]ador de recompensa|soldado de fortuna|espadachim de aluguel/i],
+  ['informant',/informante|dedo-?dur|fofoqueir|taverneir|contrabandist/i],
+  ['rival',/\brival\b|antagonist|inimig|advers[aá]ri/i],
+  ['ally',/\baliad[oa]\b|protetor\b|mentor\b|patron[oa]/i]
+];
+export function roleFromText(text){
+  const value=String(text??'');
+  for(const [role,re] of ROLE_HINTS)if(re.test(value))return role;
+  return 'extra';
+}
 export function npcFlag(actor){return actor?.flags?.[MODULE_ID]?.npc??null;}
 export function isGeneratedNpc(actor){
   const path=folderPath(actor).map(normalize);
