@@ -569,7 +569,10 @@ export class CampaignLibrary {
     const regions=(readonly?REGIONS.filter(region=>shared.includes(region.id)):REGIONS).filter(region=>Array.isArray(region.hotspot));
     const layer=state.layer??'auto',hidden=this.mapHidden;
     const layerLets=kind=>{const l=placeLayer(kind);if(layer==='all'||layer==='auto')return true;if(layer==='cities')return l==='cidade';if(layer==='marks')return l==='marco';if(layer==='falls')return l==='queda';return false;};
-    const placeVisible=entry=>layerLets(entry.kind)&&!hidden.has(entry.id)&&(!readonly||placeIds.has(entry.id));
+    // mapHidden (Quedas nascem ocultas) só vale nas vistas auto/tudo. Ao escolher uma
+    // camada de propósito (Cidades/Marcos/Quedas) os pinos daquela camada aparecem mesmo ocultos.
+    const respectHidden=layer==='auto'||layer==='all';
+    const placeVisible=entry=>layerLets(entry.kind)&&(!respectHidden||!hidden.has(entry.id))&&(!readonly||placeIds.has(entry.id));
     const places=focus?PLACES.filter(entry=>entry.regionId===focus.id&&placeVisible(entry)):[];
     const showRegions=!focus&&(layer==='regions'||layer==='all'||(layer==='auto'&&state.scale<1.6)),showCities=!focus&&layer!=='regions'&&(layer!=='auto'||state.scale>=1.6);
     const globalPlaces=showCities?PLACES.filter(placeVisible):[];
@@ -588,14 +591,15 @@ export class CampaignLibrary {
     const solo=!detail&&!atlas;
     return `<div class="sy-map-layout ${solo?'sy-map-layout-solo':''}">${viewport}${solo?'':`<div class="sy-map-side">${atlas}${detail||''}</div>`}</div>`;
   }
+  atlasShareIcon(id){const on=this.shared.map.includes(id);return `<button class="sy-atlas-icon ${on?'is-on':''}" data-op="lib-share" data-id="map:${e(id)}" aria-pressed="${on}" title="${on?'Liberado no mapa — clique para ocultar dos jogadores':'Liberar no mapa para os jogadores'}"><i class="fa-solid ${on?'fa-eye':'fa-eye-slash'}" aria-hidden="true"></i></button>`;}
+  atlasPinIcon(id){const off=this.mapHidden.has(id);return `<button class="sy-atlas-icon" data-op="lib-map-hide" data-id="${e(id)}:${off?'show':'hide'}" title="${off?'Mostrar o pino no mapa':'Ocultar o pino do mapa'}"><i class="fa-solid ${off?'fa-location-dot-slash':'fa-location-dot'}" aria-hidden="true"></i></button>`;}
   renderAtlas(){
-    const shared=this.shared.map,hidden=this.mapHidden;
     const tree=REGIONS.map(region=>{
       const groups=[['cidade','Cidades'],['marco','Marcos'],['queda','Quedas']].map(([k,label])=>{
         const list=PLACES.filter(p=>p.regionId===region.id&&placeLayer(p.kind)===k);
-        return list.length?`<div class="sy-atlas-group"><h6>${label}</h6>${list.map(p=>`<div class="sy-atlas-place"><button data-op="lib-place" data-id="${e(p.id)}">${e(p.name)}</button>${this.shareButton('map',p.id,'✓','⊘')}${button('map-hide',`${p.id}:${hidden.has(p.id)?'show':'hide'}`,hidden.has(p.id)?'🚫':'📍')}</div>`).join('')}</div>`:'';
+        return list.length?`<div class="sy-atlas-group"><h6>${label}</h6>${list.map(p=>`<div class="sy-atlas-place"><button data-op="lib-place" data-id="${e(p.id)}">${e(p.name)}</button>${this.atlasShareIcon(p.id)}${this.atlasPinIcon(p.id)}</div>`).join('')}</div>`:'';
       }).join('');
-      return `<details class="sy-atlas-region" style="--sy-region:${e(this.regionColor(region.id))}"><summary><span class="sy-atlas-dot"></span>${e(region.name)}</summary><div class="sy-atlas-region-body"><div class="sy-atlas-row">${button('map-focus',region.id,'⌖ Focar / dossiê')}${this.shareButton('map',region.id,'✓ Liberado','Liberar')}</div>${groups||'<small>Sem locais.</small>'}</div></details>`;
+      return `<details class="sy-atlas-region" style="--sy-region:${e(this.regionColor(region.id))}"><summary><span class="sy-atlas-dot"></span>${e(region.name)}</summary><div class="sy-atlas-region-body"><div class="sy-atlas-row">${button('map-focus',region.id,'⌖ Focar / dossiê')}${this.atlasShareIcon(region.id)}<span class="sy-atlas-hint">olho = liberar · alfinete = pino</span></div>${groups||'<small>Sem locais.</small>'}</div></details>`;
     }).join('');
     return `<aside class="sy-atlas"><div class="sy-atlas-mass">${button('map-share-all','regions','Liberar regiões')}${button('map-share-all','all','Liberar tudo')}${button('map-share-all','none','Recolher')}</div>${tree}</aside>`;
   }

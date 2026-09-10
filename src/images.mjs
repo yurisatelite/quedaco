@@ -3,7 +3,7 @@ export function imageSlug(value){return String(value??'').normalize('NFD').repla
 export function imageCandidates(root,kind,idOrName){
  const base=String(root??'').replace(/[\/]+$/,''),folder=IMAGE_KINDS[kind]??imageSlug(kind),slug=imageSlug(idOrName);
  if(!base||!slug)return [];
- return ['webp','png','jpg','svg'].map(ext=>`${base}/${folder}/${slug}.${ext}`);
+ return ['webp','png'].map(ext=>`${base}/${folder}/${slug}.${ext}`);
 }
 export function resolveImage(kind,idOrName,{root='',manifest={},documentImg='',fallback='icons/svg/mystery-man.svg'}={}){
  const key=imageSlug(idOrName),section=manifest?.[IMAGE_KINDS[kind]]??manifest?.[kind]??{},exception=section?.[idOrName]??section?.[key];
