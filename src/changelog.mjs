@@ -1,5 +1,14 @@
 export const CHANGELOG = [
   {
+    version:'0.4.19',
+    date:'2026-09-10',
+    title:'Retratos de NPC pela pasta da mesa',
+    notes:[
+      'Os cartões de NPC e monstro agora tentam .webp, .png, .jpg e .svg da pasta de imagens — não ficam mais no boneco cinza quando o arquivo é .png.',
+      'A "Pasta de imagens do QUEDAÇO" passa a ter o padrão "assets"; ajuste em Configurações do Módulo se a sua for outra.'
+    ]
+  },
+  {
     version:'0.4.18',
     date:'2026-09-10',
     title:'Layout da forja corrigido',
