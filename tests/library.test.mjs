@@ -162,7 +162,7 @@ test('itens usam miniatura compacta e Imbuir fica em área própria',()=>{
   assert.match(items,/sy-library-thumb/);
   assert.doesNotMatch(items,/Montar item modificado/);
   assert.doesNotMatch(items,/sy-card-figure-compact/);
-  assert.match(gm.render('imbue'),/Bancada de item modificado/);
+  assert.match(gm.render('imbue'),/Calculadora \(não altera Item da mesa\)/);
   assert.match(gm.render('imbue'),/Prefixos 0\/2/);
   gm.modBuilder.baseId='book-item-1';
   assert.match(gm.render('imbue'),/data-op="lib-mod-tab"/);

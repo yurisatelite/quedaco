@@ -180,6 +180,8 @@
 .sy-creator .sy-region-scene-list>div>strong{flex:1;min-width:120px}
 .sy-creator .sy-region-scene-list button{width:auto;padding:4px 9px;font-size:11px}
 .sy-creator .sy-region-scenes{margin-top:10px}
+.sy-creator .sy-imbue-bench{margin:6px 0 14px}
+.sy-creator .sy-imbue-bench h4{margin-top:0;display:flex;align-items:center;gap:7px}
 .sy-creator .sy-npc-editor{position:relative}
 .sy-creator .sy-npc-editor-portrait{float:left;width:120px;height:120px;margin:0 14px 10px 0;object-fit:cover;border-radius:10px;border:1px solid #3a495b;background:#0f1620}
 @media(max-width:640px){.sy-creator .sy-npc-editor-portrait{width:84px;height:84px}}
