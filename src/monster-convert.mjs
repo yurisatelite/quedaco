@@ -226,18 +226,27 @@ function tryParseJson(str){
   return undefined;
 }
 
-export function normalizeMonsterInput(input){
-  let json=(input&&typeof input==='object')?input:null;
-  if(!json){
-    const str=String(input||'').trim();
-    if(!str)return null;
-    if(str.startsWith('{')||str.startsWith('['))json=tryParseJson(str);
-    if(json===undefined)return null;
-    if(!json)return parseStatblock(str);
-  }
-  const obj=Array.isArray(json)?json[0]:json;
+function normalizeOneJson(obj){
   if(!obj||typeof obj!=='object')return null;
   // 5e.tools tem chaves capitalizadas com espaço; Open5e tem snake_case.
   const is5eTools='STR' in obj||'Armor Class' in obj||'Challenge' in obj||'Hit Points' in obj;
   return is5eTools?normalize5eTools(obj):normalizeOpen5e(obj);
+}
+export function normalizeMonsterInput(input){
+  if(input&&typeof input==='object'&&!Array.isArray(input))return normalizeOneJson(input);
+  const list=normalizeMonsterList(input);
+  return list[0]??null;
+}
+/** Aceita 1 objeto, uma lista [ ... ] inteira, ou texto de statblock. Devolve array normalizado. */
+export function normalizeMonsterList(input){
+  let json=input&&typeof input==='object'?input:null;
+  if(!json){
+    const str=String(input||'').trim();
+    if(!str)return [];
+    if(str.startsWith('{')||str.startsWith('['))json=tryParseJson(str);
+    if(json===undefined)return [];
+    if(!json){const one=parseStatblock(str);return one?[one]:[];}
+  }
+  const arr=Array.isArray(json)?json:(Array.isArray(json?.monsters)?json.monsters:[json]);
+  return arr.map(normalizeOneJson).filter(mob=>mob&&mob.name);
 }

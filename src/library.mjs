@@ -14,7 +14,7 @@ import {placeLayer,defaultHiddenPlaces,regionDossier} from './atlas.mjs';
 import {regionColor} from './regions.mjs';
 import {ForienQuestIntegration,QUEST_STATUSES,questCounts} from './forien-quests.mjs';
 import {generatorScope} from './generator.mjs';
-import {normalizeMonsterInput,toSkyfallNpc} from './monster-convert.mjs';
+import {normalizeMonsterInput,normalizeMonsterList,toSkyfallNpc} from './monster-convert.mjs';
 import {rollLevel} from './npc-level.mjs';
 import {guildKind,guildsForPlace,npcGuildLabel,cleanSeal,guildThemes,GUILD_STANCES,guildMembers,guildLevel} from './guilds.mjs';
 
@@ -429,15 +429,40 @@ export class CampaignLibrary {
   }
   async importMonster(input){
     this.assertGM();
-    const mob=normalizeMonsterInput(input);
-    if(!mob||!mob.name)throw Error('Não reconheci o bloco. Cole o JSON do 5e.tools / Open5e (um objeto ou lista) ou o texto do statblock.');
-    if(!Object.keys(mob.abilities||{}).length&&!mob.cr&&!mob.ac)throw Error(`Li o nome "${mob.name}" mas não achei atributos, CR nem CA. Confira se o JSON está completo (sem faltar o "]" ou "}" no fim).`);
-    const source=toSkyfallNpc(mob);
-    const token={actorLink:true};if(source.img)token.texture={src:source.img};
-    const actor=await Actor.create({...source,prototypeToken:token});
-    if(!actor?.id)throw Error('O Foundry não criou a ficha.');
-    globalThis.ui?.notifications?.info?.(`"${actor.name}" criado como ND ${source.system.level.value}. Revise PV, RD e ataques na ficha.`);
-    return actor;
+    const mobs=normalizeMonsterList(input);
+    if(!mobs.length)throw Error('Não reconheci o bloco. Cole o JSON do 5e.tools / Open5e (um objeto ou a lista [ ... ] inteira) ou o texto do statblock.');
+    if(mobs.length===1){
+      const mob=mobs[0];
+      if(!Object.keys(mob.abilities||{}).length&&!mob.cr&&!mob.ac)throw Error(`Li o nome "${mob.name}" mas não achei atributos, CR nem CA. Confira se o JSON está completo (sem faltar o "]" ou "}" no fim).`);
+      const source=toSkyfallNpc(mob),token={actorLink:true};if(source.img)token.texture={src:source.img};
+      const actor=await Actor.create({...source,prototypeToken:token});
+      if(!actor?.id)throw Error('O Foundry não criou a ficha.');
+      globalThis.ui?.notifications?.info?.(`"${actor.name}" criado como ND ${source.system.level.value}. Revise PV, RD e ataques na ficha.`);
+      return 1;
+    }
+    // lote: pasta própria, pula nomes já existentes, cria em blocos
+    const FolderCls=globalThis.Folder;
+    let folder=Array.from(this.game.folders??[]).find(entry=>entry.type==='Actor'&&entry.name==='Monstros convertidos (D&D 5e)');
+    if(!folder&&FolderCls)folder=await FolderCls.create({name:'Monstros convertidos (D&D 5e)',type:'Actor'});
+    const existentes=new Set(Array.from(this.game.actors??[]).map(actor=>nameKey(actor.name)));
+    const fontes=[];
+    for(const mob of mobs){
+      if(!Object.keys(mob.abilities||{}).length&&!mob.cr&&!mob.ac)continue;
+      if(existentes.has(nameKey(mob.name)))continue;
+      existentes.add(nameKey(mob.name));
+      const source=toSkyfallNpc(mob);if(folder?.id)source.folder=folder.id;
+      if(source.img)source.prototypeToken={texture:{src:source.img}};
+      fontes.push(source);
+    }
+    if(!fontes.length){globalThis.ui?.notifications?.info?.('Nenhum monstro novo — todos já existem na mesa.');return 0;}
+    let feitos=0;const bloco=25;
+    for(let i=0;i<fontes.length;i+=bloco){
+      try{const docs=await Actor.createDocuments(fontes.slice(i,i+bloco));feitos+=docs.length;}
+      catch(error){console.error('QUEDAÇO · importar monstros bloco',i,error);}
+      globalThis.ui?.notifications?.info?.(`Monstros: ${Math.min(i+bloco,fontes.length)}/${fontes.length}…`);
+    }
+    globalThis.ui?.notifications?.info?.(`${feitos} monstro(s) criados em "Monstros convertidos (D&D 5e)". Revise PV, RD e ataques.`);
+    return feitos;
   }
   async addNpcLink(actorId,data){
     this.assertGM();const actor=this.actorById(actorId),target=String(data.target||data.text&&`txt:${data.text}`||'');if(!actor||!target)throw Error('Escolha ou informe o outro NPC.');
@@ -764,7 +789,7 @@ export class CampaignLibrary {
       {facet:'nd',label:'Nível de Desafio',items:['ND 1–4','ND 5–8','ND 9–12','ND 13+'].map(b=>[b,b])},
       {facet:'conf',label:'Conferência na mesa',items:[['missing','Ficha pendente'],['found','Encontrado'],['unverified','A conferir']]}
     ];
-    return `<p>${MONSTERS.length} blocos do livro. Encontrados por nome e tipo: <strong>${report.found.length}</strong>. Fichas pendentes: <strong>${report.missing.length}</strong>. Sem verificação completa: <strong>${report.unverified.length}</strong>.</p><p class="sy-note">Encontrar o nome não confirma os valores da ficha. As fichas pendentes aguardam sua revisão antes de serem criadas. Os filtros usam as classificações do livro: tipo de criatura, papel, porte, deslocamento e Nível de Desafio.</p><div class="sy-library-share-row">${this.shareButton('areas','monsters','✓ Aba Monstros visível aos jogadores','Liberar a aba Monstros aos jogadores')}</div><div class="sy-library-tabs">${button('refresh','','Conferir Foundry novamente')}${button('report','','Exportar conferência')}${button('export-tokens','monsters','Exportar fichas para casar tokens')}</div><details class="sy-library-guide"><summary>Importar criatura de D&amp;D 5e</summary><p class="sy-note">Cole o JSON do <a href="https://open5e.com/monsters" target="_blank" rel="noopener">Open5e</a> / 5e.tools ou o texto completo do bloco de status. O QUEDAÇO cria uma ficha <code>npc</code> do Skyfall na escala de ND (máx. 12 ≈ CR 20): atributos e deslocamento saem convertidos; PV, RD e os ataques entram estimados e anotados na biografia para você ajustar. Só SRD/próprio material — criaturas de Produto (Vecna, mind flayer…) você cola o bloco à mão.</p><textarea name="monsterImport" rows="6" placeholder='Cole aqui: { "name": "...", "challenge_rating": ... }  ou  o texto do statblock'></textarea><div class="sy-library-tabs">${button('monster-import','','Converter e criar ficha')}</div></details>${this.failures.length?`<p class="sy-alert">${this.failures.length} compêndio(s) não puderam ser consultados; ausências ainda não confirmadas.</p>`:''}${this.monsterFilters(filterGroups)}<div class="sy-library-grid">${audit.map(entry=>{const uuid=entry.matches[0]?.uuid,drag=uuid?` draggable="true" data-drag-actor="${e(uuid)}" title="Arraste para a cena para colocar o token"`:'';return `<details class="sy-library-card"${drag} data-search="${e(nameKey(`${entry.name} ${entry.creatureType} ${entry.role} ND ${entry.nd} ${entry.summary}`))}" data-category="${e(monsterCategory(entry))}"><summary>${(()=>{const image=this.image('monster',entry.name,entry.matches[0]?.img,'icons/svg/mystery-man.svg');return cardFigure(image.src,entry.name,'full',image.fallbacks);})()}<div class="sy-card-heading"><span><small>ND ${entry.nd} · ${e(entry.creatureType)}</small><strong>${e(entry.name)}</strong></span><span class="sy-library-status ${entry.status==='found'?'sy-library-found':''}" title="${entry.status==='found'?'Correspondência por nome e tipo':'Aguardando revisão'}">${entry.status==='found'?'✓ Encontrado':entry.status==='missing'?'Ficha pendente':'A conferir'}</span></div></summary>${this.shareButton('monsters',entry.id,'✓ Liberado','Liberar')}<div class="sy-library-body"><p>${e(entry.summary)}</p>${chips([monsterTier(entry),...monsterRoles(entry),monsterNdBand(entry.nd),page(entry)])}${this.links(entry.matches)}${entry.candidates.length?'<p class="sy-note">Há documento com esse nome, mas de outro tipo de ficha. Não contado como ameaça.</p>':''}</div></details>`;}).join('')}</div>`;
+    return `<p>${MONSTERS.length} blocos do livro. Encontrados por nome e tipo: <strong>${report.found.length}</strong>. Fichas pendentes: <strong>${report.missing.length}</strong>. Sem verificação completa: <strong>${report.unverified.length}</strong>.</p><p class="sy-note">Encontrar o nome não confirma os valores da ficha. As fichas pendentes aguardam sua revisão antes de serem criadas. Os filtros usam as classificações do livro: tipo de criatura, papel, porte, deslocamento e Nível de Desafio.</p><div class="sy-library-share-row">${this.shareButton('areas','monsters','✓ Aba Monstros visível aos jogadores','Liberar a aba Monstros aos jogadores')}</div><div class="sy-library-tabs">${button('refresh','','Conferir Foundry novamente')}${button('report','','Exportar conferência')}${button('export-tokens','monsters','Exportar fichas para casar tokens')}</div><details class="sy-library-guide"><summary>Importar criatura de D&amp;D 5e (uma ou em lote)</summary><p class="sy-note">Cole <strong>um objeto</strong> <code>{ ... }</code>, <strong>uma lista inteira</strong> <code>[ { ... }, { ... } ]</code> (do 5e.tools / Open5e / repositórios de bestiário) ou o texto do bloco de status. O QUEDAÇO cria fichas <code>npc</code> do Skyfall na escala de ND (máx. 12 ≈ CR 20): atributos e deslocamento convertidos; PV, RD e ataques estimados e anotados na biografia. Em lote: vai para a pasta "Monstros convertidos (D&amp;D 5e)", pula nomes que já existem, cria em blocos.</p><textarea name="monsterImport" rows="6" placeholder='{ "name": "..." }  ·  [ { ... }, { ... } ]  ·  ou o texto do statblock'></textarea><div class="sy-library-tabs">${button('monster-import','','Converter e criar')}</div></details>${this.failures.length?`<p class="sy-alert">${this.failures.length} compêndio(s) não puderam ser consultados; ausências ainda não confirmadas.</p>`:''}${this.monsterFilters(filterGroups)}<div class="sy-library-grid">${audit.map(entry=>{const uuid=entry.matches[0]?.uuid,drag=uuid?` draggable="true" data-drag-actor="${e(uuid)}" title="Arraste para a cena para colocar o token"`:'';return `<details class="sy-library-card"${drag} data-search="${e(nameKey(`${entry.name} ${entry.creatureType} ${entry.role} ND ${entry.nd} ${entry.summary}`))}" data-category="${e(monsterCategory(entry))}"><summary>${(()=>{const image=this.image('monster',entry.name,entry.matches[0]?.img,'icons/svg/mystery-man.svg');return cardFigure(image.src,entry.name,'full',image.fallbacks);})()}<div class="sy-card-heading"><span><small>ND ${entry.nd} · ${e(entry.creatureType)}</small><strong>${e(entry.name)}</strong></span><span class="sy-library-status ${entry.status==='found'?'sy-library-found':''}" title="${entry.status==='found'?'Correspondência por nome e tipo':'Aguardando revisão'}">${entry.status==='found'?'✓ Encontrado':entry.status==='missing'?'Ficha pendente':'A conferir'}</span></div></summary>${this.shareButton('monsters',entry.id,'✓ Liberado','Liberar')}<div class="sy-library-body"><p>${e(entry.summary)}</p>${chips([monsterTier(entry),...monsterRoles(entry),monsterNdBand(entry.nd),page(entry)])}${this.links(entry.matches)}${entry.candidates.length?'<p class="sy-note">Há documento com esse nome, mas de outro tipo de ficha. Não contado como ameaça.</p>':''}</div></details>`;}).join('')}</div>`;
   }
   itemCard(entry,readonly){
     const tags=[entry.category,entry.equipment,entry.grade?`${entry.grade}º grau`:null,entry.price!=null?currency(entry.price):null,entry.priceKind,entry.priceFormula,entry.rarity,entry.setting,entry.volume!=null?`${entry.volume} vol.`:null,entry.damage?`Dano ${entry.damage}`:null,entry.reduction?`RD ${entry.reduction}`:null,entry.range?`Alcance ${entry.range} m`:null,entry.slot,entry.charges?`${entry.charges} cargas`:null,entry.fragments?`${entry.fragments} fragmentos`:null,entry.imbued];
