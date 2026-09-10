@@ -1,4 +1,4 @@
-export const IMAGE_KINDS={region:'regioes',place:'locais',npc:'npcs',monster:'monstros',item:'itens',quest:'quests',map:'mapas',token:'tokens'};
+export const IMAGE_KINDS={region:'regioes',place:'locais',npc:'npcs',monster:'monstros',item:'itens',quest:'quests',map:'mapas',token:'tokens',guild:'guildas'};
 export function imageSlug(value){return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
 export function imageCandidates(root,kind,idOrName){
  const base=String(root??'').replace(/[\/]+$/,''),folder=IMAGE_KINDS[kind]??imageSlug(kind),slug=imageSlug(idOrName);

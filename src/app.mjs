@@ -24,12 +24,12 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   money(){try{const base=startingMoney(this.selected('class')?.name,this.selected('background')?.name,this.sums.class,this.sums.background);if(this.draft.moneyOverride!=null&&this.draft.moneyOverride>=0)return {...base,cash:this.draft.moneyOverride,wallet:wallet(this.draft.moneyOverride)};return base;}catch{return null;}}
   attrErrors(){const bases=[3,2,1,1,0,-1],values=Object.values(this.draft.attributes);const errors=validateAttributes(values,this.draft.method,this.draft.slots.map(i=>bases[i]),this.draft.boost);if(this.draft.method==='fixed'&&new Set(this.draft.slots).size!==6)errors.push('Use cada posição da distribuição uma única vez.');if(['conventional','ordered'].includes(this.draft.method)&&this.rolls.length!==6)errors.push('Role os seis conjuntos antes de continuar.');return errors;}
   async _renderHTML(){
-    const sharedAreas=game.user.isGM?[]:[...new Set([...this.library.shared.areas.filter(a=>['npcs','map','monsters','items','imbue'].includes(a)),'quests'])];
+    const sharedAreas=game.user.isGM?[]:[...new Set([...this.library.shared.areas.filter(a=>['npcs','guilds','map','monsters','items','imbue'].includes(a)),'quests'])];
     if(!game.user.isGM&&this.area!=='characters'&&!sharedAreas.includes(this.area))this.area='characters';
     if(!this.loading&&this.visited.size)this.visited.add(this.step);
     const selected=this.selected('class');let hp='—';try{hp=hitPoints(selected?.name,this.draft.attributes.con,this.draft.level,this.draft.hpMethod==='rolled'?this.draft.hpRolls:null);}catch{}
     const money=this.money(),purchaseMoney=money?resolvePurchases(this.catalog,money.cash,money.equipmentBudget,this.purchasesCash,this.purchasesBudget):null,displayWallet=purchaseMoney?wallet(Math.max(0,purchaseMoney.cashRemaining)):money?.wallet;
-    const areaLabels={npcs:'NPCs',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'};
+    const areaLabels={npcs:'NPCs',guilds:'Guildas',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'};
     const areas=[['characters','Criação de Personagens'],...(game.user.isGM?Object.entries(areaLabels):sharedAreas.map(a=>[a,areaLabels[a]]))];
     const areaNav=areas.length>1?`<div class="sy-area-nav">${areas.map(([id,label])=>`<button data-op="area" data-area="${id}" aria-current="${this.area===id?'page':'false'}">${label}</button>`).join('')}</div>`:'';
     if(this.area!=='characters')return `<div class="sy-shell"><header><div class="sy-brand-lockup"><img src="modules/quedaco/assets/quedaco-logo.png" alt="QUEDAÇO — por Yuri Satélite"></div></header>${areaNav}${this.renderArea()}</div>`;
@@ -79,7 +79,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   }
   stepDone(i){return !this.stepIssues(i).length;}
   renderArea(){
-    if(['npcs','map','monsters','items','imbue','quests'].includes(this.area))return `${this.message?`<p class="sy-alert" role="status">${e(this.message)}</p>`:''}${this.library.render(this.area,!game.user.isGM)}`;
+    if(['npcs','guilds','map','monsters','items','imbue','quests'].includes(this.area))return `${this.message?`<p class="sy-alert" role="status">${e(this.message)}</p>`:''}${this.library.render(this.area,!game.user.isGM)}`;
     const definitions={npcs:['Mercadores','Aliados','Rivais','Figurantes'],map:['Regiões','Cidades e locais','Mapas e cenas','Encontros da região'],monsters:['Aquáticos','Terrestres','Aéreos','Outros'],items:['Armas','Armaduras','Equipamentos','Consumíveis'],quests:['Disponíveis','Ativas','Concluídas']};
     const titles={npcs:'NPCs',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'},items=definitions[this.area]??[];
     return `<main class="sy-empty-area"><small>PAINEL HÍBRIDO DA MESTRA</small><h2>${titles[this.area]}</h2><p>Os cartões desta área serão índices do QUEDAÇO ligados aos documentos nativos da mesa.</p><div class="sy-empty-grid">${items.map(item=>`<section><span class="sy-done sy-pending">·</span><h3>${item}</h3><small>Aguardando preenchimento e vínculo com o Foundry.</small></section>`).join('')}</div></main>`;
@@ -203,10 +203,11 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
         if(op==='lib-region-rumor-add'){const wrap=button.closest('.sy-dossier-add');data={text:wrap?.querySelector('[name="rumorText"]')?.value??''};if(wrap?.querySelector('[name="rumorText"]'))wrap.querySelector('[name="rumorText"]').value='';}
         if(op==='lib-monster-habitat-add'){const wrap=button.closest('.sy-dossier-add');data={monsterId:wrap?.querySelector('[name="habitatMonster"]')?.value??''};}
         if(op==='lib-monster-import'){const ta=this.element.querySelector('[name="monsterImport"]');data={text:ta?.value??''};}
+        if(op==='lib-guild-import'){const ta=this.element.querySelector('[name="guildImport"]');data={text:ta?.value??''};}
         if(op==='lib-npc-roll-levels'){data={min:this.element.querySelector('[name="npcLevelMin"]')?.value,max:this.element.querySelector('[name="npcLevelMax"]')?.value};}
         if(op.startsWith('lib-npc-')){
           const editor=button.closest('[data-npc-editor]');
-          if(op==='lib-npc-save'&&editor){const g=n=>editor.querySelector(`[name="${n}"]`),chk=n=>{const el=g(n);return el?(el.type==='checkbox'?el.checked:el.value==='on'):false;};data={role:g('npcRole')?.value,regionId:g('npcRegion')?.value,placeId:g('npcPlace')?.value,guild:g('npcGuild')?.value,note:g('npcNote')?.value,tokenVisible:chk('npcTokenVisible'),markup:g('npcMarkup')?.value,shopNote:g('npcShopNote')?.value,forgeEnabled:chk('npcForgeEnabled'),forgeMarkup:g('npcForgeMarkup')?.value};}
+          if(op==='lib-npc-save'&&editor){const g=n=>editor.querySelector(`[name="${n}"]`),chk=n=>{const el=g(n);return el?(el.type==='checkbox'?el.checked:el.value==='on'):false;};data={role:g('npcRole')?.value,regionId:g('npcRegion')?.value,placeId:g('npcPlace')?.value,guildUuid:g('npcGuildUuid')?.value,guild:g('npcGuild')?.value,note:g('npcNote')?.value,tokenVisible:chk('npcTokenVisible'),markup:g('npcMarkup')?.value,shopNote:g('npcShopNote')?.value,forgeEnabled:chk('npcForgeEnabled'),forgeMarkup:g('npcForgeMarkup')?.value};}
           if(op==='lib-npc-stock-add'&&editor)data={uuid:editor.querySelector('[name="npcStockUuid"]')?.value,price:editor.querySelector('[name="npcStockPrice"]')?.value===''?null:Number(editor.querySelector('[name="npcStockPrice"]')?.value),qty:editor.querySelector('[name="npcStockQty"]')?.value===''?null:Number(editor.querySelector('[name="npcStockQty"]')?.value)};
           if(op==='lib-npc-create-item'&&editor)data={name:editor.querySelector('[name="npcItemName"]')?.value,category:editor.querySelector('[name="npcItemCategory"]')?.value,price:editor.querySelector('[name="npcItemPrice"]')?.value,volume:editor.querySelector('[name="npcItemVolume"]')?.value};
           if(op==='lib-npc-link-suggest'&&editor){const row=button.closest('[data-link-type]');data={type:row?.dataset.linkType,target:row?.querySelector('[name="npcLinkSuggestion"]')?.value,note:'da bio'};}

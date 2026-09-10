@@ -3,7 +3,7 @@ import {BASE_ITEMS,MODIFICATION_GUIDES,SIGIL_COSTS,IMBUE_COSTS} from './book-ite
 import {SIGILS} from './book-sigils.mjs';
 import {MONSTERS} from './book-monsters.mjs';
 import {MODULE_ID,purchaseItem} from './adapter.mjs';
-import {NPC_LINK_TYPES,NPC_ROLES,NPC_ROLE_STYLE,adoptNpcFlag,inferPlaceId,inferRegionId,isGeneratedNpc,linksFromBio,itemTypeForCategory,npcCardOutline,npcCoverage,normalizeNpcLinks,npcFlag,npcLinkSummary,npcVisibility} from './npcs.mjs';
+import {NPC_LINK_TYPES,NPC_ROLES,NPC_ROLE_STYLE,adoptNpcFlag,inferPlaceId,inferRegionId,isGeneratedNpc,linksFromBio,itemTypeForCategory,npcCardOutline,npcCoverage,normalizeNpcLinks,npcFlag,npcLinkSummary,npcVisibility,stripTags} from './npcs.mjs';
 import {modifiedItemSheet} from './item-mod.mjs';
 import {clampPan,focusRegion,resolveHotspot,zoomToPoint} from './map-view.mjs';
 import {equipmentKind,forgeFragments,forgeQuote,magicNamePreview,purchaseForgedItem,sigilCompatible} from './forge.mjs';
@@ -16,6 +16,7 @@ import {ForienQuestIntegration,QUEST_STATUSES,questCounts} from './forien-quests
 import {generatorScope} from './generator.mjs';
 import {normalizeMonsterInput,toSkyfallNpc} from './monster-convert.mjs';
 import {rollLevel} from './npc-level.mjs';
+import {guildKind,guildsForPlace,npcGuildLabel} from './guilds.mjs';
 
 export const BOOK_ITEMS=[...BASE_ITEMS,...SIGILS];
 
@@ -36,7 +37,7 @@ export const NPC_LINKS_KEY='npcLinks';
 export const NPC_GRAPH_KEY='npcGraph';
 export const GENERATOR_MACRO_KEY='generatorMacro';
 export const DEFAULT_GENERATOR_MACRO='Skyfall — Criador de Conteúdo';
-export const emptyShare=()=>({areas:[],map:[],monsters:[],items:[],npcs:[]});
+export const emptyShare=()=>({areas:[],map:[],monsters:[],items:[],npcs:[],guilds:[]});
 export const generatorMacroName=settings=>String(settings?.get?.(MODULE_ID,GENERATOR_MACRO_KEY)||DEFAULT_GENERATOR_MACRO);
 export function registerLibrarySettings(game,onChange){
   game.settings.register(MODULE_ID,SHARED_KEY,{scope:'world',config:false,type:Object,default:emptyShare(),onChange});
@@ -162,7 +163,7 @@ export class CampaignLibrary {
   }
   async setShare(bucket,value){
     this.assertGM();
-    if(!['areas','map','monsters','items','npcs'].includes(bucket)||!value)return;
+    if(!['areas','map','monsters','items','npcs','guilds'].includes(bucket)||!value)return;
     const current={...emptyShare(),...(this.game.settings.get(MODULE_ID,SHARED_KEY)||{})};
     const list=Array.isArray(current[bucket])?[...current[bucket]]:[];
     const i=list.indexOf(value);if(i>=0)list.splice(i,1);else list.push(value);
@@ -177,6 +178,28 @@ export class CampaignLibrary {
     await Promise.all(targets.map(actor=>actor.update({'system.level.value':rollLevel(min,max)})));
     globalThis.ui?.notifications?.info?.(`${targets.length} NPC${targets.length===1?' recebeu':'s receberam'} um nível entre ${rollLevel(min,max,()=>0)} e ${rollLevel(min,max,()=>1)}.`);
     return targets.length;
+  }
+  guildActors(){return sortByName(Array.from(this.game.actors??[]).filter(guildKind));}
+  async importGuilds(input=''){
+    this.assertGM();
+    let parsed=null;
+    const text=String(input??'').trim();
+    if(text){try{parsed=JSON.parse(text);}catch{throw Error('O texto colado não é um JSON válido de guildas.');}}
+    else{
+      const response=await fetch('modules/quedaco/.local/guildas-foundry.json').catch(()=>null);
+      if(!response?.ok)throw Error('Cole o conteúdo do arquivo guildas-foundry.json na caixa, ou deixe-o em Data/modules/quedaco/.local/guildas-foundry.json.');
+      parsed=await response.json();
+    }
+    const documents=Array.isArray(parsed)?parsed:Array.isArray(parsed?.documents)?parsed.documents:[];
+    const sources=documents.filter(source=>source?.type==='guild'&&source?.name);
+    if(!sources.length)throw Error('O arquivo não contém Actors do tipo guild.');
+    const existing=new Set(this.guildActors().map(actor=>nameKey(actor.name))),fresh=sources.filter(source=>!existing.has(nameKey(source.name)));
+    const confirmed=await foundry.applications.api.DialogV2.confirm({window:{title:'Importar guildas do apêndice'},content:`<p>${sources.length} guilda(s) encontrada(s); ${fresh.length} ainda não existem nesta mesa. Importar agora?</p>`,yes:{label:'Importar'},no:{label:'Cancelar'}});
+    if(!confirmed||!fresh.length)return 0;
+    let folder=Array.from(this.game.folders??[]).find(entry=>entry.type==='Actor'&&entry.name==='Guildas · Apêndice B');
+    if(!folder)folder=await Folder.create({name:'Guildas · Apêndice B',type:'Actor'});
+    await Actor.createDocuments(fresh.map(source=>{const copy=foundry.utils.deepClone(source);delete copy._id;return {...copy,folder:folder.id};}));
+    globalThis.ui?.notifications?.info?.(`${fresh.length} guilda(s) importada(s).`);return fresh.length;
   }
   async setMapShares(mode){
     this.assertGM();const current={...emptyShare(),...(this.game.settings.get(MODULE_ID,SHARED_KEY)||{})};
@@ -265,6 +288,7 @@ export class CampaignLibrary {
     }
     if(op==='lib-npc-close'){this.state.npcActor=null;this.state.npcEditRole=null;this.state.npcEditPlace=null;}
     if(op==='lib-npc-roll-levels')await this.rollNpcLevels(data.min,data.max);
+    if(op==='lib-guild-import')await this.importGuilds(data.text);
     if(op==='lib-region-rumor-add')await this.addRegionRumor(id,data.text);
     if(op==='lib-region-rumor'){const [regionId,rumorId,change]=String(id).split('|');await this.updateRegionRumor(regionId,rumorId,change);}
     if(op==='lib-monster-habitat'){const [monsterId,regionId,mode]=String(id).split('|');await this.setMonsterHabitat(monsterId,regionId,mode!=='off');}
@@ -347,7 +371,8 @@ export class CampaignLibrary {
     this.assertGM();const actor=this.actorById(actorId);if(!actor)throw Error('NPC não encontrado.');
     const current=npcFlag(actor)??adoptNpcFlag(actor),role=NPC_ROLES[data.role]?data.role:current.role;
     const placeId=PLACES.some(place=>place.id===data.placeId)?data.placeId:'',place=PLACES.find(entry=>entry.id===placeId),regionId=place?.regionId??(REGIONS.some(region=>region.id===data.regionId)?data.regionId:'');
-    const next={...current,role,regionId,placeId,guild:String(data.guild??'').trim(),tokenVisible:Boolean(data.tokenVisible),note:String(data.note??''),forge:{...current.forge,enabled:Boolean(data.forgeEnabled),markup:Math.max(.1,Number(data.forgeMarkup)||1)},shop:{...current.shop,markup:Math.max(.1,Number(data.markup)||1),note:String(data.shopNote??'')}};
+    const guildUuid=this.guildActors().some(guild=>guild.uuid===data.guildUuid)?String(data.guildUuid):'';
+    const next={...current,role,regionId,placeId,guildUuid,guild:String(data.guild??'').trim(),tokenVisible:Boolean(data.tokenVisible),note:String(data.note??''),forge:{...current.forge,enabled:Boolean(data.forgeEnabled),markup:Math.max(.1,Number(data.forgeMarkup)||1)},shop:{...current.shop,markup:Math.max(.1,Number(data.markup)||1),note:String(data.shopNote??'')}};
     const update={[`flags.${MODULE_ID}.npc`]:next};if(next.tokenVisible)update.ownership={...(actor.ownership??{}),default:Math.max(1,Number(actor.ownership?.default)||0)};
     delete next.active;await actor.update(update);this.state.npcActor=actor.id;this.state.npcSaved=actor.id;this.state.npcEditRole=null;this.state.npcEditPlace=null;ui.notifications.info('NPC atualizado.');
   }
@@ -417,8 +442,8 @@ export class CampaignLibrary {
   render(area,readonly=false){
     if(!readonly)this.assertGM();
     else if(area!=='quests'&&!this.shared.areas.includes(area))return `<main class="sy-library"><small>CONSULTA DA CAMPANHA</small><h2>${area}</h2><p class="sy-library-deferred">O mestre ainda não liberou este conteúdo.</p></main>`;
-    const titles={npcs:'NPCs',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'};
-    const body=area==='npcs'?this.renderNpcs(readonly):area==='map'?this.renderMap(readonly):area==='monsters'?this.renderMonsters(readonly):area==='imbue'?this.renderImbue(readonly):area==='quests'?this.renderQuests(readonly):this.renderItems(readonly);
+    const titles={npcs:'NPCs',guilds:'Guildas e Hansas',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'};
+    const body=area==='npcs'?this.renderNpcs(readonly):area==='guilds'?this.renderGuilds(readonly):area==='map'?this.renderMap(readonly):area==='monsters'?this.renderMonsters(readonly):area==='imbue'?this.renderImbue(readonly):area==='quests'?this.renderQuests(readonly):this.renderItems(readonly);
     return `<main class="sy-library"><small>${area==='quests'?'QUESTS DA CAMPANHA':readonly?'LIBERADO PELO MESTRE':'CONSULTA DA CAMPANHA'}</small><h2>${titles[area]}</h2>${body}</main>`;
   }
   renderQuests(readonly=false){
@@ -469,6 +494,16 @@ export class CampaignLibrary {
     const editor=this.renderNpcEditor(this.actorById(this.state.npcActor));
     return `<p>NPCs ligados a cidades, lojas e ao controle do mestre. Todos os Actors das pastas da macro aparecem direto nesta lista; alterações só são gravadas quando você salva.</p><div class="sy-library-share-row">${button('export-tokens','npcs','Exportar fichas para casar tokens')}${this.shareButton('areas','npcs','✓ Aba NPCs visível aos jogadores','Liberar a aba NPCs aos jogadores')}</div>${audit}${filters}<div class="sy-library-grid">${cards||'<p class="sy-library-deferred">Nenhum NPC encontrado nesta seção.</p>'}</div>${editor}`;
   }
+  renderGuilds(readonly=false){
+    const shared=this.shared.guilds,guilds=this.guildActors().filter(guild=>!readonly||shared.includes(guild.uuid));
+    const abilityLabels={cunning:'Astúcia',knowledge:'Conhecimento',crafting:'Ofício',reputation:'Reputação'};
+    const cards=guilds.map(guild=>{
+      const system=guild.system??{},abilities=Object.entries(abilityLabels).map(([key,label])=>`${label} ${system.abilities?.[key]?.value??system[key]?.value??system[key]??'—'}`),motto=stripTags(system.motto??''),members=Array.isArray(system.members)?system.members.length:0;
+      return `<article class="sy-library-card sy-guild-card" data-search="${e(nameKey(`${guild.name} ${motto} ${abilities.join(' ')}`))}" data-category=""><div class="sy-library-card-content">${thumb(this.image('guild',guild.name,guild.img,'icons/svg/village.svg'))}<small>Nível ${e(system.level?.value??system.level??'—')} · ${members} membro(s)</small><h3>${e(guild.name)}</h3>${motto?`<p>${e(motto)}</p>`:''}${chips(abilities)}<div class="sy-library-tabs">${button('open',guild.uuid,'Abrir ficha')}${readonly?'':this.shareButton('guilds',guild.uuid,'✓ Liberada','Liberar aos jogadores')}</div></div></article>`;
+    }).join('');
+    const importer=readonly?'':`<details class="sy-library-guide"><summary>Importar guildas do apêndice</summary><p class="sy-note">Cole aqui o conteúdo de <code>.local/guildas-foundry.json</code> (gerado por <code>tools/parse-guilds.mjs</code>) ou deixe o arquivo em <code>Data/modules/quedaco/.local/</code> e clique sem colar nada. Cria os Actors <code>guild</code> numa pasta "Guildas · Apêndice B"; pula as que já existem.</p><textarea name="guildImport" rows="4" placeholder='[ { "type": "guild", "name": "...", ... } ]'></textarea><div class="sy-library-tabs">${button('guild-import','','Importar')}</div></details>`;
+    return `<p>Guildas e Hansas registradas como fichas nativas do Skyfall.</p>${readonly?'':`<div class="sy-library-share-row">${this.shareButton('areas','guilds','✓ Aba Guildas visível aos jogadores','Liberar a aba Guildas aos jogadores')}</div>`}${importer}${this.filters([],'Buscar guilda ou hansa')}<div class="sy-library-grid">${cards||'<p class="sy-library-deferred">Nenhuma guilda disponível.</p>'}</div>`;
+  }
   renderNpcEditor(actor){
     if(!actor)return '';const flag=npcFlag(actor)??adoptNpcFlag(actor);
     const role=NPC_ROLES[this.state.npcEditRole]?this.state.npcEditRole:flag.role;
@@ -485,10 +520,12 @@ export class CampaignLibrary {
     const regionId=placeRegionId||flag.regionId;
     const regionOptions=sortByName(REGIONS).map(region=>`<option value="${e(region.id)}" ${regionId===region.id?'selected':''}>${e(region.name)}</option>`).join('');
     const placeOptions=sortByName(PLACES).map(place=>`<option value="${e(place.id)}" ${placeId===place.id?'selected':''}>${e(place.name)}</option>`).join('');
+    const guilds=this.guildActors(),guildLabel=npcGuildLabel(flag,guilds);
+    const guildOptions=guilds.map(guild=>`<option value="${e(guild.uuid)}" ${flag.guildUuid===guild.uuid?'selected':''}>${e(guild.name)}</option>`).join('');
     const portrait=this.image('npc',actor.name,actor.img,'icons/svg/mystery-man.svg');
     const shopFields=role==='merchant'?`<label>Margem da loja<input type="number" name="npcMarkup" min="0.1" step="0.1" value="${e(flag.shop?.markup??1)}"></label><label>Apresentação da loja<textarea name="npcShopNote">${e(flag.shop?.note??'')}</textarea></label>`:`<input type="hidden" name="npcMarkup" value="${e(flag.shop?.markup??1)}"><input type="hidden" name="npcShopNote" value="${e(flag.shop?.note??'')}">`;
     const forgeFields=role==='smith'?`<label class="sy-inline-check"><input type="checkbox" name="npcForgeEnabled" ${flag.forge?.enabled?'checked':''}> Forja habilitada</label><label>Margem da forja<input type="number" name="npcForgeMarkup" min="0.1" step="0.1" value="${e(flag.forge?.markup??1)}"></label>`:`<input type="hidden" name="npcForgeEnabled" value="${flag.forge?.enabled?'on':''}"><input type="hidden" name="npcForgeMarkup" value="${e(flag.forge?.markup??1)}">`;
-    return `<section class="sy-library-detail sy-npc-editor" data-npc-editor="${e(actor.id)}"><img class="sy-npc-editor-portrait" src="${e(portrait.src)}" alt="" loading="lazy"${portrait.fallbacks.length?` data-fallback-srcs="${e(portrait.fallbacks.join('||'))}"`:''}><div class="sy-npc-editor-head"><h3>Editar · ${e(actor.name)}</h3><span class="sy-npc-saved" ${this.state.npcSaved===actor.id?'':'hidden'}>✓ salvo</span>${button('npc-open',actor.id,'Abrir ficha')}${button('npc-close',actor.id,'Fechar edição')}</div>${(npcStatBadges(actor)||npcAspectChips(actor))?`<div class="sy-npc-editor-summary">${npcStatBadges(actor)}${npcAspectChips(actor)?`<div class="sy-npc-chip-row">${npcAspectChips(actor)}${flag.guild?`<span class="sy-npc-chip sy-npc-chip-guild" title="Guilda / Hansa"><b>Guilda</b>${e(flag.guild)}</span>`:''}</div>`:''}</div>`:''}${suggestedPlace?`<p class="sy-hint"><span>Local sugerido: <strong>${e(suggestedPlace.name)}</strong></span>${button('npc-place-accept',`${actor.id}:${suggestedPlace.id}`,'Usar local sugerido')}</p>`:''}<div class="sy-npc-form"><label>Papel<select name="npcRole">${roleOptions}</select></label><label>Região<select name="npcRegion"><option value="">Sem região</option>${regionOptions}</select></label><label>Local<select name="npcPlace"><option value="">Sem local</option>${placeOptions}</select><small class="sy-hint-inline">A região acompanha o local automaticamente.</small></label><label>Guilda / Hansa<input name="npcGuild" value="${e(flag.guild??'')}" placeholder="Nome da guilda ou hansa"></label><label>Nota<textarea name="npcNote">${e(flag.note??'')}</textarea></label><label class="sy-inline-check"><input type="checkbox" name="npcTokenVisible" ${flag.tokenVisible!==false?'checked':''}> Jogadores podem ver o token</label>${shopFields}${forgeFields}</div>${button('npc-save',actor.id,'Salvar NPC')}<details class="sy-library-guide"><summary>Vínculos${linkRows?'':' · nenhum'}</summary>${suggestionRows?`<div class="sy-npc-suggestions"><strong>Detectados na bio</strong>${suggestionRows}</div>`:''}<div class="sy-npc-stock">${linkRows||'<small>Nenhum vínculo.</small>'}</div><div class="sy-npc-link-add"><select name="npcLinkType">${Object.entries(NPC_LINK_TYPES).map(([id,label])=>`<option value="${id}">${label}</option>`).join('')}</select><select name="npcLinkTarget"><option value="">Outro NPC…</option>${marked.map(item=>`<option value="${e(item.uuid)}">${e(item.name)}</option>`).join('')}</select><input name="npcLinkText" placeholder="Ou nome fora da mesa"><input name="npcLinkNote" placeholder="Nota opcional">${button('npc-link-add',actor.id,'Adicionar vínculo')}</div></details><details class="sy-library-guide"><summary>Estoque de compêndio${stock.length?` · ${stock.length}`:''}</summary><div class="sy-npc-stock">${stock.map(item=>`<div><code>${e(item.uuid)}</code><span>${item.price==null?'Preço do item':currency(item.price)} · ${item.qty==null?'sem limite':e(item.qty)+' un.'}</span>${button('npc-stock-remove',`${actor.id}|${item.uuid}`,'Remover')}</div>`).join('')||'<small>Estoque vazio.</small>'}</div><div class="sy-npc-stock-add"><select name="npcStockUuid"><option value="">Adicionar item…</option>${catalogItems.map(item=>`<option value="${e(item.uuid)}">${e(item.name)} · ${e(item.source)}</option>`).join('')}</select><input name="npcStockPrice" type="number" min="0" placeholder="Preço opcional"><input name="npcStockQty" type="number" min="0" placeholder="Qtd. vazia = infinita">${button('npc-stock-add',actor.id,'Adicionar ao estoque')}</div></details><details class="sy-library-guide"><summary>Criar item tabelado</summary>${compendium?`<div class="sy-npc-new-item"><input name="npcItemName" placeholder="Nome"><select name="npcItemCategory">${[...new Set(BOOK_ITEMS.map(item=>item.category))].map(category=>`<option>${e(category)}</option>`).join('')}</select><input name="npcItemPrice" type="number" min="0" placeholder="Preço em T$"><input name="npcItemVolume" type="number" min="0" step="0.1" placeholder="Volume">${button('npc-create-item',actor.id,'Criar no compêndio e adicionar')}</div>`:'<p class="sy-alert">Configure “Compêndio de itens do QUEDAÇO” para criar itens tabelados. Nenhum item solto de Mundo será criado.</p>'}</details></section>`;
+    return `<section class="sy-library-detail sy-npc-editor" data-npc-editor="${e(actor.id)}"><img class="sy-npc-editor-portrait" src="${e(portrait.src)}" alt="" loading="lazy"${portrait.fallbacks.length?` data-fallback-srcs="${e(portrait.fallbacks.join('||'))}"`:''}><div class="sy-npc-editor-head"><h3>Editar · ${e(actor.name)}</h3><span class="sy-npc-saved" ${this.state.npcSaved===actor.id?'':'hidden'}>✓ salvo</span>${button('npc-open',actor.id,'Abrir ficha')}${button('npc-close',actor.id,'Fechar edição')}</div>${(npcStatBadges(actor)||npcAspectChips(actor)||guildLabel)?`<div class="sy-npc-editor-summary">${npcStatBadges(actor)}<div class="sy-npc-chip-row">${npcAspectChips(actor)}${guildLabel?`<span class="sy-npc-chip sy-npc-chip-guild" title="Guilda / Hansa"><b>Guilda</b>${e(guildLabel)}</span>`:''}</div></div>`:''}${suggestedPlace?`<p class="sy-hint"><span>Local sugerido: <strong>${e(suggestedPlace.name)}</strong></span>${button('npc-place-accept',`${actor.id}:${suggestedPlace.id}`,'Usar local sugerido')}</p>`:''}<div class="sy-npc-form"><label>Papel<select name="npcRole">${roleOptions}</select></label><label>Região<select name="npcRegion"><option value="">Sem região</option>${regionOptions}</select></label><label>Local<select name="npcPlace"><option value="">Sem local</option>${placeOptions}</select><small class="sy-hint-inline">A região acompanha o local automaticamente.</small></label><label>Guilda / Hansa da mesa<select name="npcGuildUuid"><option value="">Nenhuma ficha vinculada</option>${guildOptions}</select></label><label>Outra Guilda / Hansa<input name="npcGuild" value="${e(flag.guild??'')}" placeholder="Nome livre"></label><label>Nota<textarea name="npcNote">${e(flag.note??'')}</textarea></label><label class="sy-inline-check"><input type="checkbox" name="npcTokenVisible" ${flag.tokenVisible!==false?'checked':''}> Jogadores podem ver o token</label>${shopFields}${forgeFields}</div>${button('npc-save',actor.id,'Salvar NPC')}<details class="sy-library-guide"><summary>Vínculos${linkRows?'':' · nenhum'}</summary>${suggestionRows?`<div class="sy-npc-suggestions"><strong>Detectados na bio</strong>${suggestionRows}</div>`:''}<div class="sy-npc-stock">${linkRows||'<small>Nenhum vínculo.</small>'}</div><div class="sy-npc-link-add"><select name="npcLinkType">${Object.entries(NPC_LINK_TYPES).map(([id,label])=>`<option value="${id}">${label}</option>`).join('')}</select><select name="npcLinkTarget"><option value="">Outro NPC…</option>${marked.map(item=>`<option value="${e(item.uuid)}">${e(item.name)}</option>`).join('')}</select><input name="npcLinkText" placeholder="Ou nome fora da mesa"><input name="npcLinkNote" placeholder="Nota opcional">${button('npc-link-add',actor.id,'Adicionar vínculo')}</div></details><details class="sy-library-guide"><summary>Estoque de compêndio${stock.length?` · ${stock.length}`:''}</summary><div class="sy-npc-stock">${stock.map(item=>`<div><code>${e(item.uuid)}</code><span>${item.price==null?'Preço do item':currency(item.price)} · ${item.qty==null?'sem limite':e(item.qty)+' un.'}</span>${button('npc-stock-remove',`${actor.id}|${item.uuid}`,'Remover')}</div>`).join('')||'<small>Estoque vazio.</small>'}</div><div class="sy-npc-stock-add"><select name="npcStockUuid"><option value="">Adicionar item…</option>${catalogItems.map(item=>`<option value="${e(item.uuid)}">${e(item.name)} · ${e(item.source)}</option>`).join('')}</select><input name="npcStockPrice" type="number" min="0" placeholder="Preço opcional"><input name="npcStockQty" type="number" min="0" placeholder="Qtd. vazia = infinita">${button('npc-stock-add',actor.id,'Adicionar ao estoque')}</div></details><details class="sy-library-guide"><summary>Criar item tabelado</summary>${compendium?`<div class="sy-npc-new-item"><input name="npcItemName" placeholder="Nome"><select name="npcItemCategory">${[...new Set(BOOK_ITEMS.map(item=>item.category))].map(category=>`<option>${e(category)}</option>`).join('')}</select><input name="npcItemPrice" type="number" min="0" placeholder="Preço em T$"><input name="npcItemVolume" type="number" min="0" step="0.1" placeholder="Volume">${button('npc-create-item',actor.id,'Criar no compêndio e adicionar')}</div>`:'<p class="sy-alert">Configure “Compêndio de itens do QUEDAÇO” para criar itens tabelados. Nenhum item solto de Mundo será criado.</p>'}</details></section>`;
   }
   npcsForLocation(regionId,placeId=null,readonly=false){
     const shared=this.shared.npcs;
@@ -604,12 +641,13 @@ export class CampaignLibrary {
   }
   renderDossier(region,gm=false){
     const readonly=!gm,sharedNpcs=this.shared.npcs,sharedMonsters=this.shared.monsters;
-    const npcs=this.npcActors().map(a=>{const f=npcFlag(a)??adoptNpcFlag(a);return {id:a.id,name:a.name,img:a.img,uuid:a.uuid,role:f.role,placeId:f.placeId,regionId:f.regionId||PLACES.find(p=>p.id===f.placeId)?.regionId||inferRegionId(a),shared:sharedNpcs.includes(a.uuid)};});
+    const npcs=this.npcActors().map(a=>{const f=npcFlag(a)??adoptNpcFlag(a);return {id:a.id,name:a.name,img:a.img,uuid:a.uuid,role:f.role,placeId:f.placeId,regionId:f.regionId||PLACES.find(p=>p.id===f.placeId)?.regionId||inferRegionId(a),guildUuid:f.guildUuid,guild:f.guild,shared:sharedNpcs.includes(a.uuid)};});
     const quests=this.quests?.available?this.quests.quests():[];
     const {blocks}=regionDossier(region.id,{regions:REGIONS,places:PLACES,npcs,monsters:MONSTERS,quests,monsterHabitats:this.monsterHabitats,rumors:this.regionRumors});
     const audit=monsterAudit(this.actors,this.failures,this.loaded);
     const npcBtn=n=>`<button class="sy-location-npc" data-op="lib-npc-open" data-id="${e(n.id)}" draggable="true" data-drag-actor="${e(n.uuid)}" title="Abrir ficha ou arrastar">${avatarFor(this.image('npc',n.name,n.img,'icons/svg/mystery-man.svg'))}<span><strong>${e(n.name)}</strong>${npcRoleChip(n.role)}</span></button>`;
     const knownNpcs=blocks.knownNpcs.filter(n=>!readonly||n.shared),territoryNpcs=blocks.territoryNpcs.filter(n=>!readonly||n.shared);
+    const guilds=guildsForPlace({npcs,guilds:this.guildActors(),regionId:region.id,places:PLACES}).filter(guild=>!readonly||this.shared.guilds.includes(guild.uuid));
     const placesHtml=[['cidade','Cidades'],['marco','Marcos'],['queda','Quedas']].map(([k,label])=>{const list=blocks.places[k]||[];return list.length?`<div class="sy-dossier-places"><h5>${label}</h5>${list.map(p=>button('place',p.id,p.name)).join('')}</div>`:'';}).join('');
     const threats=blocks.threats.filter(m=>!readonly||sharedMonsters.includes(m.id));
     const threatCard=m=>{const row=audit.find(a=>a.id===m.id),uuid=row?.matches?.[0]?.uuid,img=this.image('monster',m.name,row?.matches?.[0]?.img,'icons/svg/mystery-man.svg');return `<span class="sy-dossier-threat">${uuid?`<button class="sy-location-npc" data-op="lib-open" data-id="${e(uuid)}" draggable="true" data-drag-actor="${e(uuid)}" title="Abrir ou arrastar">`:'<span class="sy-location-npc">'}${avatarFor(img)}<span><strong>${e(m.name)}</strong><small>ND ${e(m.nd)} · ${e(m.creatureType)}</small></span>${uuid?'</button>':'</span>'}${gm?button('monster-habitat',`${m.id}|${region.id}|off`,'×'):''}</span>`;};
@@ -618,7 +656,7 @@ export class CampaignLibrary {
     const rumorsHtml=(rumors.length||gm)?`<section class="sy-dossier-rumors"><h4>Rumores</h4>${rumors.map(r=>`<p class="sy-rumor ${r.shared?'is-shared':''}">${e(r.text)}${gm?` ${button('region-rumor',`${region.id}|${r.id}|share`,r.shared?'✓ liberado':'liberar')} ${button('region-rumor',`${region.id}|${r.id}|remove`,'×')}`:''}</p>`).join('')||'<small>Nenhum rumor ainda.</small>'}${gm?`<div class="sy-dossier-add"><input name="rumorText" placeholder="Novo rumor"><button data-op="lib-region-rumor-add" data-id="${e(region.id)}">Adicionar</button></div>`:''}</section>`:'';
     const questsHtml=blocks.quests.length?`<section><h4>Missões abertas</h4><div class="sy-location-npc-list">${blocks.quests.map(q=>`<button data-op="lib-quest-open" data-id="${e(q.id)}" class="sy-dossier-quest">${e(q.name)}</button>`).join('')}</div></section>`:'';
     const faunaHtml=(blocks.fauna||[]).length?`<section><h4>Fauna</h4>${chips(blocks.fauna)}</section>`:'';
-    return `<div class="sy-dossier">${placesHtml?`<section><h4>Cidades e locais</h4>${placesHtml}</section>`:''}${faunaHtml}${(threats.length||gm)?`<section><h4>Ameaças</h4><div class="sy-location-npc-list">${threats.map(threatCard).join('')||'<small>Nenhuma ameaça marcada.</small>'}</div>${addThreat}</section>`:''}${questsHtml}${knownNpcs.length?`<section><h4>NPCs conhecidos</h4><div class="sy-location-npc-list">${knownNpcs.map(npcBtn).join('')}</div></section>`:''}${territoryNpcs.length?`<section><h4>NPCs pelo território</h4><div class="sy-location-npc-list">${territoryNpcs.map(npcBtn).join('')}</div></section>`:''}${rumorsHtml}</div>`;
+    return `<div class="sy-dossier">${placesHtml?`<section><h4>Cidades e locais</h4>${placesHtml}</section>`:''}${faunaHtml}${(threats.length||gm)?`<section><h4>Ameaças</h4><div class="sy-location-npc-list">${threats.map(threatCard).join('')||'<small>Nenhuma ameaça marcada.</small>'}</div>${addThreat}</section>`:''}${questsHtml}${knownNpcs.length?`<section><h4>NPCs conhecidos</h4><div class="sy-location-npc-list">${knownNpcs.map(npcBtn).join('')}</div></section>`:''}${territoryNpcs.length?`<section><h4>NPCs pelo território</h4><div class="sy-location-npc-list">${territoryNpcs.map(npcBtn).join('')}</div></section>`:''}${guilds.length?`<section><h4>Guildas presentes</h4><div class="sy-location-npc-list">${guilds.map(guild=>`<button class="sy-location-npc" data-op="lib-open" data-id="${e(guild.uuid)}">${avatarThumb(guild.img,'icons/svg/village.svg')}<span><strong>${e(guild.name)}</strong><small>Abrir ficha</small></span></button>`).join('')}</div></section>`:''}${rumorsHtml}</div>`;
   }
   placeDetail(place,gm=false){
     const resolved=this.image('place',place.id,'','icons/svg/village.svg'),img=this.placeImages[place.id]||resolved.src;
