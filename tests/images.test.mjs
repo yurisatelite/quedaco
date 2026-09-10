@@ -15,7 +15,14 @@ test('sem exceção, monstro/item mostram a imagem do documento antes da pasta (
  const monster=resolveImage('monster','Kraken',{root:'worlds/x',documentImg:'tokens/kraken.webp',fallback:'f.svg'});
  assert.equal(monster.src,'tokens/kraken.webp');
  assert.ok(monster.fallbacks.includes('worlds/x/monstros/kraken.webp'));
- // NPC mantém a pasta na frente (fluxo de upload de tokens)
+ // NPC também: imagem do documento primeiro; a pasta fica só como fallback
  const npc=resolveImage('npc','Kraken',{root:'worlds/x',documentImg:'tokens/kraken.webp',fallback:'f.svg'});
- assert.equal(npc.src,'worlds/x/npcs/kraken.webp');
+ assert.equal(npc.src,'tokens/kraken.webp');
+ assert.ok(npc.fallbacks.includes('worlds/x/npcs/kraken.webp'));
+ // sem documentImg, aí sim a pasta lidera
+ const npc2=resolveImage('npc','Kraken',{root:'worlds/x',fallback:'f.svg'});
+ assert.equal(npc2.src,'worlds/x/npcs/kraken.webp');
+ // exceção do manifesto continua tendo prioridade máxima
+ const ex=resolveImage('npc','Kraken',{root:'worlds/x',manifest:{npcs:{kraken:'custom.png'}},documentImg:'tokens/kraken.webp'});
+ assert.equal(ex.src,'custom.png');
 });

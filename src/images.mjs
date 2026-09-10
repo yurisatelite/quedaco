@@ -9,10 +9,11 @@ export function resolveImage(kind,idOrName,{root='',manifest={},documentImg='',f
  const key=imageSlug(idOrName),section=manifest?.[IMAGE_KINDS[kind]]??manifest?.[kind]??{},exception=section?.[idOrName]??section?.[key];
  const tokenCandidates=['npc','monster'].includes(kind)?imageCandidates(root,'token',idOrName):[];
  const folder=[...imageCandidates(root,kind,idOrName),...tokenCandidates];
- // Sem entrada no manifesto e com imagem própria do documento: mostra a imagem real
- // primeiro (evita a "piscada" de vários 404 antes de cair no ícone). NPC mantém a
- // pasta na frente porque é o fluxo de upload de tokens do Yuri.
- const preferDocument=!exception&&documentImg&&kind!=='npc';
+ // Com imagem própria do documento e sem entrada no manifesto: mostra a imagem
+ // real primeiro. Ela existe, então o navegador nunca chega a pedir os candidatos
+ // da pasta (evita centenas de 404 ao abrir o painel). Para forçar um arquivo da
+ // pasta, use o quedaco-imagens.json.
+ const preferDocument=!exception&&documentImg;
  const sources=(preferDocument
    ?[documentImg,...folder,fallback]
    :[exception,...folder,documentImg,fallback]).filter(Boolean);
