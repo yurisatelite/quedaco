@@ -81,3 +81,27 @@ test('normalizeMonsterInput aceita JSON string ou texto',()=>{
   assert.equal(normalizeMonsterInput('Ogre\nLarge giant\nArmor Class 11\nChallenge 2').name,'Ogre');
   assert.equal(normalizeMonsterInput(''),null);
 });
+
+test('normaliza JSON do 5e.tools (chaves "Armor Class", "STR", "Challenge")',()=>{
+  const j={name:'Aboleth',meta:'Large aberration','Armor Class':'17 (Natural Armor)','Hit Points':'135 (18d10+36)',Speed:'10 ft., swim 40 ft.',STR:'21',DEX:'9',CON:'15',INT:'18',WIS:'15',CHA:'18',Challenge:'10 (5,900 XP)',Actions:'<p>Multiattack.</p>','Legendary Actions':'<p>x</p>',img_url:'https://a/b.jpg'};
+  const m=normalizeMonsterInput(j);
+  assert.equal(m.name,'Aboleth');
+  assert.equal(m.ac,17);
+  assert.equal(m.cr,'10');
+  assert.equal(m.abilities.str,21);
+  assert.equal(m.legendary,true);
+  assert.equal(m.img,'https://a/b.jpg');
+  const src=toSkyfallNpc(m);
+  assert.equal(src.system.level.value,7);
+  assert.equal(src.system.creatureType,'monstrosity');
+  assert.equal(src.system.hierarchy,'boss');
+  assert.equal(src.system.movement.swim,12);
+  assert.equal(src.img,'https://a/b.jpg');
+});
+
+test('recupera JSON colado sem fechar o colchete / com vírgula solta',()=>{
+  const raw='[\n  {"name":"Ogre","STR":"19","DEX":"8","CON":"16","INT":"5","WIS":"7","CHA":"7","Armor Class":"11","Challenge":"2"},\n';
+  const m=normalizeMonsterInput(raw);
+  assert.equal(m?.name,'Ogre');
+  assert.equal(m.abilities.str,19);
+});

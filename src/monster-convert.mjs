@@ -76,7 +76,7 @@ export function toSkyfallNpc(mob,{hierarchy=null,boss=null}={}){
   hp=Math.max(10,hp);
   const dr=Math.max(0,Math.min(8,Math.round(((Number(mob.ac)||12)-12)/2)));
   const speed=mob.speed||{};
-  return {
+  const source={
     name:String(mob.name||'Criatura convertida').trim(),
     type:'npc',
     system:{
@@ -98,6 +98,8 @@ export function toSkyfallNpc(mob,{hierarchy=null,boss=null}={}){
     },
     flags:{quedaco:{convertedFrom:'dnd5e',sourceCr:String(mob.cr??''),sourceName:String(mob.name||'')}}
   };
+  if(mob.img&&/^https?:|^\w[\w./-]*\.(webp|png|jpe?g)$/i.test(String(mob.img)))source.img=String(mob.img);
+  return source;
 }
 
 /** Normaliza um JSON do Open5e / 5e.tools / export do sistema dnd5e. */
@@ -183,12 +185,59 @@ export function parseStatblock(text){
 }
 
 /** Aceita JSON (objeto ou string) ou texto de statblock e devolve o bloco normalizado. */
-export function normalizeMonsterInput(input){
-  if(input&&typeof input==='object')return normalizeOpen5e(input);
-  const str=String(input||'').trim();
-  if(!str)return null;
-  if(str.startsWith('{')||str.startsWith('[')){
-    try{const json=JSON.parse(str);return normalizeOpen5e(Array.isArray(json)?json[0]:json);}catch{/* cai no parser de texto */}
+const CAP=/^[A-Z]/;
+const num=v=>{const n=Number(String(v??'').replace(/[^0-9.-]/g,''));return Number.isFinite(n)?n:null;};
+const grab5e=(json,...keys)=>{for(const k of keys)if(json[k]!=null&&json[k]!=='')return json[k];return null;};
+
+/** Normaliza o JSON exportado do 5e.tools / statblock5e (chaves "Armor Class", "STR", "Challenge"...). */
+export function normalize5eTools(json){
+  if(!json||typeof json!=='object')return null;
+  const ab={};
+  for(const key of ABILITIES){
+    const v=grab5e(json,key.toUpperCase(),key.toUpperCase()+'_score',DND_KEY[key]);
+    if(v!=null&&v!=='')ab[key]=Number(v);
   }
-  return parseStatblock(str);
+  if(!Object.keys(ab).length)return null;
+  const meta=String(grab5e(json,'meta','Meta','size_type_alignment')||'');
+  const parts=t=>t?String(t).replace(/<[^>]*>/g,' ').replace(/&[a-z]+;/gi,' ').replace(/\s+/g,' ').trim():'';
+  return {
+    name:grab5e(json,'name','Name'),
+    cr:String(grab5e(json,'Challenge','challenge_rating','CR','cr')||'').split(/[\s(]/)[0],
+    abilities:ab,
+    ac:num(grab5e(json,'Armor Class','armor_class','AC','ac')),
+    hp:String(grab5e(json,'Hit Points','hit_points','HP','hp')||''),
+    speed:parseSpeedString(grab5e(json,'Speed','speed')),
+    type:meta||grab5e(json,'type','Type'),
+    resistances:parts([grab5e(json,'Damage Resistances','damage_resistances'),grab5e(json,'Condition Immunities','condition_immunities')].filter(Boolean).join('; ')),
+    immunities:parts(grab5e(json,'Damage Immunities','damage_immunities')),
+    senses:parts(grab5e(json,'Senses','senses')),
+    legendary:Boolean(grab5e(json,'Legendary Actions','legendary_actions')),
+    multiattack:/multiattack/i.test(parts(grab5e(json,'Actions','actions'))),
+    text:[grab5e(json,'Traits','traits'),grab5e(json,'Actions','actions'),grab5e(json,'Legendary Actions','legendary_actions'),grab5e(json,'Reactions','reactions')].map(parts).filter(Boolean).join('\n\n'),
+    img:grab5e(json,'img_url','image','img','token_url')||''
+  };
+}
+
+function tryParseJson(str){
+  try{return JSON.parse(str);}catch{}
+  let s=str.trim().replace(/,\s*$/,'');
+  const tries=[s,s+']',s+'}',s.replace(/,\s*$/,'')+']',('['+s+']')];
+  for(const t of tries){try{return JSON.parse(t);}catch{}}
+  return undefined;
+}
+
+export function normalizeMonsterInput(input){
+  let json=(input&&typeof input==='object')?input:null;
+  if(!json){
+    const str=String(input||'').trim();
+    if(!str)return null;
+    if(str.startsWith('{')||str.startsWith('['))json=tryParseJson(str);
+    if(json===undefined)return null;
+    if(!json)return parseStatblock(str);
+  }
+  const obj=Array.isArray(json)?json[0]:json;
+  if(!obj||typeof obj!=='object')return null;
+  // 5e.tools tem chaves capitalizadas com espaço; Open5e tem snake_case.
+  const is5eTools='STR' in obj||'Armor Class' in obj||'Challenge' in obj||'Hit Points' in obj;
+  return is5eTools?normalize5eTools(obj):normalizeOpen5e(obj);
 }

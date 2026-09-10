@@ -430,9 +430,11 @@ export class CampaignLibrary {
   async importMonster(input){
     this.assertGM();
     const mob=normalizeMonsterInput(input);
-    if(!mob||!mob.name)throw Error('Não reconheci um bloco de D&D 5e. Cole o JSON do Open5e / 5e.tools ou o texto completo do statblock.');
+    if(!mob||!mob.name)throw Error('Não reconheci o bloco. Cole o JSON do 5e.tools / Open5e (um objeto ou lista) ou o texto do statblock.');
+    if(!Object.keys(mob.abilities||{}).length&&!mob.cr&&!mob.ac)throw Error(`Li o nome "${mob.name}" mas não achei atributos, CR nem CA. Confira se o JSON está completo (sem faltar o "]" ou "}" no fim).`);
     const source=toSkyfallNpc(mob);
-    const actor=await Actor.create({...source,prototypeToken:{actorLink:true}});
+    const token={actorLink:true};if(source.img)token.texture={src:source.img};
+    const actor=await Actor.create({...source,prototypeToken:token});
     if(!actor?.id)throw Error('O Foundry não criou a ficha.');
     globalThis.ui?.notifications?.info?.(`"${actor.name}" criado como ND ${source.system.level.value}. Revise PV, RD e ataques na ficha.`);
     return actor;
