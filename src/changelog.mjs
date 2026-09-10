@@ -1,5 +1,17 @@
 export const CHANGELOG = [
   {
+    version:'0.4.25',
+    date:'2026-09-10',
+    title:'Importar monstros em lote e conserto dos filtros de Guilda',
+    notes:[
+      'A aba Monstros importa D&D 5e em escala: cole a lista [ ... ] inteira (formato 5e.tools ou Open5e). Cria numa pasta própria, em blocos, pulando nomes que já existem, e puxa a imagem do bicho quando o JSON traz.',
+      'Filtros das Guildas agora funcionam de verdade (faltava um atributo no checkbox). Selo de Aprovação e Mecenas viraram filtros separados; as facetas ficaram compactas e com ícones.',
+      'Cartão de guilda usa ícone — bandeira para Hansa, marco para Guilda — no lugar da foto, com miniaturas de selo (o nome aparece ao passar o mouse). "Abrir ficha" da guilda funciona.',
+      'Membro de guilda = ficha de personagem (jogador ou NPC); ficha de monstro não conta. A barra de abas do topo voltou a mostrar as caixas.',
+      'Botão "Gerar NPCs" avulsos no painel de NPCs: gera N habitantes de uma vez para depois distribuir.'
+    ]
+  },
+  {
     version:'0.4.24',
     date:'2026-09-10',
     title:'Estrutura das Guildas e auto-tag de NPCs',
