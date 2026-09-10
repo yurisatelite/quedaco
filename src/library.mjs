@@ -219,6 +219,15 @@ export class CampaignLibrary {
     return targets.length;
   }
   guildActors(){return sortByName(Array.from(this.game.actors??[]).filter(guildKind));}
+  async loadSealImages(force=false){
+    if(this._sealImages&&!force)return this._sealImages;
+    const map={};
+    for(const pack of this.game.packs??[]){
+      if(pack.documentName!=='Item')continue;
+      try{const idx=await pack.getIndex({fields:['type','name','img']});for(const entry of idx)if(entry.type==='seal'&&entry.img)map[nameKey(entry.name)]=entry.img;}catch{/* sem acesso */}
+    }
+    this._sealImages=map;return map;
+  }
   async setGuildStance(uuid,stance){
     this.assertGM();const actor=this.guildActors().find(guild=>guild.uuid===uuid||guild.id===uuid);if(!actor)return;
     const value=GUILD_STANCES[stance]?stance:'desconhecida';
@@ -604,16 +613,22 @@ export class CampaignLibrary {
       ...(readonly?[]:[{facet:'liberada',label:'Liberada aos jogadores',items:[['sim','<i class="fa-solid fa-eye"></i> Sim'],['nao','<i class="fa-solid fa-eye-slash"></i> Não']]}])
     ];
     const facetsHtml=`<div class="sy-guild-facets">${facetGroups.map(group=>{const chosen=sel[group.facet]??[];return `<details class="sy-facet" ${chosen.length?'open':''}><summary>${e(group.label)}${chosen.length?` <span class="sy-facet-count">(${chosen.length})</span>`:''}</summary><div class="sy-guild-facet-grid">${group.items.map(([value,label])=>`<label class="sy-guild-facet-chip"><input type="checkbox" name="guildFacet" data-guild-facet="${e(group.facet)}" value="${e(value)}" ${chosen.includes(value)?'checked':''}><span>${label}</span></label>`).join('')}</div></details>`;}).join('')}</div>`;
-    const sealImg=name=>{const img=this.image('seal',name,'','icons/svg/dice-target.svg');return `<img class="sy-guild-seal" src="${e(img.src)}" alt="" title="${e(name)}" loading="lazy"${img.fallbacks.length?` data-fallback-srcs="${e(img.fallbacks.join('||'))}"`:''}>`;};
+    const sealImg=name=>{
+      const compendio=this._sealImages?.[nameKey(name)];
+      const img=this.image('seal',name,compendio||'','icons/svg/dice-target.svg');
+      return `<img class="sy-guild-seal" src="${e(img.src)}" alt="" title="${e(name)}" loading="lazy"${img.fallbacks.length?` data-fallback-srcs="${e(img.fallbacks.join('||'))}"`:''}>`;
+    };
     const cards=guilds.map((guild,idx)=>{
       const system=guild.system??{},f=facets[idx],motto=stripTags(system.motto??'');
       const membros=guildMembers(guild,resolve).length,nivel=guildLevel(guild,resolve);
       const abilities=Object.entries(abilityLabels).map(([key,label])=>`${label} ${system.abilities?.[key]?.value??'—'}`);
       const st=GUILD_STANCES[f.stance];
+      const kindColor=f.kind==='hansa'?'#d95858':'#5a9fd0';
       const selosCard=[...f.seals,...(f.patron?[f.patron]:[])];
       const tokens=[`tipo:${f.tipo}`,...f.seals.map(s=>`selo:${nameKey(s)}`),...(f.patron?[`mecenas:${nameKey(f.patron)}`]:[]),...f.tema.map(t=>`tema:${t}`),`relacao:${f.stance}`,`liberada:${shared.includes(guild.uuid)?'sim':'nao'}`].join('|');
-      const stancePick=readonly?'':`<select class="sy-guild-stance" name="guildStance" data-id="${e(guild.uuid)}" title="Relação com o grupo">${Object.entries(GUILD_STANCES).map(([k,v])=>`<option value="${k}" ${f.stance===k?'selected':''}>${v.label}</option>`).join('')}</select>`;
-      return `<article class="sy-library-card sy-guild-card sy-guild-${f.kind}" data-search="${e(nameKey(`${guild.name} ${motto} ${f.ap.creator??''} ${f.ap.description??''}`))}" data-category="${e(tokens)}"><div class="sy-library-card-content"><div class="sy-guild-head"><i class="fa-solid ${f.kind==='hansa'?'fa-flag':'fa-landmark'} sy-guild-icon" title="${f.kind==='hansa'?'Hansa (independente)':'Guilda (oficial)'}" aria-hidden="true"></i><div class="sy-guild-head-txt"><small>${f.kind==='hansa'?'Hansa':'Guilda'} · Nível ${e(nivel)} · ${membros} membro(s)</small><h3>${e(guild.name)}</h3></div>${selosCard.length?`<div class="sy-guild-seals">${selosCard.map(sealImg).join('')}</div>`:''}</div>${f.ap.symbol?`<p class="sy-guild-symbol"><i class="fa-solid fa-stamp"></i> ${e(f.ap.symbol)}</p>`:''}${motto?`<p>${e(motto)}</p>`:''}${chips(abilities)}<div class="sy-library-tabs"><span class="sy-guild-stance-dot" style="--sy-role:${e(st.color)}" title="${e(st.label)}"></span>${stancePick}${button('guild-open',guild.uuid,'Abrir ficha')}${readonly?'':this.shareButton('guilds',guild.uuid,'✓ Liberada','Liberar aos jogadores')}</div></div></article>`;
+      const stancePick=readonly?'':`<select class="sy-guild-stance" name="guildStance" data-id="${e(guild.uuid)}" style="--sy-stance:${e(st.color)}" title="Relação com o grupo">${Object.entries(GUILD_STANCES).map(([k,v])=>`<option value="${k}" ${f.stance===k?'selected':''}>${v.label}</option>`).join('')}</select>`;
+      const abilChips=`<div class="sy-guild-abils">${Object.entries(abilityLabels).map(([key,label])=>`<span class="sy-guild-abil sy-abil-${key}"><b>${e(label)}</b>${e(system.abilities?.[key]?.value??'—')}</span>`).join('')}</div>`;
+      return `<article class="sy-library-card sy-guild-card sy-guild-${f.kind}" style="--sy-stance:${e(st.color)};--sy-kind:${e(kindColor)}" data-search="${e(nameKey(`${guild.name} ${motto} ${f.ap.creator??''} ${f.ap.description??''}`))}" data-category="${e(tokens)}"><div class="sy-library-card-content"><div class="sy-guild-head"><i class="fa-solid ${f.kind==='hansa'?'fa-flag':'fa-landmark'} sy-guild-icon" title="${f.kind==='hansa'?'Hansa (independente)':'Guilda (oficial)'}" aria-hidden="true"></i><div class="sy-guild-head-txt"><small><span class="sy-guild-kind">${f.kind==='hansa'?'Hansa':'Guilda'}</span> · Nível ${e(nivel)} · ${membros} membro(s) · <span class="sy-guild-rel" style="--sy-stance:${e(st.color)}">${e(st.label)}</span></small><h3>${e(guild.name)}</h3></div>${selosCard.length?`<div class="sy-guild-seals">${selosCard.map(sealImg).join('')}</div>`:''}</div>${f.ap.symbol?`<p class="sy-guild-symbol"><i class="fa-solid fa-stamp"></i> ${e(f.ap.symbol)}</p>`:''}${motto?`<p>${e(motto)}</p>`:''}${f.tema.length?`<div class="sy-guild-temas">${f.tema.map(t=>`<span class="sy-guild-tema sy-tema-${t}">${e(({comercio:'Comércio',contrabando:'Contrabando',informacao:'Informação',militar:'Militar',arcano:'Arcano',maritimo:'Marítimo'})[t]||t)}</span>`).join('')}</div>`:''}${abilChips}<div class="sy-library-tabs">${stancePick}${button('guild-open',guild.uuid,'Abrir ficha')}${readonly?'':this.shareButton('guilds',guild.uuid,'✓ Liberada','Liberar aos jogadores')}</div></div></article>`;
     }).join('');
     const importer=readonly?'':`<details class="sy-library-guide"><summary>Importar guildas do apêndice</summary><p class="sy-note">Cole aqui o conteúdo de <code>.local/guildas-foundry.json</code> (gerado por <code>tools/parse-guilds.mjs</code>) ou deixe o arquivo em <code>Data/modules/quedaco/.local/</code> e clique sem colar nada. Cria os Actors <code>guild</code> numa pasta "Guildas · Apêndice B"; pula as que já existem.</p><textarea name="guildImport" rows="4" placeholder='[ { "type": "guild", "name": "...", ... } ]'></textarea><div class="sy-library-tabs">${button('guild-import','','Importar')}</div></details>`;
     return `<p>Guildas e Hansas registradas como fichas nativas do Skyfall.</p>${readonly?'':`<div class="sy-library-share-row">${this.shareButton('areas','guilds','✓ Aba Guildas visível aos jogadores','Liberar a aba Guildas aos jogadores')}</div>`}${importer}${this.filters([],'Buscar por nome, criador ou descrição')}${facetsHtml}<div class="sy-library-grid">${cards||'<p class="sy-library-deferred">Nenhuma guilda disponível.</p>'}</div>`;

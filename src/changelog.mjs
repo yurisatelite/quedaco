@@ -2,11 +2,12 @@ export const CHANGELOG = [
   {
     version:'0.4.26',
     date:'2026-09-10',
-    title:'Taguear tudo, cobertura com check e fim dos erros de imagem',
+    title:'Guildas com cor, taguear tudo e fim dos erros de imagem',
     notes:[
-      'O botão "Taguear tudo" no painel de NPCs agora preenche papel, região (pela pasta) e local (pela bio) de uma vez, não só o papel.',
+      'A aba Guildas ficou dinâmica: cartão com barra e rótulo na cor da relação com o grupo, ícone colorido por Guilda/Hansa, chips coloridos de campo de atuação e das quatro perícias. Os selos usam a arte do compêndio do Skyfall quando existe.',
+      'O botão "Taguear tudo" no painel de NPCs preenche papel, região (pela pasta) e local (pela bio) de uma vez, não só o papel.',
       'Na cobertura regional, cada arquétipo tem um "✓" para marcar como feito; o "Criar N próximos" pula os marcados.',
-      'Os cartões de NPC e monstro mostram a imagem própria da ficha primeiro; a pasta da mesa fica só como reserva. Acaba o monte de "404 Not Found" no console ao abrir o painel.'
+      'Cartões de NPC e monstro mostram a imagem própria da ficha primeiro — acaba a chuva de "404 Not Found" no console ao abrir o painel.'
     ]
   },
   {
