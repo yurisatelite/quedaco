@@ -202,6 +202,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
         if(op==='lib-place'||op==='lib-map-focus')this._scrollMapDrawerIntoView=true;
         if(op==='lib-region-rumor-add'){const wrap=button.closest('.sy-dossier-add');data={text:wrap?.querySelector('[name="rumorText"]')?.value??''};if(wrap?.querySelector('[name="rumorText"]'))wrap.querySelector('[name="rumorText"]').value='';}
         if(op==='lib-monster-habitat-add'){const wrap=button.closest('.sy-dossier-add');data={monsterId:wrap?.querySelector('[name="habitatMonster"]')?.value??''};}
+        if(op==='lib-monster-import'){const ta=this.element.querySelector('[name="monsterImport"]');data={text:ta?.value??''};}
         if(op.startsWith('lib-npc-')){
           const editor=button.closest('[data-npc-editor]');
           if(op==='lib-npc-save'&&editor){const g=n=>editor.querySelector(`[name="${n}"]`),chk=n=>{const el=g(n);return el?(el.type==='checkbox'?el.checked:el.value==='on'):false;};data={role:g('npcRole')?.value,regionId:g('npcRegion')?.value,placeId:g('npcPlace')?.value,guild:g('npcGuild')?.value,note:g('npcNote')?.value,tokenVisible:chk('npcTokenVisible'),markup:g('npcMarkup')?.value,shopNote:g('npcShopNote')?.value,forgeEnabled:chk('npcForgeEnabled'),forgeMarkup:g('npcForgeMarkup')?.value};}
