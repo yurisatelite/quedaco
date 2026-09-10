@@ -3,3 +3,6 @@ dist/
 node_modules/
 *.log
 CLAUDE INSTRUÇÕES/
+
+# Prints do livro para a mesa — nunca no repositório
+Fotos pra subir/
