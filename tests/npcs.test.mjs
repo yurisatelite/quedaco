@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {PLACES} from '../src/book-world.mjs';
-import {NPC_ROLE_STYLE,adoptNpcFlag,folderPath,inferPlaceId,inferRegionId,isGeneratedNpc,linksFromBio,itemTypeForCategory,npcCoverage,npcVisibility,placeIdFromFolderPath,regionIdFromFolderPath,resolveLinkTarget,stripTags} from '../src/npcs.mjs';
+import {NPC_ROLE_STYLE,adoptNpcFlag,folderPath,inferPlaceId,inferRegionId,isGeneratedNpc,linksFromBio,itemTypeForCategory,npcCardOutline,npcCoverage,npcVisibility,placeIdFromFolderPath,regionIdFromFolderPath,resolveLinkTarget,stripTags} from '../src/npcs.mjs';
 
 test('pasta regional da macro resolve a capital do índice do QUEDAÇO',()=>{
   assert.equal(placeIdFromFolderPath(['🤖 NPCs por Região','Deserto de Mirmir','Kravokia'],PLACES),'kravokia');
@@ -64,6 +64,12 @@ test('papéis de NPC têm rótulo, ícone e cor próprios',()=>{
   assert.equal(NPC_ROLE_STYLE.ally.label,'Aliado');
   assert.notEqual(NPC_ROLE_STYLE.rival.color,NPC_ROLE_STYLE.extra.color);
   assert.equal(NPC_ROLE_STYLE.smith.label,'Ferreiro');
+});
+
+test('contorno do cartão distingue cidade, errante e sem local',()=>{
+  assert.equal(npcCardOutline({placeId:'kravokia',regionId:'mirmir'}),'city');
+  assert.equal(npcCardOutline({placeId:'',regionId:'mirmir'}),'itinerant');
+  assert.equal(npcCardOutline({}),'none');
 });
 
 

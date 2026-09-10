@@ -1,5 +1,17 @@
 export const CHANGELOG = [
   {
+    version:'0.4.13',
+    date:'2026-09-09',
+    title:'Geração contextual, cartões de NPC e bancada de forja',
+    notes:[
+      'A auditoria regional envia região, local, arquétipo e prompt completos para a macro configurada, com ações para gerar cinco ou todas as lacunas.',
+      'Monstros também recebem um escopo de geração baseado nos filtros ativos, sem incluir macro ou chave no módulo.',
+      'NPCs ganharam cartões reorganizados, contorno por cidade ou região, indicação de errante e controle de visibilidade limitada do token.',
+      'NPCs, monstros, itens de compêndio, estoques e contratantes de quests compatíveis podem ser arrastados para cenas, fichas e diálogos.',
+      'A bancada de forja separa dois prefixos e dois sufixos, mostra o nome mágico em tempo real, efeitos, fragmentos, saldo e a quebra do custo.'
+    ]
+  },
+  {
     version:'0.4.12',
     date:'2026-09-09',
     title:'Mapa vivo, NPCs regionais, tokens e forja',

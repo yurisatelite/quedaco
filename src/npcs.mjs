@@ -80,8 +80,9 @@ export function npcVisibility({role,shared=false,gm=false,forge={}}){
   if(role==='rival')return 'identity';
   return false;
 }
+export function npcCardOutline(flag={}){if(flag?.placeId)return 'city';if(flag?.regionId||flag?.itinerant)return 'itinerant';return 'none';}
 export function initialNpcFlag(actor){
-  return {role:'extra',regionId:regionIdFromFolderPath(folderPath(actor))??'',placeId:placeIdFromFolderPath(folderPath(actor))??'',note:'',shop:{markup:1,note:'',stock:[]},forge:{enabled:false,markup:1}};
+  return {role:'extra',regionId:regionIdFromFolderPath(folderPath(actor))??'',placeId:placeIdFromFolderPath(folderPath(actor))??'',tokenVisible:true,note:'',shop:{markup:1,note:'',stock:[]},forge:{enabled:false,markup:1}};
 }
 export function adoptNpcFlag(actor){
   const existing=npcFlag(actor);if(existing)return existing;

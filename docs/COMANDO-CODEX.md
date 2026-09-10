@@ -606,19 +606,43 @@ Decisões do Yuri (respostas às pendências):
 - Ao salvar (`saveNpc` etc.), aviso curto `ui.notifications.info('NPC atualizado.')` e
   um `✓ salvo` que some sozinho — hoje não dá para perceber que algo mudou.
 
-### 20.5 — Arrastar o NPC para a cena (dropar token)
-- Cada cartão de NPC vira arrastável: `draggable="true"` +
-  `dragstart` → `event.dataTransfer.setData('text/plain', JSON.stringify({type:'Actor', uuid: actor.uuid}))`.
-  É o formato que o canvas do Foundry entende para criar o token ao soltar.
-- Fazer o mesmo nos cartões de **monstro** (arrastar a ameaça para a cena) quando há
-  `entry.matches[0]?.uuid`.
-- Dica de UI: cursor `grab` no cartão e um `title="Arraste para a cena para colocar o token"`.
+### 20.5 — Arrastar para a cena e para módulos (NPC, monstro, item, quest-giver)
+- Todo cartão arrastável: `draggable="true"` + `dragstart` →
+  `event.dataTransfer.setData('text/plain', JSON.stringify(payload))`.
+  - NPC / monstro (com `matches[0]?.uuid`) / quest-giver que resolve para Actor →
+    `{type:'Actor', uuid}`.
+  - Cartão de **item** (aba Itens) e estoque de loja → `{type:'Item', uuid}` quando há
+    `matches[0]?.uuid` de compêndio.
+- Esse payload já serve para: canvas (cria token), ficha de personagem (adiciona item) e
+  os módulos de diálogo/conversa que aceitam drop de Actor/Item (ex. Monk's Enhanced
+  Journal). Não precisa de integração específica — só emitir o drag-data padrão.
+- Dica de UI: cursor `grab` + `title="Arraste para a cena, ficha ou diálogo"`.
+- **Permissão:** ao gerar/editar NPC, opção (checkbox no editor, default ligado)
+  "jogadores podem ver o token" → grava `ownership.default = 1` (LIMITED) no Actor, para
+  o token arrastado ser utilizável pelos jogadores. Nunca rebaixar dono existente.
 
-### 20.6 — Testes
+### 20.6 — Redesenho do cartão (remontar)
+Print do Yuri: tag de cor pequena demais, 🗑 em cima do avatar, layout bagunçado.
+- Grid limpo: `[avatar 40px] [ nome / linha-meta ] [ações à direita ]`. `min-height`
+  fixo, `gap` consistente. 🗑 **pequeno, canto superior direito**, nunca sobre o avatar.
+- **Cor da região = detalhe, não enfeite** (ver T22): borda-esquerda de 3px na cor da
+  região no cartão inteiro **ou** um ponto/ône de 8px antes do nome do local na
+  linha-meta. Nada de faixa grande nem fundo colorido.
+- **Local vs região tem contorno diferente:**
+  - NPC de **cidade** (`placeId`): borda sólida fina na cor da região.
+  - NPC **errante/da região** (`regionId`, sem `placeId`): borda **tracejada** na cor
+    da região + rótulo "· errante".
+  - Sem local: sem borda colorida.
+- "Dinâmico, sem colorir demais": a cor vem sempre do dado (folder/paleta), aplicada só
+  como borda/ponto; o resto do cartão continua no tema escuro padrão.
+- Linha-meta: `«ícone do papel» Papel · «ponto» Local` (o ícone do papel é o T21).
+
+### 20.7 — Testes
 - `npcVisibility` sem `active`: `{role:'merchant', shared:true}` → `'shop'`;
   `{role:'ally', shared:false}` → `false`.
 - `adoptNpcFlag` continua puro e **não** grava nada.
-- Cartão de NPC contém `draggable="true"` e o `uuid` no HTML.
+- Cartão de NPC contém `draggable="true"` e o `uuid` no HTML; cartão de item idem.
+- Helper `npcCardOutline(flag)` → `'city' | 'itinerant' | 'none'` + teste.
 
 ## T21 — Papéis de NPC com ícone + cor (fácil de bater o olho)
 
@@ -639,9 +663,10 @@ Norvak azul, Tatsumari rosa…). Quero ver essa cor no QUEDAÇO.
 - Ler a cor real: para cada região, achar a `Folder` de Ator com o nome da região
   (`game.folders.filter(f=>f.type==='Actor')`) e pegar `folder.color`. Fallback: paleta
   fixa por `regionId` em `book-world.mjs` (`REGIONS[i].color`), que o Yuri ajusta.
-- Usar como **faixa/へponto colorido** no: pino de região do mapa, cartão de região,
-  cartão de local (herda da região), chip de local no cartão de NPC, chip do filtro
-  "por local".
+- Usar de forma **discreta e dinâmica** (borda-esquerda 3px ou ponto 8px, nunca fundo
+  chapado): pino de região do mapa, borda do cartão de região, borda do cartão de local
+  (herda da região), ponto antes do nome do local no cartão de NPC (T20.6), ponto no
+  filtro "por local". Um acento só; o resto fica no tema escuro.
 - Função pura `regionColor(regionId, folders, REGIONS)` + teste (folder ganha da paleta;
   sem nada → cor neutra).
 
@@ -837,9 +862,38 @@ Transformar a aba **Imbuir** (`renderImbue`, hoje só calculadora) num fluxo de 
    pode adicionar como componente.
 7. GM: botão continua servindo de calculadora pura (sem criar item) na aba Imbuir.
 
-Testes: validação de limites (4 / 2+2 / compatibilidade); preço com markup; recusa por
-saldo; recusa de item que não é do próprio ator; montagem correta do `system.sigils`
-(incluindo `infused`).
+### 28.8 — UX de bancada (o "imbuir" está confuso; referência: bancada de fusão de jogo)
+
+O Yuri mandou print de um jogo (arrasta a arma, encaixa peças, vê o resultado mudar em
+verde, no fim paga/confirma). Objetivo: **visual e claro**, prefixo e sufixo separados.
+
+- **Layout de bancada:** à esquerda o **slot do item base** (a arte do equipamento
+  arrastado); ao lado, **4 encaixes de sigilo** divididos: 2 rotulados **Prefixo**, 2
+  **Sufixo**. Encaixe vazio = "+"; preenchido = nome do sigilo + grau + botão Imbuir/✓.
+- **Abas Prefixo / Sufixo** na lista "Adicionar sigilo": duas abas (`data-op="lib-mod-tab"`,
+  estado `this.modBuilder.tab`), cada uma só com os sigilos daquele `type` compatíveis
+  com o equipamento e ainda não usados. Contador "Prefixo 1/2", "Sufixo 0/2".
+- **Nome em tempo real:** um cabeçalho grande com o nome resultante recalculado a cada
+  mudança, usando a **mesma fórmula do Skyfall** (`_getMagicName`: `"<nome> <prefixos>
+  <sufixos>"`) para bater com o que a ficha vai mostrar. Ex.: "Arco curto **Atenta**
+  **Retornável** **da Munição Mágica**".
+- **Efeito por sigilo:** abaixo de cada encaixe, uma linha curta com o efeito
+  (`sigil.effect.descriptive` do compêndio) — o que aquele sigilo faz. Sem número
+  inventado; só o texto do sigilo.
+- **Barra de custo viva:** total em T$ atualizando, com a quebra expandível
+  (base 0 · material +300 · sigilo A +250 · imbuir A +250 · …) e o saldo do jogador ao
+  lado (verde se cobre, vermelho se não).
+- **Fragmentos:** mostrar "Fragmentos Arcanos: usa X / limite Y" com os sigilos **não
+  imbuídos** somando; se passar, aviso vermelho "vai sobrecarregar: Nd6 de dano ao
+  equipar" (texto do sistema `SKYFALL2.SIGIL.AlertArcaneOverload`).
+- **Fechamento:** um único botão final **"Forjar por T$ N"** (desabilitado sem saldo /
+  sem item base / limites violados). Ao confirmar: desconto + criação do item (passo 5–6).
+- Reaproveitar tudo que já existe (`modBuilder`, `modifiedItemSheet`, ops `lib-mod-*`);
+  isto é reorganização visual + as abas + o preview de nome, não um motor novo.
+
+Testes: validação de limites (4 / 2+2 por tipo / compatibilidade); `magicNamePreview(base,
+sigils)` == fórmula do Skyfall; preço com markup e quebra; recusa por saldo; recusa de
+item que não é do próprio ator; montagem correta do `system.sigils` (incluindo `infused`).
 
 ## T29 — Mercador por tipo de localidade (estoque útil e típico do lugar)
 
@@ -873,3 +927,54 @@ lugar** que são **úteis**. Nem todos ficam em cidade — alguns são errantes 
   gera.
 - Função pura `localityStock(place, bookItems, packIndex)` → lista de `{uuid, price}` +
   teste (porto traz corda/rede; deserto traz cantil; nada solto de Mundo).
+
+## T30 — Chamar a macro geradora já enquadrada (parar de digitar um a um)
+
+Hoje os botões "Criar marinheiro / Criar mago / …" da auditoria (T25) abrem a macro
+`Skyfall — Criador de Conteúdo` **em branco** — o Yuri tem que escolher região, local,
+tipo e escrever a descrição toda vez. Automatizar o enquadramento.
+
+- **QUEDAÇO passa contexto para a macro:**
+  `game.macros.getName(quedaco.generatorMacro)?.execute({ quedaco: {
+    kind: 'npc',                // 'npc' | 'monster'
+    regionId, regionName,
+    placeId, placeName,         // vazios se for errante/da região
+    archetype,                  // 'marinheiro', 'mago', 'ferreiro', ...
+    count: 1,
+    prompt                      // string pronta (ver abaixo)
+  }})`.
+  (Foundry passa o objeto como `scope` para o corpo da macro.)
+- **Prompt padrão por arquétipo:** função pura `generatorPrompt(archetype, region, place)`
+  em `src/library.mjs`/novo `src/generator.mjs` — monta um texto em PT já com região,
+  local, facção e ocupação. Ex.: `"Um(a) {archetype} de {place|region}, na região
+  {region}. Habitante comum, ND baixo. Descreva ocupação, aparência, um gancho de
+  história e o que vende/oferece se for mercador."`. Tabela `ARCHETYPE_HINT` para
+  detalhes por arquétipo (mercador → estoque típico do lugar via T29; mago → escola;
+  ferreiro → forja/sigilos).
+- **A macro do Yuri** precisa ler `scope.quedaco` e, se existir, **pular o diálogo**
+  (preencher região/local/tipo/quantidade/descrição e já gerar), invertendo `type`
+  como já faz (NPC→`character`, monstro→`npc`) e caindo nas pastas
+  `🤖 NPCs por Região/<Região>/<Local>`. **Não commitar a macro.** Entregar
+  `.local/macro-hook-quedaco.js` — trecho pronto para o Yuri colar no topo da macro
+  (`if (scope?.quedaco) { /* preenche e executa, sem abrir o diálogo */ }`).
+- Botão **"Criar 5"/"Criar todos os que faltam"** na auditoria: dispara a macro em lote
+  para as lacunas da região (respeitando `count`), com um `ui.notifications.info` de
+  progresso. Depois do `createActor` o painel já re-renderiza (T13).
+- Se a macro não existir: aviso com o nome esperado e link para Configurações do Módulo.
+- **Nunca** embutir a macro, o prompt-engine dela, nem chave de API no módulo — só
+  montar o `scope` e chamar por nome.
+
+Testes: `generatorPrompt` inclui região e local; arquétipo desconhecido cai num texto
+genérico; `kind` monstro monta prompt de criatura.
+
+## Amend T25 — os botões "Criar X" usam o T30
+
+Cada botão de lacuna (`Criar marinheiro`, etc.) chama `generatorPrompt` + `macro.execute`
+com o `scope` do T30 já preenchido (região/local/arquétipo). Nada de abrir a macro vazia.
+
+## Amend T20/T26 — "a maioria dos NPCs está sem imagem"
+
+Aplicar o T26 (tokens locais) a esses NPCs no mesmo lote: botão "Exportar fichas para
+casar tokens" já gera a lista; depois de subir `.local/tokens-escolhidos/` o
+`resolveImage` preenche os cartões e os tokens. Enquanto não há arquivo, cai no
+`mystery-man` — não deixar o cartão quebrado.

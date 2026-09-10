@@ -91,12 +91,13 @@ test('imagens de região e local ficam em settings separados e aparecem nos cart
   assert.match(library.render('map'),/kravokia\.webp/);
 });
 test('aba Quests é pública e segue os documentos observáveis do Forien',async()=>{
-  const API={DB:{getAllQuests:()=>[{id:'q1',name:'Salvar Kravokia',status:'available',location:'Kravokia',tasks:[],rewards:[],subquests:[]}],hooks:{}},open({questId}){this.opened=questId;}};
-  const game={user:{isGM:false},modules:new Map([['forien-quest-log',{active:true,public:{QuestAPI:API}}]]),settings:{get:(_module,key)=>key==='sharedContent'?{areas:[],map:[],monsters:[],items:[],npcs:[]}:false}};
+  const API={DB:{getAllQuests:()=>[{id:'q1',name:'Salvar Kravokia',status:'available',location:'Kravokia',giverData:{name:'Guia Rubra'},tasks:[],rewards:[],subquests:[]}],hooks:{}},open({questId}){this.opened=questId;}};
+  const game={user:{isGM:false},actors:[{id:'guia',uuid:'Actor.guia',name:'Guia Rubra'}],modules:new Map([['forien-quest-log',{active:true,public:{QuestAPI:API}}]]),settings:{get:(_module,key)=>key==='sharedContent'?{areas:[],map:[],monsters:[],items:[],npcs:[]}:false}};
   const player=new CampaignLibrary(game,{items:[]});
   const html=player.render('quests',true);
   assert.match(html,/Salvar Kravokia/);assert.match(html,/Abrir quest/);assert.doesNotMatch(html,/Nova quest/);
   assert.match(html,/sy-card-figure-full/);assert.match(html,/src="icons\/svg\/book\.svg"/);
+  assert.match(html,/draggable="true" data-drag-actor="Actor\.guia"/);
   await player.action('lib-quest-open','q1');assert.equal(API.opened,'q1');
 });
 test('mapa configurado usa visor único, foca região e abre detalhe de cidade',async()=>{
@@ -161,12 +162,21 @@ test('itens usam miniatura compacta e Imbuir fica em área própria',()=>{
   assert.match(items,/sy-library-thumb/);
   assert.doesNotMatch(items,/Montar item modificado/);
   assert.doesNotMatch(items,/sy-card-figure-compact/);
-  assert.match(gm.render('imbue'),/Montar item modificado/);
+  assert.match(gm.render('imbue'),/Bancada de item modificado/);
+  assert.match(gm.render('imbue'),/Prefixos 0\/2/);
+  gm.modBuilder.baseId='book-item-1';
+  assert.match(gm.render('imbue'),/data-op="lib-mod-tab"/);
   assert.match(gm.render('imbue'),/Aba Imbuir visível aos jogadores/);
   const player=new CampaignLibrary({user:{isGM:false},settings},{items:[]});
   const readonly=player.render('imbue',true);
   assert.match(readonly,/O que é imbuir/);
-  assert.doesNotMatch(readonly,/Montar item modificado/);
+  assert.doesNotMatch(readonly,/Bancada de item modificado/);
+});
+
+test('item com cópia de compêndio emite drag-data de Item',()=>{
+  const catalog={items:[{name:'Roupas (finas)',type:'equipment',uuid:'Compendium.skyfall.items.Item.roupas',img:'roupas.webp'}]};
+  const html=new CampaignLibrary({user:{isGM:true}},catalog).render('items');
+  assert.match(html,/draggable="true" data-drag-item="Compendium\.skyfall\.items\.Item\.roupas"/);
 });
 test('todo NPC gerado aparece direto, edita sem adoção e protege Actor com dono jogador',async()=>{
   const root={id:'root',name:'🤖 Criados pela IA'},folder={id:'npcs',name:'NPCs',folder:root};
@@ -186,6 +196,15 @@ test('todo NPC gerado aparece direto, edita sem adoção e protege Actor com don
   assert.match(library.render('npcs'),/Fechar edição/);
   await library.action('lib-npc-close','a');
   assert.equal(library.state.npcActor,null);
+});
+test('salvar NPC concede visão limitada sem rebaixar proprietários',async()=>{
+  const previousUi=globalThis.ui;globalThis.ui={notifications:{info(){}}};
+  try{
+    const actor={id:'a',uuid:'Actor.a',name:'Guia',type:'character',flags:{},ownership:{default:0,player1:3},async update(change){this.last=change;this.flags={quedaco:{npc:change['flags.quedaco.npc']}};}};
+    const library=new CampaignLibrary({user:{isGM:true},actors:[actor]},{items:[]});
+    await library.saveNpc('a',{role:'extra',regionId:'mirmir',placeId:'',tokenVisible:true,markup:1,forgeMarkup:1});
+    assert.equal(actor.last.ownership.default,1);assert.equal(actor.last.ownership.player1,3);assert.equal(actor.last['flags.quedaco.npc'].tokenVisible,true);
+  }finally{globalThis.ui=previousUi;}
 });
 test('exclusão de NPC confirma, limpa o editor e recusa Actor de jogador',async()=>{
   let deleted=false;
