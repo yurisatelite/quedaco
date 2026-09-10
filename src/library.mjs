@@ -20,6 +20,7 @@ export const BOOK_ITEMS=[...BASE_ITEMS,...SIGILS];
 // Conteúdo que o mestre libera para os jogadores. Guardado no mundo, sem UUIDs privados.
 export const SHARED_KEY='sharedContent';
 export const SCENES_KEY='placeScenes';
+export const REGION_SCENES_KEY='regionScenes';
 export const PLACE_IMG_KEY='placeImages';
 export const REGION_IMG_KEY='regionImages';
 export const MAP_IMAGE_KEY='opathMapImage';
@@ -38,6 +39,7 @@ export const generatorMacroName=settings=>String(settings?.get?.(MODULE_ID,GENER
 export function registerLibrarySettings(game,onChange){
   game.settings.register(MODULE_ID,SHARED_KEY,{scope:'world',config:false,type:Object,default:emptyShare(),onChange});
   game.settings.register(MODULE_ID,SCENES_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
+  game.settings.register(MODULE_ID,REGION_SCENES_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
   game.settings.register(MODULE_ID,PLACE_IMG_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
   game.settings.register(MODULE_ID,REGION_IMG_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
   game.settings.register(MODULE_ID,ASSET_ROOT_KEY,{scope:'world',config:true,type:String,default:'assets',filePicker:'folder',name:'Pasta de imagens do QUEDAÇO',hint:'Pasta da mesa com regioes, locais, npcs, monstros, itens, quests e o arquivo opcional quedaco-imagens.json. Padrao: assets',onChange});
@@ -110,6 +112,14 @@ export class CampaignLibrary {
   get shared(){try{return {...emptyShare(),...(this.game.settings?.get(MODULE_ID,SHARED_KEY)||{})};}catch{return emptyShare();}}
   get placeScenes(){try{return {...(this.game.settings?.get(MODULE_ID,SCENES_KEY)||{})};}catch{return {};}}
   get placeImages(){try{return {...(this.game.settings?.get(MODULE_ID,PLACE_IMG_KEY)||{})};}catch{return {};}}
+  get regionScenes(){try{return {...(this.game.settings?.get(MODULE_ID,REGION_SCENES_KEY)||{})};}catch{return {};}}
+  async toggleRegionScene(regionId,sceneId){
+    this.assertGM();if(!regionId||!REGIONS.some(region=>region.id===regionId))return;
+    const map=this.regionScenes;let list=Array.isArray(map[regionId])?[...map[regionId]]:[];
+    if(!sceneId)delete map[regionId];
+    else{const index=list.indexOf(sceneId);if(index>=0)list.splice(index,1);else list.push(sceneId);if(list.length)map[regionId]=list;else delete map[regionId];}
+    await this.game.settings.set(MODULE_ID,REGION_SCENES_KEY,map);
+  }
   get regionImages(){try{return {...(this.game.settings?.get(MODULE_ID,REGION_IMG_KEY)||{})};}catch{return {};}}
   get mapHotspots(){try{return {...(this.game.settings?.get(MODULE_ID,MAP_HOTSPOTS_KEY)||{regions:{},places:{}})};}catch{return {regions:{},places:{}};}}
   async setMapHotspot(kind,id,point){this.assertGM();if(!['regions','places'].includes(kind)||!id)return;const current={regions:{...(this.mapHotspots.regions??{})},places:{...(this.mapHotspots.places??{})}};if(point)current[kind][id]=point;else delete current[kind][id];await this.game.settings.set(MODULE_ID,MAP_HOTSPOTS_KEY,current);}
@@ -222,6 +232,7 @@ export class CampaignLibrary {
     if(op==='lib-map-hide'){const [pid,mode]=String(id).split(':');await this.setMapHidden(pid,mode!=='show');}
     if(op==='lib-map-share-all')await this.setMapShares(id);
     if(op==='lib-share-locality'){const cut=String(id).indexOf(':');await this.shareLocality(String(id).slice(0,cut),String(id).slice(cut+1));}
+    if(op==='lib-region-scene'){const cut=String(id).indexOf(':');await this.toggleRegionScene(String(id).slice(0,cut),String(id).slice(cut+1));}
     if(op==='lib-map-pins')this.state.map={...this.state.map,movingPins:!this.state.map.movingPins};
     if(op==='lib-map-hotspot-reset'){const [kind,pinId]=String(id).split(':');await this.setMapHotspot(kind,pinId,null);}
     if(op==='lib-place'){const place=[...PLACES,...BEYOND].find(i=>i.id===id);if(!place||(!this.game.user?.isGM&&!this.sharedPlaceIds().has(id)))return;this.state.mapView=place.regionId?'regions':'beyond';this.state.region=place.regionId??null;this.state.place=id;}
@@ -465,6 +476,14 @@ export class CampaignLibrary {
     const grid=scenes.length?`<div class="sy-scene-grid">${scenes.map(s=>`<button class="sy-scene-pick ${linked===s.id?'is-on':''}" data-op="lib-scene" data-id="${e(place.id)}:${e(s.id)}"><img src="${e(s.thumb||s.background?.src||'')}" alt="" loading="lazy"><span>${e(s.name)}</span></button>`).join('')}</div>`:'<small>Nenhuma cena criada na mesa.</small>';
     return `<details class="sy-library-guide"><summary>Mapa/cena vinculada${linked?` — ${e(scenes.find(s=>s.id===linked)?.name??'cena')}`:''}</summary>${actions}${grid}</details>`;
   }
+  regionScenePicker(region,gm=false){
+    const linked=Array.isArray(this.regionScenes[region.id])?this.regionScenes[region.id]:[];
+    const scenes=Array.from(this.game.scenes??[]),named=linked.map(id=>scenes.find(scene=>scene.id===id)).filter(Boolean);
+    if(!gm)return named.length?`<section class="sy-region-scenes"><h4>Cenas da região</h4><div class="sy-library-share-row">${named.map(scene=>button('open-scene',scene.id,`Abrir ${scene.name}`)).join('')}</div></section>`:'';
+    const rows=named.length?`<div class="sy-region-scene-list">${named.map(scene=>`<div><strong>${e(scene.name)}</strong>${button('open-scene',scene.id,'Abrir')}${button('activate-scene',scene.id,'Ativar p/ jogadores')}${button('region-scene',`${region.id}:${scene.id}`,'Desvincular')}</div>`).join('')}</div>`:'<small>Nenhuma cena vinculada a esta região.</small>';
+    const grid=scenes.length?`<div class="sy-scene-grid">${scenes.map(scene=>`<button class="sy-scene-pick ${linked.includes(scene.id)?'is-on':''}" data-op="lib-region-scene" data-id="${e(region.id)}:${e(scene.id)}"><img src="${e(scene.thumb||scene.background?.src||'')}" alt="" loading="lazy"><span>${e(scene.name)}</span></button>`).join('')}</div>`:'<small>Nenhuma cena criada na mesa.</small>';
+    return `<details class="sy-library-guide"><summary>Cenas da região${named.length?` — ${named.length} vinculada(s)`:''}</summary><p class="sy-note">Vincule quantas cenas quiser a uma região; os jogadores veem os botões de abrir quando a região está liberada.</p>${rows}${grid}</details>`;
+  }
   mapIndexBanner(interactive){
     const pins=interactive?REGIONS.filter(r=>Array.isArray(r.hotspot)).map(r=>`<button class="sy-map-pin" data-op="lib-region" data-id="${e(r.id)}" style="left:${r.hotspot[0]}%;top:${r.hotspot[1]}%"><span>${e(r.name)}</span></button>`).join(''):'';
     return `<div class="sy-map-wrap"><img class="sy-map-banner" src="${e(this.resolvedMapImage)}" alt="Mapa de Opath" loading="lazy">${pins}</div>`;
@@ -550,7 +569,7 @@ export class CampaignLibrary {
   regionDetail(region,gm=false){
     const resolved=this.image('region',region.id,'','icons/svg/mountain.svg'),img=this.regionImages[region.id]||resolved.src,capital=PLACES.find(i=>i.id===region.capital);
     const controls=gm?`<div class="sy-library-share-row">${button('share-locality',`region:${region.id}`,'Liberar tudo da região')}${button('region-img',region.id,this.regionImages[region.id]?'Trocar imagem':'Definir imagem')}${this.regionImages[region.id]?button('region-img',`${region.id}:`,'Remover imagem'):''}</div>`:'';
-    return `<section class="sy-library-detail">${gm?this.shareButton('map',region.id,'✓ Liberado','Liberar'):''}${cardFigure(img,region.name,'wide',resolved.fallbacks,gm?{op:'region-img',id:region.id}:null)}<small>${page(region)}</small><h3>${e(region.name)}</h3><p>${e(region.summary)}</p><h4>Governo</h4><p>${e(region.government)}</p><h4>Comércio</h4><p>${e(region.trade)}</p><h4>Destaques</h4>${chips(region.highlights)}${capital?button('place',capital.id,`Ir à capital: ${capital.name}`):''}${gm?button('create-merchant',`region:${region.id}`,'Criar mercador itinerante'):''}${this.renderDossier(region,gm)}${gm&&this.mapHotspots.regions?.[region.id]?button('map-hotspot-reset',`regions:${region.id}`,'Voltar ao padrão do livro'):''}${controls}</section>`;
+    return `<section class="sy-library-detail">${gm?this.shareButton('map',region.id,'✓ Liberado','Liberar'):''}${cardFigure(img,region.name,'wide',resolved.fallbacks,gm?{op:'region-img',id:region.id}:null)}<small>${page(region)}</small><h3>${e(region.name)}</h3><p>${e(region.summary)}</p><h4>Governo</h4><p>${e(region.government)}</p><h4>Comércio</h4><p>${e(region.trade)}</p><h4>Destaques</h4>${chips(region.highlights)}${capital?button('place',capital.id,`Ir à capital: ${capital.name}`):''}${gm?button('create-merchant',`region:${region.id}`,'Criar mercador itinerante'):''}${this.renderDossier(region,gm)}${this.regionScenePicker(region,gm)}${gm&&this.mapHotspots.regions?.[region.id]?button('map-hotspot-reset',`regions:${region.id}`,'Voltar ao padrão do livro'):''}${controls}</section>`;
   }
   renderDossier(region,gm=false){
     const readonly=!gm,sharedNpcs=this.shared.npcs,sharedMonsters=this.shared.monsters;

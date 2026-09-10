@@ -249,6 +249,22 @@ test('camadas do mapa revelam cidades no zoom e compartilhamento em massa',async
  await library.action('lib-map-share-all','none');assert.equal(store.sharedContent.map.length,0);
 });
 
+test('região aceita várias cenas vinculadas e mostra os atalhos',async()=>{
+ const store={regionScenes:{},sharedContent:{areas:[],map:[],monsters:[],items:[],npcs:[]}};
+ const scenes=[{id:'s1',name:'Duna Norte'},{id:'s2',name:'Oásis'},{id:'s3',name:'Ruína'}];
+ const game={user:{isGM:true},actors:[],folders:[],scenes,settings:{get:(_m,key)=>store[key],set:async(_m,key,value)=>store[key]=value}};
+ const library=new CampaignLibrary(game,{items:[]});
+ await library.action('lib-region-scene','mirmir:s1');
+ await library.action('lib-region-scene','mirmir:s3');
+ assert.deepEqual(store.regionScenes.mirmir,['s1','s3']);
+ await library.action('lib-region-scene','mirmir:s1');
+ assert.deepEqual(store.regionScenes.mirmir,['s3']);
+ const region={id:'mirmir',name:'Deserto de Mirmir',page:1,summary:'',government:'',trade:'',highlights:[]};
+ assert.match(library.regionDetail(region,true),/data-op="lib-region-scene" data-id="mirmir:s2"/);
+ assert.match(library.regionDetail(region,false),/data-op="lib-open-scene" data-id="s3"/);
+ assert.doesNotMatch(library.regionDetail(region,false),/data-op="lib-region-scene"/);
+});
+
 test('ferreiro liberado mostra zona de forja ao jogador',()=>{
  const actor={id:'smith',uuid:'Actor.smith',name:'Ferreiro',type:'character',flags:{quedaco:{npc:{role:'smith',regionId:'mirmir',placeId:'',forge:{enabled:true,markup:1},shop:{stock:[]}}}}};
  const shared={areas:['npcs'],npcs:['Actor.smith'],map:[],monsters:[],items:[]},game={user:{isGM:false,character:null},actors:[actor],settings:{get:(_m,key)=>key==='sharedContent'?shared:''}};
