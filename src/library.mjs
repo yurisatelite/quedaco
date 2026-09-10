@@ -162,6 +162,24 @@ export class CampaignLibrary {
     await this.game.settings.set(MODULE_ID,SHARED_KEY,current);
   }
   sharedPlaceIds(){const s=this.shared.map;const ids=new Set(s);for(const r of REGIONS)if(s.includes(r.id))for(const p of PLACES)if(p.regionId===r.id)ids.add(p.id);return ids;}
+  async shareLocality(kind,id){
+    this.assertGM();
+    const current={...emptyShare(),...(this.game.settings.get(MODULE_ID,SHARED_KEY)||{})};
+    const map=new Set(current.map),npcs=new Set(current.npcs),monsters=new Set(current.monsters),areas=new Set(current.areas);
+    const addNpcs=match=>{for(const actor of this.npcActors()){const flag=npcFlag(actor)??adoptNpcFlag(actor);if(match(flag))npcs.add(actor.uuid);}};
+    if(kind==='place'){
+      const place=PLACES.find(entry=>entry.id===id);if(!place)return;
+      map.add(place.id);addNpcs(flag=>flag.placeId===place.id);areas.add('map');areas.add('npcs');
+    }else if(kind==='region'){
+      const region=REGIONS.find(entry=>entry.id===id);if(!region)return;
+      map.add(region.id);for(const place of PLACES)if(place.regionId===region.id)map.add(place.id);
+      addNpcs(flag=>flag.regionId===region.id||PLACES.find(place=>place.id===flag.placeId)?.regionId===region.id);
+      for(const [monsterId,list] of Object.entries(this.monsterHabitats))if(Array.isArray(list)&&list.includes(region.id))monsters.add(monsterId);
+      areas.add('map');areas.add('npcs');if(monsters.size)areas.add('monsters');
+    }else return;
+    await this.game.settings.set(MODULE_ID,SHARED_KEY,{...current,map:[...map],npcs:[...npcs],monsters:[...monsters],areas:[...areas]});
+    globalThis.ui?.notifications?.info?.('Conteúdo do local liberado para os jogadores.');
+  }
   shareButton(bucket,value,labelOn,labelOff){const on=this.shared[bucket]?.includes(value);return `<button class="sy-share-toggle ${on?'is-on':''}" data-op="lib-share" data-id="${e(bucket)}:${e(value)}">${on?labelOn:labelOff}</button>`;}
   async loadActors(force=false){
     this.assertGM();if(this.loaded&&!force)return;
@@ -203,6 +221,7 @@ export class CampaignLibrary {
     if(op==='lib-map-layer')this.state.map={...this.state.map,layer:['auto','regions','cities','marks','falls','all'].includes(id)?id:'auto'};
     if(op==='lib-map-hide'){const [pid,mode]=String(id).split(':');await this.setMapHidden(pid,mode!=='show');}
     if(op==='lib-map-share-all')await this.setMapShares(id);
+    if(op==='lib-share-locality'){const cut=String(id).indexOf(':');await this.shareLocality(String(id).slice(0,cut),String(id).slice(cut+1));}
     if(op==='lib-map-pins')this.state.map={...this.state.map,movingPins:!this.state.map.movingPins};
     if(op==='lib-map-hotspot-reset'){const [kind,pinId]=String(id).split(':');await this.setMapHotspot(kind,pinId,null);}
     if(op==='lib-place'){const place=[...PLACES,...BEYOND].find(i=>i.id===id);if(!place||(!this.game.user?.isGM&&!this.sharedPlaceIds().has(id)))return;this.state.mapView=place.regionId?'regions':'beyond';this.state.region=place.regionId??null;this.state.place=id;}
@@ -530,7 +549,7 @@ export class CampaignLibrary {
   }
   regionDetail(region,gm=false){
     const resolved=this.image('region',region.id,'','icons/svg/mountain.svg'),img=this.regionImages[region.id]||resolved.src,capital=PLACES.find(i=>i.id===region.capital);
-    const controls=gm?`<div class="sy-library-share-row">${button('region-img',region.id,this.regionImages[region.id]?'Trocar imagem':'Definir imagem')}${this.regionImages[region.id]?button('region-img',`${region.id}:`,'Remover imagem'):''}</div>`:'';
+    const controls=gm?`<div class="sy-library-share-row">${button('share-locality',`region:${region.id}`,'Liberar tudo da região')}${button('region-img',region.id,this.regionImages[region.id]?'Trocar imagem':'Definir imagem')}${this.regionImages[region.id]?button('region-img',`${region.id}:`,'Remover imagem'):''}</div>`:'';
     return `<section class="sy-library-detail">${gm?this.shareButton('map',region.id,'✓ Liberado','Liberar'):''}${cardFigure(img,region.name,'wide',resolved.fallbacks,gm?{op:'region-img',id:region.id}:null)}<small>${page(region)}</small><h3>${e(region.name)}</h3><p>${e(region.summary)}</p><h4>Governo</h4><p>${e(region.government)}</p><h4>Comércio</h4><p>${e(region.trade)}</p><h4>Destaques</h4>${chips(region.highlights)}${capital?button('place',capital.id,`Ir à capital: ${capital.name}`):''}${gm?button('create-merchant',`region:${region.id}`,'Criar mercador itinerante'):''}${this.renderDossier(region,gm)}${gm&&this.mapHotspots.regions?.[region.id]?button('map-hotspot-reset',`regions:${region.id}`,'Voltar ao padrão do livro'):''}${controls}</section>`;
   }
   renderDossier(region,gm=false){
@@ -554,7 +573,7 @@ export class CampaignLibrary {
   placeDetail(place,gm=false){
     const resolved=this.image('place',place.id,'','icons/svg/village.svg'),img=this.placeImages[place.id]||resolved.src;
     const onMap=!this.mapHidden.has(place.id);
-    const controls=gm?`<div class="sy-library-share-row">${button('place-img',place.id,this.placeImages[place.id]?'Trocar imagem':'Definir imagem')}${this.placeImages[place.id]?button('place-img',`${place.id}:`,'Remover imagem'):''}${button('map-hide',`${place.id}:${onMap?'hide':'show'}`,onMap?'Ocultar do mapa':'Mostrar no mapa')}</div>`:'';
+    const controls=gm?`<div class="sy-library-share-row">${button('share-locality',`place:${place.id}`,'Liberar tudo deste local')}${button('place-img',place.id,this.placeImages[place.id]?'Trocar imagem':'Definir imagem')}${this.placeImages[place.id]?button('place-img',`${place.id}:`,'Remover imagem'):''}${button('map-hide',`${place.id}:${onMap?'hide':'show'}`,onMap?'Ocultar do mapa':'Mostrar no mapa')}</div>`:'';
     return `<section class="sy-library-detail">${gm?this.shareButton('map',place.id,'✓ Liberado','Liberar'):''}${cardFigure(img,place.name,'wide',resolved.fallbacks,gm?{op:'place-img',id:place.id}:null)}<small>${page(place)} · ${e(place.kind??'Local')}</small><h3>${e(place.name)}</h3><p>${e(place.summary)}</p>${place.highlights?.length?`<h4>Destaques</h4>${chips(place.highlights)}`:''}${gm?button('create-merchant',place.id,'Criar mercador típico'):''}${this.npcsForLocation(place.regionId,place.id,!gm)}${gm&&this.mapHotspots.places?.[place.id]?button('map-hotspot-reset',`places:${place.id}`,'Voltar ao padrão do livro'):''}${controls}</section>`;
   }
   filters(categories,label='Buscar por nome ou descrição',groups=null){
