@@ -204,6 +204,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
         if(op==='lib-region-rumor-add'){const wrap=button.closest('.sy-dossier-add');data={text:wrap?.querySelector('[name="rumorText"]')?.value??''};if(wrap?.querySelector('[name="rumorText"]'))wrap.querySelector('[name="rumorText"]').value='';}
         if(op==='lib-monster-habitat-add'){const wrap=button.closest('.sy-dossier-add');data={monsterId:wrap?.querySelector('[name="habitatMonster"]')?.value??''};}
         if(op==='lib-monster-import'){const ta=this.element.querySelector('[name="monsterImport"]');data={text:ta?.value??''};}
+        if(op==='lib-generate-npc-bulk'){data={count:this.element.querySelector('[name="npcGenCount"]')?.value};}
         if(op==='lib-guild-import'){const ta=this.element.querySelector('[name="guildImport"]');data={text:ta?.value??''};}
         if(op==='lib-npc-roll-levels'){data={min:this.element.querySelector('[name="npcLevelMin"]')?.value,max:this.element.querySelector('[name="npcLevelMax"]')?.value};}
         if(op.startsWith('lib-npc-')){
