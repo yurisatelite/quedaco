@@ -276,7 +276,7 @@ export class CampaignLibrary {
     document.sheet.render(true);
   }
   async action(op,id,data={}){
-    const openOps=['lib-map','lib-region','lib-place','lib-map-focus','lib-map-zoom','lib-map-reset','lib-map-layer','lib-open-scene','lib-npc-buy','lib-npc-open','lib-forge-clear','lib-forge-add','lib-forge-remove','lib-forge-imbue','lib-forge-tab','lib-forge-pay','lib-forge-base','lib-imbue-pay','lib-quest-filter','lib-quest-open'];
+    const openOps=['lib-map','lib-region','lib-place','lib-map-focus','lib-map-zoom','lib-map-reset','lib-map-layer','lib-open-scene','lib-npc-buy','lib-npc-open','lib-forge-clear','lib-forge-add','lib-forge-remove','lib-forge-imbue','lib-forge-tab','lib-forge-pay','lib-forge-base','lib-imbue-pay','lib-guild-open','lib-quest-filter','lib-quest-open'];
     if(!openOps.includes(op))this.assertGM();
     if(op==='lib-map'){this.state.mapView=id;this.state.region=null;this.state.place=null;if(id==='regions')this.state.map={scale:1,tx:0,ty:0,focus:null};}
     if(op==='lib-region'){if(!REGIONS.some(i=>i.id===id)||(!this.game.user?.isGM&&!this.shared.map.includes(id)))return;this.state.mapView='regions';this.state.region=id;this.state.place=null;}
@@ -315,6 +315,7 @@ export class CampaignLibrary {
     if(op==='lib-npc-autotag')await this.autotagNpcs(id==='force');
     if(op==='lib-guild-import')await this.importGuilds(data.text);
     if(op==='lib-guild-stance')await this.setGuildStance(id,data.stance);
+    if(op==='lib-guild-open'){const guild=this.guildActors().find(entry=>entry.uuid===id||entry.id===id);if(!guild)throw Error('Guilda não encontrada.');if(!this.game.user?.isGM&&!this.shared.guilds.includes(guild.uuid))throw Error('Esta guilda não foi liberada.');guild.sheet?.render(true);}
     if(op==='lib-region-rumor-add')await this.addRegionRumor(id,data.text);
     if(op==='lib-region-rumor'){const [regionId,rumorId,change]=String(id).split('|');await this.updateRegionRumor(regionId,rumorId,change);}
     if(op==='lib-monster-habitat'){const [monsterId,regionId,mode]=String(id).split('|');await this.setMonsterHabitat(monsterId,regionId,mode!=='off');}
@@ -524,33 +525,42 @@ export class CampaignLibrary {
   guildFacets(guild){
     const ap=guild.flags?.[MODULE_ID]?.appendix??guild.flags?.quedaco?.appendix??{};
     const gp=guild.flags?.[MODULE_ID]?.guild??{};
-    const seals=[...(ap.seals||[]),ap.patron].map(cleanSeal).filter(Boolean);
+    const clean=value=>{const s=cleanSeal(value);return s&&s.length<=42?s:'';};
+    const kind=ap.kind==='hansa'?'hansa':'guilda';
+    const seals=(Array.isArray(ap.seals)?ap.seals:[]).map(clean).filter(Boolean);
+    const patron=clean(ap.patron);
     const text=`${stripTags(guild.system?.motto||'')} ${ap.description||''} ${ap.focus||''} ${ap.truths||''}`;
-    return {ap,gp,seals,tipo:ap.kind==='hansa'?'hansa':'guilda',tema:guildThemes(text),stance:GUILD_STANCES[gp.stance]?gp.stance:'desconhecida'};
+    return {ap,gp,kind,tipo:kind,seals,patron,tema:guildThemes(text),stance:GUILD_STANCES[gp.stance]?gp.stance:'desconhecida'};
   }
   resolveActor(uuid){try{return globalThis.fromUuidSync?.(uuid)??this.actorById(uuid);}catch{return this.actorById(uuid);}}
   renderGuilds(readonly=false){
     const shared=this.shared.guilds,guilds=this.guildActors().filter(guild=>!readonly||shared.includes(guild.uuid));
     const abilityLabels={cunning:'Astúcia',knowledge:'Conhecimento',crafting:'Ofício',reputation:'Reputação'};
     const resolve=uuid=>this.resolveActor(uuid);
-    const sealSet=new Map();for(const g of guilds)for(const s of this.guildFacets(g).seals)sealSet.set(nameKey(s),s);
+    const facets=guilds.map(g=>this.guildFacets(g));
+    const sealSet=new Map();for(const f of facets)for(const s of f.seals)sealSet.set(nameKey(s),s);
+    const patronSet=new Map();for(const f of facets)if(f.patron)patronSet.set(nameKey(f.patron),f.patron);
     const sel=this.state.guildFacets??{};
+    const TEMA_ICON={comercio:'fa-scale-balanced',contrabando:'fa-mask',informacao:'fa-eye',militar:'fa-shield-halved',arcano:'fa-wand-sparkles',maritimo:'fa-anchor'};
     const facetGroups=[
-      {facet:'tipo',label:'Tipo',items:[['guilda','Guilda'],['hansa','Hansa']]},
-      {facet:'selo',label:'Selo / Mecenas',items:[...sealSet.entries()].sort((a,b)=>a[1].localeCompare(b[1],'pt-BR'))},
-      {facet:'tema',label:'Campo de atuação',items:[['comercio','Comércio'],['contrabando','Contrabando'],['informacao','Informação'],['militar','Militar'],['arcano','Arcano'],['maritimo','Marítimo']]},
-      {facet:'relacao',label:'Relação com o grupo',items:Object.entries(GUILD_STANCES).map(([k,v])=>[k,v.label])},
-      ...(readonly?[]:[{facet:'liberada',label:'Liberada aos jogadores',items:[['sim','Sim'],['nao','Não']]}])
+      {facet:'tipo',label:'Tipo',items:[['guilda','<i class="fa-solid fa-landmark"></i> Guilda'],['hansa','<i class="fa-solid fa-flag"></i> Hansa']]},
+      ...(sealSet.size?[{facet:'selo',label:'Selo de Aprovação',items:[...sealSet.entries()].sort((a,b)=>a[1].localeCompare(b[1],'pt-BR'))}]:[]),
+      ...(patronSet.size?[{facet:'mecenas',label:'Mecenas',items:[...patronSet.entries()].sort((a,b)=>a[1].localeCompare(b[1],'pt-BR'))}]:[]),
+      {facet:'tema',label:'Campo de atuação',items:[['comercio','Comércio'],['contrabando','Contrabando'],['informacao','Informação'],['militar','Militar'],['arcano','Arcano'],['maritimo','Marítimo']].map(([k,l])=>[k,`<i class="fa-solid ${TEMA_ICON[k]}"></i> ${l}`])},
+      {facet:'relacao',label:'Relação com o grupo',items:Object.entries(GUILD_STANCES).map(([k,v])=>[k,`<span class="sy-stance-dot" style="--sy-role:${v.color}"></span>${v.label}`])},
+      ...(readonly?[]:[{facet:'liberada',label:'Liberada aos jogadores',items:[['sim','<i class="fa-solid fa-eye"></i> Sim'],['nao','<i class="fa-solid fa-eye-slash"></i> Não']]}])
     ];
-    const facetsHtml=`<div class="sy-monster-facets">${facetGroups.map(group=>{const chosen=sel[group.facet]??[];return `<details class="sy-facet" ${chosen.length?'open':''}><summary>${e(group.label)}<span class="sy-facet-count">${chosen.length?` (${chosen.length})`:''}</span></summary><div class="sy-check-grid">${group.items.map(([value,label])=>`<label><input type="checkbox" data-guild-facet="${e(group.facet)}" value="${e(value)}" ${chosen.includes(value)?'checked':''}>${e(label)}</label>`).join('')}</div></details>`;}).join('')}</div>`;
-    const cards=guilds.map(guild=>{
-      const system=guild.system??{},f=this.guildFacets(guild),motto=stripTags(system.motto??'');
+    const facetsHtml=`<div class="sy-guild-facets">${facetGroups.map(group=>{const chosen=sel[group.facet]??[];return `<details class="sy-facet" ${chosen.length?'open':''}><summary>${e(group.label)}${chosen.length?` <span class="sy-facet-count">(${chosen.length})</span>`:''}</summary><div class="sy-guild-facet-grid">${group.items.map(([value,label])=>`<label class="sy-guild-facet-chip"><input type="checkbox" name="guildFacet" data-guild-facet="${e(group.facet)}" value="${e(value)}" ${chosen.includes(value)?'checked':''}><span>${label}</span></label>`).join('')}</div></details>`;}).join('')}</div>`;
+    const sealImg=name=>{const img=this.image('seal',name,'','icons/svg/dice-target.svg');return `<img class="sy-guild-seal" src="${e(img.src)}" alt="" title="${e(name)}" loading="lazy"${img.fallbacks.length?` data-fallback-srcs="${e(img.fallbacks.join('||'))}"`:''}>`;};
+    const cards=guilds.map((guild,idx)=>{
+      const system=guild.system??{},f=facets[idx],motto=stripTags(system.motto??'');
       const membros=guildMembers(guild,resolve).length,nivel=guildLevel(guild,resolve);
       const abilities=Object.entries(abilityLabels).map(([key,label])=>`${label} ${system.abilities?.[key]?.value??'—'}`);
       const st=GUILD_STANCES[f.stance];
-      const tokens=[`tipo:${f.tipo}`,...f.seals.map(s=>`selo:${nameKey(s)}`),...f.tema.map(t=>`tema:${t}`),`relacao:${f.stance}`,`liberada:${shared.includes(guild.uuid)?'sim':'nao'}`].join('|');
+      const selosCard=[...f.seals,...(f.patron?[f.patron]:[])];
+      const tokens=[`tipo:${f.tipo}`,...f.seals.map(s=>`selo:${nameKey(s)}`),...(f.patron?[`mecenas:${nameKey(f.patron)}`]:[]),...f.tema.map(t=>`tema:${t}`),`relacao:${f.stance}`,`liberada:${shared.includes(guild.uuid)?'sim':'nao'}`].join('|');
       const stancePick=readonly?'':`<select class="sy-guild-stance" name="guildStance" data-id="${e(guild.uuid)}" title="Relação com o grupo">${Object.entries(GUILD_STANCES).map(([k,v])=>`<option value="${k}" ${f.stance===k?'selected':''}>${v.label}</option>`).join('')}</select>`;
-      return `<article class="sy-library-card sy-guild-card" data-search="${e(nameKey(`${guild.name} ${motto} ${f.ap.creator??''} ${f.ap.description??''}`))}" data-category="${e(tokens)}"><div class="sy-library-card-content">${thumb(this.image('guild',guild.name,guild.img,'icons/svg/village.svg'))}<small>${f.tipo==='hansa'?'Hansa':'Guilda'} · Nível ${e(nivel)} · ${membros} jogador(es)</small><h3>${e(guild.name)}</h3>${f.ap.symbol?`<p class="sy-guild-symbol">🔰 ${e(f.ap.symbol)}</p>`:''}${motto?`<p>${e(motto)}</p>`:''}${f.seals.length?chips(f.seals):''}${chips(abilities)}<div class="sy-library-tabs"><span class="sy-guild-stance-dot" style="--sy-role:${e(st.color)}" title="${e(st.label)}"></span>${stancePick}${button('open',guild.uuid,'Abrir ficha')}${readonly?'':this.shareButton('guilds',guild.uuid,'✓ Liberada','Liberar aos jogadores')}</div></div></article>`;
+      return `<article class="sy-library-card sy-guild-card sy-guild-${f.kind}" data-search="${e(nameKey(`${guild.name} ${motto} ${f.ap.creator??''} ${f.ap.description??''}`))}" data-category="${e(tokens)}"><div class="sy-library-card-content"><div class="sy-guild-head"><i class="fa-solid ${f.kind==='hansa'?'fa-flag':'fa-landmark'} sy-guild-icon" title="${f.kind==='hansa'?'Hansa (independente)':'Guilda (oficial)'}" aria-hidden="true"></i><div class="sy-guild-head-txt"><small>${f.kind==='hansa'?'Hansa':'Guilda'} · Nível ${e(nivel)} · ${membros} membro(s)</small><h3>${e(guild.name)}</h3></div>${selosCard.length?`<div class="sy-guild-seals">${selosCard.map(sealImg).join('')}</div>`:''}</div>${f.ap.symbol?`<p class="sy-guild-symbol"><i class="fa-solid fa-stamp"></i> ${e(f.ap.symbol)}</p>`:''}${motto?`<p>${e(motto)}</p>`:''}${chips(abilities)}<div class="sy-library-tabs"><span class="sy-guild-stance-dot" style="--sy-role:${e(st.color)}" title="${e(st.label)}"></span>${stancePick}${button('guild-open',guild.uuid,'Abrir ficha')}${readonly?'':this.shareButton('guilds',guild.uuid,'✓ Liberada','Liberar aos jogadores')}</div></div></article>`;
     }).join('');
     const importer=readonly?'':`<details class="sy-library-guide"><summary>Importar guildas do apêndice</summary><p class="sy-note">Cole aqui o conteúdo de <code>.local/guildas-foundry.json</code> (gerado por <code>tools/parse-guilds.mjs</code>) ou deixe o arquivo em <code>Data/modules/quedaco/.local/</code> e clique sem colar nada. Cria os Actors <code>guild</code> numa pasta "Guildas · Apêndice B"; pula as que já existem.</p><textarea name="guildImport" rows="4" placeholder='[ { "type": "guild", "name": "...", ... } ]'></textarea><div class="sy-library-tabs">${button('guild-import','','Importar')}</div></details>`;
     return `<p>Guildas e Hansas registradas como fichas nativas do Skyfall.</p>${readonly?'':`<div class="sy-library-share-row">${this.shareButton('areas','guilds','✓ Aba Guildas visível aos jogadores','Liberar a aba Guildas aos jogadores')}</div>`}${importer}${this.filters([],'Buscar por nome, criador ou descrição')}${facetsHtml}<div class="sy-library-grid">${cards||'<p class="sy-library-deferred">Nenhuma guilda disponível.</p>'}</div>`;

@@ -17,16 +17,15 @@ test('guildsForPlace resolves uuid and free-text memberships without duplicates'
   assert.deepEqual(guildsForPlace({npcs,guilds,placeId:'p2',places}).map(g=>g.name),['Hansa Rubra']);
 });
 
-test('guildMembers só conta ficha de jogador; guildLevel usa o maior nível (mín. 2)',()=>{
-  const pcs={
-    'Actor.p1':{type:'character',hasPlayerOwner:true,system:{level:{value:5}}},
-    'Actor.p2':{type:'character',hasPlayerOwner:true,system:{level:{value:9}}},
-    'Actor.npc':{type:'character',hasPlayerOwner:false,system:{level:{value:20}}},
-    'Actor.mob':{type:'npc',hasPlayerOwner:false,system:{level:{value:15}}}
+test('guildMembers conta fichas de personagem (não monstros); guildLevel usa o maior nível (mín. 2)',()=>{
+  const actors={
+    'Actor.pc':{type:'character',hasPlayerOwner:true,system:{level:{value:5}}},
+    'Actor.npc':{type:'character',hasPlayerOwner:false,system:{level:{value:9}}},
+    'Actor.mob':{type:'npc',hasPlayerOwner:false,system:{level:{value:20}}}
   };
-  const resolve=uuid=>pcs[uuid]??null;
-  const guild={system:{members:[{uuid:'Actor.p1'},{uuid:'Actor.p2'},{uuid:'Actor.npc'},{uuid:'Actor.mob'}]}};
-  assert.deepEqual(guildMembers(guild,resolve).map(m=>m.uuid),['Actor.p1','Actor.p2']);
+  const resolve=uuid=>actors[uuid]??null;
+  const guild={system:{members:[{uuid:'Actor.pc'},{uuid:'Actor.npc'},{uuid:'Actor.mob'}]}};
+  assert.deepEqual(guildMembers(guild,resolve).map(m=>m.uuid),['Actor.pc','Actor.npc']);
   assert.equal(guildLevel(guild,resolve),9);
   assert.equal(guildLevel({system:{members:[]}},resolve),2);
   assert.equal(guildLevel({system:{members:[{uuid:'Actor.mob'}]}},resolve),2);

@@ -183,6 +183,27 @@
 .sy-creator .sy-guild-symbol{font-size:12px;color:#bcd0dd;margin:6px 0}
 .sy-creator .sy-guild-stance{width:auto;margin:0;padding:4px 6px;font-size:11px;background:#131c27;border:1px solid #3a495b;border-radius:6px;color:#dbe6ef}
 .sy-creator .sy-guild-stance-dot{width:10px;height:10px;flex:0 0 10px;border-radius:50%;background:var(--sy-role,#5a6b7d);box-shadow:0 0 0 1px #fff3;align-self:center}
+/* compactar facetas de guilda */
+.sy-creator .sy-guild-facets{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 14px}
+.sy-creator .sy-guild-facets .sy-facet{border:1px solid #33455a;border-radius:9px;background:#111b25;overflow:hidden}
+.sy-creator .sy-guild-facets .sy-facet>summary{padding:6px 11px;color:#9ae8ff;font-weight:600;font-size:12px;cursor:pointer;list-style:none;white-space:nowrap}
+.sy-creator .sy-guild-facets .sy-facet>summary::-webkit-details-marker{display:none}
+.sy-creator .sy-guild-facets .sy-facet[open]{flex:1 1 100%}
+.sy-creator .sy-guild-facets .sy-facet[open]>summary{border-bottom:1px solid #33455a}
+.sy-creator .sy-guild-facet-grid{display:flex;flex-wrap:wrap;gap:5px;padding:8px}
+.sy-creator .sy-guild-facet-chip{display:inline-flex;align-items:center;gap:6px;margin:0;padding:5px 9px;font-size:11px;border:1px solid #344457;border-radius:999px;background:#192432;cursor:pointer;white-space:nowrap}
+.sy-creator .sy-guild-facet-chip:has(input:checked){border-color:var(--sy-cyan);background:#143342;color:#aeedff}
+.sy-creator .sy-guild-facet-chip input{appearance:none!important;-webkit-appearance:none!important;width:0!important;height:0!important;margin:0!important;padding:0!important;border:0!important;position:absolute;opacity:0}
+.sy-creator .sy-guild-facet-chip i{opacity:.8}
+.sy-creator .sy-stance-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:var(--sy-role,#5a6b7d);display:inline-block}
+/* cartão de guilda com ícone + selos */
+.sy-creator .sy-guild-head{display:flex;align-items:flex-start;gap:10px}
+.sy-creator .sy-guild-icon{font-size:26px;flex:0 0 auto;color:#8fb9d0;margin-top:2px}
+.sy-creator .sy-guild-hansa .sy-guild-icon{color:#d88c8c}
+.sy-creator .sy-guild-head-txt{flex:1;min-width:0}
+.sy-creator .sy-guild-head-txt h3{margin:2px 0}
+.sy-creator .sy-guild-seals{display:flex;gap:4px;flex-wrap:wrap;align-content:flex-start}
+.sy-creator .sy-guild-seal{width:26px;height:26px;flex:0 0 26px;object-fit:cover;border-radius:5px;border:1px solid #3a4a5c;background:#0f1620}
 .sy-creator .sy-imbue-bench{margin:6px 0 14px}
 .sy-creator .sy-imbue-bench h4{margin-top:0;display:flex;align-items:center;gap:7px}
 .sy-creator .sy-npc-editor{position:relative}
