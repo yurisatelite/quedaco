@@ -1,5 +1,15 @@
 export const CHANGELOG = [
   {
+    version:'0.4.18',
+    date:'2026-09-10',
+    title:'Layout da forja corrigido',
+    notes:[
+      'A bancada de forja do Ferreiro agora ocupa a largura toda em vez de ficar espremida na coluna do cartão.',
+      'Os nomes de equipamento no painel da forja não quebram mais letra a letra.',
+      '"Ataque desarmado" e armas naturais saíram da lista "Seu equipamento" da forja.'
+    ]
+  },
+  {
     version:'0.4.17',
     date:'2026-09-10',
     title:'Botão do menu lateral liberado para os jogadores',

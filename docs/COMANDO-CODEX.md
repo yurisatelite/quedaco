@@ -1173,3 +1173,85 @@ mapa — não só o parágrafo de hoje. Blocos, cada um com toggle "liberar aos 
 - Painel da direita: **Atlas**.
 - A página da região: **Dossiê da Região** (ou "Verbete", se quiser tom de enciclopédia
   in-world).
+
+---
+
+# 4ª rodada — Forja: layout, imbuir fragmentos, sobrecarga; conversão de itens D&D
+
+## B14 — Design da forja quebrado dentro do cartão de NPC  *(feito por Claude, 0.4.18)*
+
+Sintoma (print): a bancada de forja aparecia espremida na coluna de um cartão de NPC,
+com nomes de item quebrando letra a letra ("Mergulhador a").
+Feito: cartão com loja/forja ganha `sy-npc-card-full` (`grid-column:1/-1`), inventário
+com `-webkit-line-clamp:2`, bench com `minmax(0,2fr)` + `min-width:0` nos filhos,
+"Ataque desarmado" e armas naturais fora da lista "Seu equipamento".
+Se sobrar algo torto, ajustar `.sy-forge-*` em `styles/library.css`.
+
+## T34 — Converter itens de D&D 5e para itens de Skyfall (na mesa, sob demanda)
+
+O Yuri quer pôr um **compêndio de itens de D&D 5e** no Foundry e, conforme forem
+surgindo na mesa, transformar cada um num **item de Skyfall** — usando a macro geradora
+(mesmo padrão dos NPCs/monstros do T30). Hoje um item `dnd5e` não "entra" no QUEDAÇO
+porque o schema é outro (dano `2d6`+tipo, propriedades, `weapon`/`equipment` do 5e vs
+`weapon`/`armor`/`clothing`/`loot` do Skyfall, RD, volume, descritores).
+
+- **`src/item-convert.mjs` (puro, testado):** `dndToSkyfallDraft(item5e)` → objeto com o
+  que dá para mapear direto sem IA:
+  - tipo: 5e `weapon`→`weapon`; `equipment` com `armor.type` → `armor` (RD a partir de
+    `armor.value`); `consumable`→`consumable`; resto→`loot`/`equipment`.
+  - `system.price` a partir de `system.price.value` (converter gp→T$ com uma taxa
+    configurável, default 1:1) — marcar `priceKind:'a conferir'` se não houver.
+  - `system.weight`→`volume` (taxa configurável).
+  - nome, imagem, descrição (texto) mantidos.
+  - o que **não** dá para mapear (dano por dado + descritores Skyfall, propriedades
+    especiais, encantamentos) fica num campo `notes` para a macro/Yuri resolver.
+- **Fluxo na aba Itens (GM):** botão "Converter item de outro sistema" → escolhe um
+  Item de um compêndio 5e (ou arrasta) → mostra o `dndToSkyfallDraft` lado a lado (5e à
+  esquerda, rascunho Skyfall à direita, editável) → botões:
+  - **"Gerar com a macro"**: `game.macros.getName(quedaco.generatorMacro)?.execute({
+    quedaco:{ kind:'item', source:item5e.toObject(), draft, prompt } })` — a macro
+    devolve o item Skyfall pronto e cria/atualiza num compêndio da mesa (nunca item
+    solto de Mundo).
+  - **"Criar do rascunho"** (sem IA): cria o item Skyfall no compêndio configurado
+    (`quedaco.itemCompendium`) só com o mapeamento direto.
+- **`generatorPrompt` (T30) ganha `kind:'item'`:** texto tipo "Converta este item de D&D
+  5e para Skyfall RPG: <nome> — <descrição>. Dano/props: <...>. Devolva no formato de
+  item Skyfall (weapon/armor/clothing/loot), com dano em dados, descritores, RD, volume
+  e preço em T$; mantenha o tema.".
+- **`.local/macro-hook-quedaco.js`** documenta o `scope.quedaco.kind==='item'`.
+- **Nunca no repo:** o compêndio 5e, a macro, a chave. Regra de sempre.
+- Testes: `dndToSkyfallDraft` para arma, armadura, consumível e item genérico; taxa
+  gp→T$ e weight→volume configuráveis; campos não mapeáveis vão para `notes`.
+
+## T35 — Rolar o dano de sobrecarga arcana ao equipar
+
+Hoje a forja só **avisa** "vai sobrecarregar: Nd6" (texto de `SKYFALL2.SIGIL.AlertArcaneOverload`).
+O Yuri quer que o dano role de verdade quando o item é **equipado**.
+
+- Provável lacuna do próprio Skyfall; o QUEDAÇO cobre com um hook, sem alterar o sistema.
+- `Hooks.on('updateItem', ...)`: quando um Item de equipamento passa a
+  `system.equipped===true` (ou entra em uso) e o ator tem sigilos **não imbuídos** cujo
+  `fragments.amount` somado ultrapassa `actor.system.fragments.max`:
+  - `const over = usados - max` (mínimo 1); rolar `new Roll(\`${over}d6\`)`, aplicar como
+    dano **Energético** ao ator (`actor.applyDamage?.(total)` ou o caminho de dano do
+    Skyfall) e mandar ao chat: "Sobrecarga Arcana ao equipar <item>: <total> Energético".
+  - Só dispara na **transição** para equipado (comparar `changed` vs estado anterior),
+    nunca em cada render.
+  - Setting `quedaco.arcaneOverloadAuto` (config, default ligado) para o mestre desligar.
+  - Função pura `arcaneOverload(sigils, fragmentsMax)` → `{used, over, formula}` + teste.
+- Cuidado: só considerar sigilos ligados a **equipamento em uso** (mesma regra do
+  `prepareFragmentsLimit` do sistema).
+
+## Forja — "imbuir fragmentos" que faltou
+
+O Yuri diz que "imbuir fragmentos não entrou" no cartão do Ferreiro. Hoje há o botão
+**Imbuir** por sigilo (marca `infused` → `system.fragments.value=true`), mas falta o
+enquadramento:
+- Bloco fixo **"O que é imbuir?"** dentro da `renderForge` (o mesmo texto da aba Imbuir).
+- Por sigilo, mostrar **custo de imbuir** daquele grau (`IMBUE_COSTS[grade-1]`, grau 4 =
+  "a conferir") ao lado do botão Imbuir, e somar no total do `forgeQuote` (confirmar que
+  já soma).
+- Linha de fragmentos: além de "usa X / limite Y", listar **quais sigilos** estão
+  custando fragmento (os não imbuídos) para o jogador entender o que imbuir resolve.
+- Se "imbuir fragmentos" for outra ação do Skyfall (infundir fragmento avulso no item,
+  fora do imbuir de sigilo) — **PRECISA DO YURI** confirmar o que é exatamente.
