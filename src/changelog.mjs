@@ -2,11 +2,14 @@ export const CHANGELOG = [
   {
     version:'0.4.22',
     date:'2026-09-10',
-    title:'Miniaturas de item de volta e ajustes do editor de NPC',
+    title:'Guildas, imbuir na própria ficha, mapa de Quedas e imagens sem piscar',
     notes:[
-      'As miniaturas dos itens voltaram: quando não há arquivo na pasta da mesa, o cartão cai direto no ícone certo em vez de mostrar imagem quebrada.',
-      'Monstros e itens mostram a imagem própria do documento primeiro, sem a "piscada" de várias tentativas antes de carregar.',
-      'O editor de NPC ganhou o retrato grande da ficha; a lista de locais entrou em ordem alfabética; ao escolher o local, a região é preenchida sozinha.'
+      'Nova aba Guildas e Hansas: lista as fichas nativas do Skyfall (tipo guild), importa as do Apêndice B colando o JSON, e cada NPC pode ser vinculado a uma guilda da mesa. O dossiê da região mostra "Guildas presentes".',
+      'A aba Imbuir agora tem uma bancada de verdade: escolhe um equipamento da sua ficha, os sigilos e clica em "Imbuir por T$ N" — sem precisar de um NPC Ferreiro. O custo é explicado: paga-se por sigilo e cada sigilo a mais no mesmo item custa mais caro.',
+      'A camada "Quedas" do mapa agora mostra os sítios das Grandes Quedas (antes ficavam sempre ocultos). Os dois botõezinhos de cada local no Atlas viraram ícones claros: olho = liberar no mapa, alfinete = mostrar/ocultar o pino.',
+      'As miniaturas dos itens voltaram e as imagens de monstro não "piscam" mais: menos tentativas de arquivo e memória dos caminhos que já falharam.',
+      'Botão para sortear um nível aleatório aos NPCs que estão sem nível (nunca mexe em fichas de jogador).',
+      'Editor de NPC: retrato grande da ficha, lista de locais em ordem alfabética e a região trava no valor do local escolhido.'
     ]
   },
   {
