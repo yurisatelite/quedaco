@@ -180,6 +180,9 @@
 .sy-creator .sy-region-scene-list>div>strong{flex:1;min-width:120px}
 .sy-creator .sy-region-scene-list button{width:auto;padding:4px 9px;font-size:11px}
 .sy-creator .sy-region-scenes{margin-top:10px}
+.sy-creator .sy-guild-symbol{font-size:12px;color:#bcd0dd;margin:6px 0}
+.sy-creator .sy-guild-stance{width:auto;margin:0;padding:4px 6px;font-size:11px;background:#131c27;border:1px solid #3a495b;border-radius:6px;color:#dbe6ef}
+.sy-creator .sy-guild-stance-dot{width:10px;height:10px;flex:0 0 10px;border-radius:50%;background:var(--sy-role,#5a6b7d);box-shadow:0 0 0 1px #fff3;align-self:center}
 .sy-creator .sy-imbue-bench{margin:6px 0 14px}
 .sy-creator .sy-imbue-bench h4{margin-top:0;display:flex;align-items:center;gap:7px}
 .sy-creator .sy-npc-editor{position:relative}

@@ -16,7 +16,7 @@ import {ForienQuestIntegration,QUEST_STATUSES,questCounts} from './forien-quests
 import {generatorScope} from './generator.mjs';
 import {normalizeMonsterInput,toSkyfallNpc} from './monster-convert.mjs';
 import {rollLevel} from './npc-level.mjs';
-import {guildKind,guildsForPlace,npcGuildLabel} from './guilds.mjs';
+import {guildKind,guildsForPlace,npcGuildLabel,cleanSeal,guildThemes,GUILD_STANCES} from './guilds.mjs';
 
 export const BOOK_ITEMS=[...BASE_ITEMS,...SIGILS];
 
@@ -115,7 +115,7 @@ export function monsterMatches(entry,filters={}){
 export function monsterCategory(entry){return Object.entries(monsterFacetValues(entry)).flatMap(([facet,values])=>values.map(value=>`${facet}:${value}`)).join('|');}
 
 export class CampaignLibrary {
-  constructor(game,catalog){this.game=game;this.catalog=catalog;this.images=new ImageResolver(game,MODULE_ID,ASSET_ROOT_KEY);this.quests=new ForienQuestIntegration(game);this.actors=[];this.failures=[];this.loaded=false;this.state={mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null,layer:'auto',movingPins:false},npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcActor:null,npcSaved:null,npcEditRole:null,npcEditPlace:null,monsterFacets:{},questStatus:'all'};this.modBuilder={baseId:'',materialId:'',sigils:[],tab:'prefixo'};this.forgeBuilder={smithId:'',baseUuid:'',materialId:'',sigils:[],tab:'prefixo'};}
+  constructor(game,catalog){this.game=game;this.catalog=catalog;this.images=new ImageResolver(game,MODULE_ID,ASSET_ROOT_KEY);this.quests=new ForienQuestIntegration(game);this.actors=[];this.failures=[];this.loaded=false;this.state={mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null,layer:'auto',movingPins:false},npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcActor:null,npcSaved:null,npcEditRole:null,npcEditPlace:null,monsterFacets:{},guildFacets:{},questStatus:'all'};this.modBuilder={baseId:'',materialId:'',sigils:[],tab:'prefixo'};this.forgeBuilder={smithId:'',baseUuid:'',materialId:'',sigils:[],tab:'prefixo'};}
   image(kind,id,documentImg='',fallback='icons/svg/mystery-man.svg'){return this.images.resolve(kind,id,documentImg,fallback);}
   assertGM(){if(!this.game.user?.isGM)throw Error('Esta área está disponível somente para o mestre.');}
   get shared(){try{return {...emptyShare(),...(this.game.settings?.get(MODULE_ID,SHARED_KEY)||{})};}catch{return emptyShare();}}
@@ -172,14 +172,22 @@ export class CampaignLibrary {
     if(bucket!=='areas'&&list.length&&!current.areas.includes(bucket))current.areas=[...current.areas,bucket];
     await this.game.settings.set(MODULE_ID,SHARED_KEY,current);
   }
-  async rollNpcLevels(min,max){
+  async rollNpcLevels(min,max,force=false){
     this.assertGM();
-    const targets=this.npcActors().filter(actor=>!actor.hasPlayerOwner&&(Number(actor.system?.level?.value)||0)<1);
-    await Promise.all(targets.map(actor=>actor.update({'system.level.value':rollLevel(min,max)})));
-    globalThis.ui?.notifications?.info?.(`${targets.length} NPC${targets.length===1?' recebeu':'s receberam'} um nível entre ${rollLevel(min,max,()=>0)} e ${rollLevel(min,max,()=>1)}.`);
+    const lo=Math.max(1,Math.min(12,Math.floor(Number(min)||1))),hi=Math.max(lo,Math.min(12,Math.floor(Number(max)||lo)));
+    const targets=this.npcActors().filter(actor=>!actor.hasPlayerOwner&&actor.system?.level&&(force||(Number(actor.system?.level?.value)||0)<=1));
+    if(!targets.length){globalThis.ui?.notifications?.warn?.('Nenhum NPC para sortear (todos já têm nível acima de 1).');return 0;}
+    const updates=targets.map(actor=>({_id:actor.id,'system.level.value':rollLevel(lo,hi)}));
+    await Actor.updateDocuments(updates);
+    globalThis.ui?.notifications?.info?.(`Nível sorteado (${lo}–${hi}) para ${targets.length} NPC(s).`);
     return targets.length;
   }
   guildActors(){return sortByName(Array.from(this.game.actors??[]).filter(guildKind));}
+  async setGuildStance(uuid,stance){
+    this.assertGM();const actor=this.guildActors().find(guild=>guild.uuid===uuid||guild.id===uuid);if(!actor)return;
+    const value=GUILD_STANCES[stance]?stance:'desconhecida';
+    await actor.update({[`flags.${MODULE_ID}.guild`]:{...(actor.flags?.[MODULE_ID]?.guild??{}),stance:value}});
+  }
   async importGuilds(input=''){
     this.assertGM();
     let parsed=null;
@@ -287,8 +295,9 @@ export class CampaignLibrary {
       this.state.npcActor=actor.id;this.state.npcEditRole=null;this.state.npcEditPlace=null;
     }
     if(op==='lib-npc-close'){this.state.npcActor=null;this.state.npcEditRole=null;this.state.npcEditPlace=null;}
-    if(op==='lib-npc-roll-levels')await this.rollNpcLevels(data.min,data.max);
+    if(op==='lib-npc-roll-levels')await this.rollNpcLevels(data.min,data.max,id==='force');
     if(op==='lib-guild-import')await this.importGuilds(data.text);
+    if(op==='lib-guild-stance')await this.setGuildStance(id,data.stance);
     if(op==='lib-region-rumor-add')await this.addRegionRumor(id,data.text);
     if(op==='lib-region-rumor'){const [regionId,rumorId,change]=String(id).split('|');await this.updateRegionRumor(regionId,rumorId,change);}
     if(op==='lib-monster-habitat'){const [monsterId,regionId,mode]=String(id).split('|');await this.setMonsterHabitat(monsterId,regionId,mode!=='off');}
@@ -488,22 +497,43 @@ export class CampaignLibrary {
       return `<article class="sy-library-card sy-npc-card sy-npc-outline-${outline} ${editing?'is-editing':''} ${live?'is-live':''} ${mode==='shop'||mode==='forge'?'sy-npc-card-full':''}" style="--sy-region:${e(color)}" draggable="true" data-drag-actor="${e(actor.uuid)}" title="Arraste para a cena ou diálogo">${shareIcon}<div class="sy-library-card-content"><div class="sy-npc-card-grid">${avatarFor(this.image('npc',actor.name,actor.img,'icons/svg/mystery-man.svg'))}<span class="sy-npc-identity"><strong>${e(actor.name)}</strong><small>${npcRoleChip(flag.role)} <span class="sy-npc-location"><i></i>${e(location)}${outline==='itinerant'?' · errante':''}</span>${level!=null?` <span class="sy-npc-level" title="Nível">NV ${e(level)}</span>`:''}</small></span></div>${actions}${remove}${mode==='shop'?stockCard(actor,flag,true):mode==='forge'?this.renderForge(actor):''}</div></article>`;
     }).join('');
     if(readonly)return `<div class="sy-library-grid">${cards||'<p class="sy-library-deferred">Nenhum NPC está disponível agora.</p>'}</div>`;
-    const filters=`<div class="sy-npc-toolbar"><div class="sy-library-tabs">${[['all','Todos'],...Object.entries(NPC_ROLES)].map(([id,label])=>`<button data-op="lib-npc-filter" data-id="${id}" aria-current="${this.state.npcRole===id?'page':'false'}">${id==='all'?e(label):npcRoleChip(id)}</button>`).join('')}</div><div class="sy-npc-filters"><label>Local<select name="npcPlaceFilter"><option value="all">Todos os locais</option>${sortByName(PLACES.filter(place=>availablePlaceIds.has(place.id))).map(place=>`<option value="${e(place.id)}" ${placeFilter===place.id?'selected':''}>${e(place.name)}</option>`).join('')}</select></label><label>Vínculo<select name="npcLinkFilter"><option value="all">Todos</option>${Object.entries(NPC_LINK_TYPES).map(([id,label])=>`<option value="${id}" ${this.state.npcLink===id?'selected':''}>${label}</option>`).join('')}</select></label><span class="sy-npc-level-range"><label>Nível mín.<input type="number" name="npcLevelMin" min="1" max="12" value="1"></label><label>Nível máx.<input type="number" name="npcLevelMax" min="1" max="12" value="12"></label><button data-op="lib-npc-roll-levels">Sortear níveis ausentes</button></span></div></div>`;
+    const filters=`<div class="sy-npc-toolbar"><div class="sy-library-tabs">${[['all','Todos'],...Object.entries(NPC_ROLES)].map(([id,label])=>`<button data-op="lib-npc-filter" data-id="${id}" aria-current="${this.state.npcRole===id?'page':'false'}">${id==='all'?e(label):npcRoleChip(id)}</button>`).join('')}</div><div class="sy-npc-filters"><label>Local<select name="npcPlaceFilter"><option value="all">Todos os locais</option>${sortByName(PLACES.filter(place=>availablePlaceIds.has(place.id))).map(place=>`<option value="${e(place.id)}" ${placeFilter===place.id?'selected':''}>${e(place.name)}</option>`).join('')}</select></label><label>Vínculo<select name="npcLinkFilter"><option value="all">Todos</option>${Object.entries(NPC_LINK_TYPES).map(([id,label])=>`<option value="${id}" ${this.state.npcLink===id?'selected':''}>${label}</option>`).join('')}</select></label><span class="sy-npc-level-range"><label>Nível mín.<input type="number" name="npcLevelMin" min="1" max="12" value="1"></label><label>Nível máx.<input type="number" name="npcLevelMax" min="1" max="12" value="12"></label><button data-op="lib-npc-roll-levels">Sortear níveis ausentes</button>${button('npc-roll-levels','force','Sortear todos')}</span></div></div>`;
     const coverage=REGIONS.map(region=>({region,...npcCoverage(region,all)}));
     const missingCount=coverage.reduce((sum,item)=>sum+item.missing.length,0),batch=missingCount?`<div class="sy-library-share-row">${button('generate-npc-batch','5',`Criar ${Math.min(5,missingCount)} próximos`)}${button('generate-npc-batch','all',`Criar todos os ${missingCount}`)}</div>`:'';
     const audit=`<details class="sy-library-guide sy-npc-coverage"><summary>Cobertura regional de NPCs · ${missingCount} lacunas</summary>${batch}${coverage.map(item=>`<section><strong style="color:${e(this.regionColor(item.region.id))}">${e(item.region.name)}</strong>${item.missing.length?`<div class="sy-library-tabs">${item.missing.map(archetype=>button('generate-npc',`${item.region.id}||${archetype}`,`Criar ${archetype}`)).join('')}</div>`:'<small> ✓ cobertura sugerida presente</small>'}</section>`).join('')}<p class="sy-note">As sugestões vêm dos temas da região no livro. A macro recebe região, local, arquétipo e prompt prontos; revise a ficha gerada antes de usar.</p></details>`;
     const editor=this.renderNpcEditor(this.actorById(this.state.npcActor));
     return `<p>NPCs ligados a cidades, lojas e ao controle do mestre. Todos os Actors das pastas da macro aparecem direto nesta lista; alterações só são gravadas quando você salva.</p><div class="sy-library-share-row">${button('export-tokens','npcs','Exportar fichas para casar tokens')}${this.shareButton('areas','npcs','✓ Aba NPCs visível aos jogadores','Liberar a aba NPCs aos jogadores')}</div>${audit}${filters}<div class="sy-library-grid">${cards||'<p class="sy-library-deferred">Nenhum NPC encontrado nesta seção.</p>'}</div>${editor}`;
   }
+  guildFacets(guild){
+    const ap=guild.flags?.[MODULE_ID]?.appendix??guild.flags?.quedaco?.appendix??{};
+    const gp=guild.flags?.[MODULE_ID]?.guild??{};
+    const seals=[...(ap.seals||[]),ap.patron].map(cleanSeal).filter(Boolean);
+    const text=`${stripTags(guild.system?.motto||'')} ${ap.description||''} ${ap.focus||''} ${ap.truths||''}`;
+    return {ap,gp,seals,tipo:ap.kind==='hansa'?'hansa':'guilda',tema:guildThemes(text),stance:GUILD_STANCES[gp.stance]?gp.stance:'desconhecida'};
+  }
   renderGuilds(readonly=false){
     const shared=this.shared.guilds,guilds=this.guildActors().filter(guild=>!readonly||shared.includes(guild.uuid));
     const abilityLabels={cunning:'Astúcia',knowledge:'Conhecimento',crafting:'Ofício',reputation:'Reputação'};
+    const sealSet=new Map();for(const g of guilds)for(const s of this.guildFacets(g).seals)sealSet.set(nameKey(s),s);
+    const sel=this.state.guildFacets??{};
+    const facetGroups=[
+      {facet:'tipo',label:'Tipo',items:[['guilda','Guilda'],['hansa','Hansa']]},
+      {facet:'selo',label:'Selo / Mecenas',items:[...sealSet.entries()].sort((a,b)=>a[1].localeCompare(b[1],'pt-BR'))},
+      {facet:'tema',label:'Campo de atuação',items:[['comercio','Comércio'],['contrabando','Contrabando'],['informacao','Informação'],['militar','Militar'],['arcano','Arcano'],['maritimo','Marítimo']]},
+      {facet:'relacao',label:'Relação com o grupo',items:Object.entries(GUILD_STANCES).map(([k,v])=>[k,v.label])},
+      ...(readonly?[]:[{facet:'liberada',label:'Liberada aos jogadores',items:[['sim','Sim'],['nao','Não']]}])
+    ];
+    const facetsHtml=`<div class="sy-monster-facets">${facetGroups.map(group=>{const chosen=sel[group.facet]??[];return `<details class="sy-facet" ${chosen.length?'open':''}><summary>${e(group.label)}<span class="sy-facet-count">${chosen.length?` (${chosen.length})`:''}</span></summary><div class="sy-check-grid">${group.items.map(([value,label])=>`<label><input type="checkbox" data-guild-facet="${e(group.facet)}" value="${e(value)}" ${chosen.includes(value)?'checked':''}>${e(label)}</label>`).join('')}</div></details>`;}).join('')}</div>`;
     const cards=guilds.map(guild=>{
-      const system=guild.system??{},abilities=Object.entries(abilityLabels).map(([key,label])=>`${label} ${system.abilities?.[key]?.value??system[key]?.value??system[key]??'—'}`),motto=stripTags(system.motto??''),members=Array.isArray(system.members)?system.members.length:0;
-      return `<article class="sy-library-card sy-guild-card" data-search="${e(nameKey(`${guild.name} ${motto} ${abilities.join(' ')}`))}" data-category=""><div class="sy-library-card-content">${thumb(this.image('guild',guild.name,guild.img,'icons/svg/village.svg'))}<small>Nível ${e(system.level?.value??system.level??'—')} · ${members} membro(s)</small><h3>${e(guild.name)}</h3>${motto?`<p>${e(motto)}</p>`:''}${chips(abilities)}<div class="sy-library-tabs">${button('open',guild.uuid,'Abrir ficha')}${readonly?'':this.shareButton('guilds',guild.uuid,'✓ Liberada','Liberar aos jogadores')}</div></div></article>`;
+      const system=guild.system??{},f=this.guildFacets(guild),motto=stripTags(system.motto??''),members=Array.isArray(system.members)?system.members.length:0;
+      const abilities=Object.entries(abilityLabels).map(([key,label])=>`${label} ${system.abilities?.[key]?.value??'—'}`);
+      const st=GUILD_STANCES[f.stance];
+      const tokens=[`tipo:${f.tipo}`,...f.seals.map(s=>`selo:${nameKey(s)}`),...f.tema.map(t=>`tema:${t}`),`relacao:${f.stance}`,`liberada:${shared.includes(guild.uuid)?'sim':'nao'}`].join('|');
+      const stancePick=readonly?'':`<select class="sy-guild-stance" name="guildStance" data-id="${e(guild.uuid)}" title="Relação com o grupo">${Object.entries(GUILD_STANCES).map(([k,v])=>`<option value="${k}" ${f.stance===k?'selected':''}>${v.label}</option>`).join('')}</select>`;
+      return `<article class="sy-library-card sy-guild-card" data-search="${e(nameKey(`${guild.name} ${motto} ${f.ap.creator??''} ${f.ap.description??''}`))}" data-category="${e(tokens)}"><div class="sy-library-card-content">${thumb(this.image('guild',guild.name,guild.img,'icons/svg/village.svg'))}<small>${f.tipo==='hansa'?'Hansa':'Guilda'} · Nível ${e(system.level?.value??system.level??'—')} · ${members} membro(s)</small><h3>${e(guild.name)}</h3>${f.ap.symbol?`<p class="sy-guild-symbol">🔰 ${e(f.ap.symbol)}</p>`:''}${motto?`<p>${e(motto)}</p>`:''}${f.seals.length?chips(f.seals):''}${chips(abilities)}<div class="sy-library-tabs"><span class="sy-guild-stance-dot" style="--sy-role:${e(st.color)}" title="${e(st.label)}"></span>${stancePick}${button('open',guild.uuid,'Abrir ficha')}${readonly?'':this.shareButton('guilds',guild.uuid,'✓ Liberada','Liberar aos jogadores')}</div></div></article>`;
     }).join('');
     const importer=readonly?'':`<details class="sy-library-guide"><summary>Importar guildas do apêndice</summary><p class="sy-note">Cole aqui o conteúdo de <code>.local/guildas-foundry.json</code> (gerado por <code>tools/parse-guilds.mjs</code>) ou deixe o arquivo em <code>Data/modules/quedaco/.local/</code> e clique sem colar nada. Cria os Actors <code>guild</code> numa pasta "Guildas · Apêndice B"; pula as que já existem.</p><textarea name="guildImport" rows="4" placeholder='[ { "type": "guild", "name": "...", ... } ]'></textarea><div class="sy-library-tabs">${button('guild-import','','Importar')}</div></details>`;
-    return `<p>Guildas e Hansas registradas como fichas nativas do Skyfall.</p>${readonly?'':`<div class="sy-library-share-row">${this.shareButton('areas','guilds','✓ Aba Guildas visível aos jogadores','Liberar a aba Guildas aos jogadores')}</div>`}${importer}${this.filters([],'Buscar guilda ou hansa')}<div class="sy-library-grid">${cards||'<p class="sy-library-deferred">Nenhuma guilda disponível.</p>'}</div>`;
+    return `<p>Guildas e Hansas registradas como fichas nativas do Skyfall.</p>${readonly?'':`<div class="sy-library-share-row">${this.shareButton('areas','guilds','✓ Aba Guildas visível aos jogadores','Liberar a aba Guildas aos jogadores')}</div>`}${importer}${this.filters([],'Buscar por nome, criador ou descrição')}${facetsHtml}<div class="sy-library-grid">${cards||'<p class="sy-library-deferred">Nenhuma guilda disponível.</p>'}</div>`;
   }
   renderNpcEditor(actor){
     if(!actor)return '';const flag=npcFlag(actor)??adoptNpcFlag(actor);
@@ -679,7 +709,7 @@ export class CampaignLibrary {
   }
   filter(root){
     const query=nameKey(root.querySelector('[name="libraryQuery"]')?.value),category=root.querySelector('[name="libraryCategory"]')?.value??'';
-    const facets={};for(const input of root.querySelectorAll('[data-monster-facet]:checked'))(facets[input.dataset.monsterFacet]??=[]).push(input.value);
+    const facets={};for(const input of root.querySelectorAll('[data-monster-facet]:checked'))(facets[input.dataset.monsterFacet]??=[]).push(input.value);for(const input of root.querySelectorAll('[data-guild-facet]:checked'))(facets[input.dataset.guildFacet]??=[]).push(input.value);
     let count=0;for(const card of root.querySelectorAll('[data-search]')){const tokens=(card.dataset.category??'').split('|'),facetMatch=Object.entries(facets).every(([facet,selected])=>selected.some(value=>tokens.includes(`${facet}:${value}`)));card.hidden=!(card.dataset.search.includes(query)&&(!category||tokens.includes(category))&&facetMatch);if(!card.hidden)count++;}
     const label=root.querySelector('.sy-library-count');if(label)label.textContent=`${count} entradas`;
     const empty=root.querySelector('.sy-library-no-results');if(empty)empty.hidden=count!==0;
