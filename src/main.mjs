@@ -4,6 +4,7 @@ import {registerBranding,loadBranding} from './branding.mjs';
 import {registerLibrarySettings} from './library.mjs';
 import {CHANGELOG,entriesSince,isNewer} from './changelog.mjs';
 import {bindForienQuestHooks} from './forien-quests.mjs';
+import {registerArcaneOverload} from './arcane-overload.mjs';
 let app;
 const LAST_SEEN_VERSION='lastSeenVersion';
 const escape=value=>String(value??'').replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
@@ -24,7 +25,7 @@ function showChangelog(entries,current){
   dialog.addEventListener('close',()=>{void game.settings.set(MODULE_ID,LAST_SEEN_VERSION,current);},{once:true});
   dialog.render({force:true});
 }
-Hooks.once('init',()=>{registerBranding();registerLibrarySettings(game,()=>{if(app?.rendered)app.render(false);});game.settings.register(MODULE_ID,LAST_SEEN_VERSION,{scope:'client',config:false,type:String,default:''});});
+Hooks.once('init',()=>{registerBranding();registerLibrarySettings(game,()=>{if(app?.rendered)app.render(false);});registerArcaneOverload(game);game.settings.register(MODULE_ID,LAST_SEEN_VERSION,{scope:'client',config:false,type:String,default:''});});
 Hooks.once('ready',()=>{
   const module=game.modules.get(MODULE_ID);module.api={open:openCreator,openCampaign:()=>openCreator('npcs')};void loadBranding();
   const current=String(module.version??''),seen=String(game.settings.get(MODULE_ID,LAST_SEEN_VERSION)??'');
