@@ -8,7 +8,14 @@ export function imageCandidates(root,kind,idOrName){
 export function resolveImage(kind,idOrName,{root='',manifest={},documentImg='',fallback='icons/svg/mystery-man.svg'}={}){
  const key=imageSlug(idOrName),section=manifest?.[IMAGE_KINDS[kind]]??manifest?.[kind]??{},exception=section?.[idOrName]??section?.[key];
  const tokenCandidates=['npc','monster'].includes(kind)?imageCandidates(root,'token',idOrName):[];
- const sources=[exception,...imageCandidates(root,kind,idOrName),...tokenCandidates,documentImg,fallback].filter(Boolean);
+ const folder=[...imageCandidates(root,kind,idOrName),...tokenCandidates];
+ // Sem entrada no manifesto e com imagem própria do documento: mostra a imagem real
+ // primeiro (evita a "piscada" de vários 404 antes de cair no ícone). NPC mantém a
+ // pasta na frente porque é o fluxo de upload de tokens do Yuri.
+ const preferDocument=!exception&&documentImg&&kind!=='npc';
+ const sources=(preferDocument
+   ?[documentImg,...folder,fallback]
+   :[exception,...folder,documentImg,fallback]).filter(Boolean);
  return {src:sources[0]??'',fallbacks:[...new Set(sources.slice(1))],sources:[...new Set(sources)]};
 }
 export class ImageResolver{

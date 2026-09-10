@@ -253,6 +253,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     }
     if(name==='npcRoleQuick'){try{await this.library.action('lib-npc-role',event.target.dataset.id,{role:value});}catch(error){ui.notifications.warn(error.message);}this.rerender(true);return;}
     if(name==='npcRole'&&event.target.closest?.('[data-npc-editor]')){this.library.state.npcEditRole=value;this.rerender(true);return;}
+    if(name==='npcPlace'&&event.target.closest?.('[data-npc-editor]')){this.library.state.npcEditPlace=value;this.rerender(true);return;}
     if(name==='npcPlaceFilter'){this.library.state.npcPlaceFilter=value;this.rerender(true);return;}
     if(name==='npcLinkFilter'){this.library.state.npcLink=value;this.rerender(true);return;}
     if(name==='modBase'){this.library.modBuilder={baseId:value,materialId:'',sigils:[],tab:this.library.modBuilder.tab??'prefixo'};this.rerender(true);return;}

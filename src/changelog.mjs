@@ -1,5 +1,15 @@
 export const CHANGELOG = [
   {
+    version:'0.4.22',
+    date:'2026-09-10',
+    title:'Miniaturas de item de volta e ajustes do editor de NPC',
+    notes:[
+      'As miniaturas dos itens voltaram: quando não há arquivo na pasta da mesa, o cartão cai direto no ícone certo em vez de mostrar imagem quebrada.',
+      'Monstros e itens mostram a imagem própria do documento primeiro, sem a "piscada" de várias tentativas antes de carregar.',
+      'O editor de NPC ganhou o retrato grande da ficha; a lista de locais entrou em ordem alfabética; ao escolher o local, a região é preenchida sozinha.'
+    ]
+  },
+  {
     version:'0.4.21',
     date:'2026-09-10',
     title:'Cartão de NPC mínimo e sobrecarga arcana automática',
