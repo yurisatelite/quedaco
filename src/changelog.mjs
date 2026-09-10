@@ -1,5 +1,15 @@
 export const CHANGELOG = [
   {
+    version:'0.4.16',
+    date:'2026-09-10',
+    title:'A forja do Ferreiro cria o item',
+    notes:[
+      'O mestre passa a ver e usar a bancada de forja no cartão de um NPC Ferreiro (antes só o jogador via).',
+      'Sem personagem no usuário, a forja usa o ator do token selecionado na cena.',
+      'A aba Imbuir continua sendo a calculadora de referência; a criação do item acontece na forja do Ferreiro, sobre um equipamento real da ficha.'
+    ]
+  },
+  {
     version:'0.4.15',
     date:'2026-09-09',
     title:'Atlas do mapa, Dossiê da Região e ajustes de interface',

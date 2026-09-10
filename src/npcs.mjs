@@ -72,12 +72,11 @@ export function npcCoverage(region,actors=[],places=PLACES){
 }
 
 export function npcVisibility({role,shared=false,gm=false,forge={}}){
-  if(gm)return Boolean(role);
-  if(!shared)return false;
+  if(!role)return false;
+  if(!gm&&!shared)return false;
   if(role==='merchant')return 'shop';
   if(role==='smith'&&forge.enabled!==false)return 'forge';
-  if(role==='ally'||role==='extra')return 'identity';
-  if(role==='rival')return 'identity';
+  if(role==='ally'||role==='extra'||role==='rival')return 'identity';
   return false;
 }
 export function npcCardOutline(flag={}){if(flag?.placeId)return 'city';if(flag?.regionId||flag?.itinerant)return 'itinerant';return 'none';}

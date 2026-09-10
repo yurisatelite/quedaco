@@ -35,6 +35,9 @@ test('visibilidade de NPC depende do papel e da liberação',()=>{
   assert.equal(npcVisibility({role:'extra',shared:true}),'identity');
   assert.equal(npcVisibility({role:'rival',shared:true}),'identity');
   assert.equal(npcVisibility({role:'merchant',shared:false}),false);
+  assert.equal(npcVisibility({role:'smith',gm:true}),'forge');
+  assert.equal(npcVisibility({role:'merchant',gm:true}),'shop');
+  assert.equal(npcVisibility({role:'',gm:true}),false);
 });
 
 test('inferência de local usa pasta, descrição, nome e limites de palavra',()=>{
