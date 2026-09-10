@@ -1,5 +1,15 @@
 export const CHANGELOG = [
   {
+    version:'0.4.23',
+    date:'2026-09-10',
+    title:'Filtros das Guildas e barra de abas com ícones',
+    notes:[
+      'A aba Guildas ganhou filtros: Tipo (Guilda/Hansa), Selo de Aprovação / Mecenas, Campo de atuação (Comércio, Contrabando, Informação, Militar, Arcano, Marítimo), Relação com o grupo e Liberada aos jogadores, além de busca por nome, criador e descrição. A relação (Aliada, Neutra, Rival, Hostil, Desconhecida) é escolhida no próprio cartão.',
+      'A barra de abas do topo agora tem ícones e divisórias, e "Criação de Personagens" foi para o fim.',
+      'O sorteio de nível dos NPCs agora grava de verdade (era feito em paralelo e às vezes não salvava) e alcança quem estava no nível 0 ou 1. Botão extra "Sortear todos" para re-sortear.'
+    ]
+  },
+  {
     version:'0.4.22',
     date:'2026-09-10',
     title:'Guildas, imbuir na própria ficha, mapa de Quedas e imagens sem piscar',
