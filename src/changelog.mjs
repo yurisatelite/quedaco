@@ -1,5 +1,19 @@
 export const CHANGELOG = [
   {
+    version:'0.4.15',
+    date:'2026-09-09',
+    title:'Atlas do mapa, Dossiê da Região e ajustes de interface',
+    notes:[
+      'O mapa separa os pinos por tipo: Cidades (assentamentos), Marcos (ruínas, vulcões, bosques, pontos de interesse) e Quedas (os sítios das Grandes Quedas), que nascem ocultos; cada lugar tem "Ocultar / Mostrar no mapa".',
+      'Painel Atlas à direita do mapa: árvore de regiões e locais, liberação em massa e atalhos para focar, liberar e ocultar.',
+      'O detalhe da região virou um Dossiê: cidades por camada, fauna, ameaças por habitat, missões abertas, NPCs conhecidos, NPCs pelo território e rumores liberáveis um a um.',
+      'Cartão de NPC não quebra mais o texto na vertical e o papel pode ser trocado direto no cartão.',
+      'O selo "!" das etapas de criação só aparece depois de visitar a etapa pelo menu.',
+      'Clicar num pino do mapa mostra a descrição ao lado do mapa.',
+      'A forja lista o equipamento do personagem para escolher o item base sem arrastar, com botão para remover o base.'
+    ]
+  },
+  {
     version:'0.4.13',
     date:'2026-09-09',
     title:'Geração contextual, cartões de NPC e bancada de forja',

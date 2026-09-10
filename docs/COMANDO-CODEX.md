@@ -978,3 +978,198 @@ Aplicar o T26 (tokens locais) a esses NPCs no mesmo lote: botão "Exportar ficha
 casar tokens" já gera a lista; depois de subir `.local/tokens-escolhidos/` o
 `resolveImage` preenche os cartões e os tokens. Enquanto não há arquivo, cai no
 `mystery-man` — não deixar o cartão quebrado.
+
+---
+
+# 2ª rodada de prints do Yuri (correções sobre o que já foi entregue)
+
+## B11 — Cartão de NPC quebrou (texto vertical)
+
+Print: "Figurante" sai **uma letra por linha** (F/i/g/u/r/a/n/t/e), o nome do local
+também ("Alb/eri/ch"), avatar minúsculo, botões espremidos. O grid do T20.6 ficou com
+largura apertada demais forçando quebra a cada caractere.
+
+- Cartão: `display:grid;grid-template-columns:40px minmax(0,1fr);gap:10px` — a coluna de
+  conteúdo **precisa** de `min-width:0`.
+- Nome (`h3`) e linha-meta: `white-space:nowrap;overflow:hidden;text-overflow:ellipsis`
+  (nada de `word-break`/`writing-mode`). Nome pode ter 2 linhas com
+  `-webkit-line-clamp:2` se quiser, mas **nunca** 1 char por linha.
+- Grade: `grid-template-columns:repeat(auto-fill,minmax(280px,1fr))` para o cartão nunca
+  ficar estreito o bastante para colapsar.
+- Linha de ações: `flex-wrap:wrap;gap:6px`; 🗑 continua absoluto no canto superior
+  direito, fora do fluxo.
+- Ponto de cor do local: `flex:0 0 8px` para não ser espremido nem empurrar texto.
+
+## B12 — Selo "!" sempre aceso (regressão do B1)
+
+Print: etapa "1 Conceito" com "⚠" mesmo **sem ter sido visitada**. Regra do B1 continua
+valendo: "!" **só** em etapa `this.visited.has(i) === true` **e** `stepIssues(i).length`.
+Nunca visitada → sem selo. Conferir se a etapa "Conceito" está no array de etapas com o
+índice certo e se `visited` está sendo populada no clique dela (não no render).
+
+## T20.8 — Marcar o papel direto no cartão (Aliado/Rival/Figurante/Mercador)
+
+Sem abrir o editor: um seletor compacto no cartão do NPC —
+`<select name="npcRoleQuick" data-id="${actor.id}">` com os 4 papéis (mais "Ferreiro"
+do T28) — que ao mudar chama `saveNpc(actor.id, {role})` na hora e re-renderiza (sem
+pulo de scroll). O chip de papel (T21) reflete a escolha. Os botões de papel no topo
+continuam sendo **filtro**, não atribuição.
+
+## T28 (cont.) — a forja precisa CRIAR o item, não só simular
+
+O visual ficou bom (abas prefixo/sufixo, nome em tempo real). Falta o essencial:
+
+### 28.9 — Imagem do item no slot
+- Slot do item base mostra o `img` real: item arrastado → `item.img`; item do `<select>`
+  do livro → `matches[0]?.img` do compêndio, senão `itemFallback(entry)` (T5). Nada de
+  ícone genérico fixo.
+
+### 28.10 — Arrastar de verdade + remover o base
+- `dragover`/`drop` no slot base: aceita `{type:'Item',uuid}`; valida
+  `weapon`/`armor`/`clothing` **do próprio ator do jogador** (ou de qualquer ator, se
+  GM). Erro claro se o tipo não serve (`ui.notifications.warn`).
+- Botão **×** no slot base para limpar e escolher outro (hoje só dá pra trocar pelo
+  `<select>`; sigilos já têm ×, o base não tinha).
+
+### 28.11 — Botão "Forjar" que entrega o item + cobra
+- Botão final **"Forjar por T$ N"** (não "simular"):
+  1. checa saldo do ator (`walletTotal`); sem saldo → desabilitado + motivo.
+  2. desconta do `wallet` com a lógica do `purchaseItem` (k/p/t).
+  3. cria o **Item modificado** no ator = cópia do base + `system.sigils`
+     (`{uuid, parentUuid:'', infused}`) — Skyfall embute os sigilos no `_onCreate`.
+  4. se o base veio do inventário do jogador: perguntar "consumir o original?" (padrão
+     sim) e apagar/atualizar.
+  5. `ui.notifications.info("Item forjado: <nome mágico>.")`.
+- **Jogador pode fazer** (não exige GM): habilitado quando o painel está no modo
+  `'forge'` de um NPC ferreiro liberado. GM continua com a calculadora pura na aba
+  Imbuir (sem criar).
+
+### 28.12 — "Abrir negociação" no NPC ferreiro (2 painéis)
+- Cartão do NPC role `smith` + liberado → botão "Abrir forja" (jogador). Abre uma
+  visão de **dois painéis**:
+  - **Esquerda:** inventário de equipamentos do próprio personagem do jogador
+    (`weapon`/`armor`/`clothing`), cada um arrastável / clicável "usar como base".
+  - **Direita:** a bancada (28.8) — recebe o item, escolhe sigilos/material, vê custo e
+    saldo.
+  - Concluir → item modificado **volta para o inventário** do jogador, dinheiro
+    descontado; sem saldo, bloqueia. Igual a uma compra.
+- Reaproveita `modBuilder`, `modifiedItemSheet`, `purchaseItem`. Fecha voltando ao
+  cartão do NPC.
+
+Testes: `drop` rejeita item de outro dono (jogador); "Forjar" sem saldo não cria nada;
+com saldo cria Item com `system.sigils` correto e desconta o total; remover base zera o
+builder.
+
+## T30 (cont.) — a macro "gera e nunca termina"
+
+Sintoma do Yuri: dispara e fica rodando sem criar. Do lado do QUEDAÇO:
+- **Nunca bloquear**: `macro.execute(scope)` sem `await` que trave a UI; o painel só
+  reage ao hook `createActor` (T13). Mostrar `ui.notifications.info("Gerador disparado…
+  os NPCs aparecem aqui quando a macro terminar.")`.
+- **Timeout de aviso:** se em ~90s nenhum `createActor` casar o pedido, um aviso
+  "a macro ainda não devolveu nada — verifique o console (F12) e a chave/limite da API".
+- `.local/macro-hook-quedaco.js` deve incluir: log do `scope.quedaco` recebido,
+  `try/catch` em volta do `fetch`/`JSON.parse` com `console.error` legível, e um
+  `ui.notifications.error` se a resposta não for JSON válido (causa provável:
+  `max_tokens` curto truncando, ou texto fora de JSON). O conserto fino é na macro (fora
+  do repo) — o QUEDAÇO só não pode travar nem ficar mudo.
+
+## T27 (lembrete) — logo ainda não trocada
+
+Continua o dragão. Depende do Yuri salvar `assets/quedaco-logo.png`. Assim que o arquivo
+existir, aplicar o T27 (trocar as 2 refs do `.sy-brand-lockup`, tirar o texto ao lado,
+ajustar CSS).
+
+---
+
+# 3ª rodada — Mapa vira atlas navegável (regiões, camadas, dossiê)
+
+## B13 — Cartões do mapa não abrem mais (só visual)
+
+Regressão: clicar num pino de região/cidade no visor dinâmico **não abre mais a gaveta
+de detalhe** (`placeDetail`/`regionDetail`). Dá pra trocar imagem, mas não se vê a
+descrição. Consertar: `lib-place`/`lib-map-focus` setam `this.state.place`/`state.map.focus`
+e a gaveta (`.sy-map-drawer`) tem que renderizar sempre que houver `place` ou `focus`
+resolvido (GM: sempre; jogador: só se liberado). Sem pulo de scroll.
+
+## T31 — Camadas de lugar por tipo (Cidades ≠ tudo)
+
+Hoje "Cidades" mostra tudo (inclusive "Castelete da Tora Furada", "Primeira Grande Queda:
+Salim", "Pomares Rúnicos"). Separar por `place.kind`.
+
+- `placeLayer(kind)` puro → `'cidade' | 'marco' | 'queda'`:
+  - **cidade:** Capital, Cidade, Vila, Cidade-fortaleza, Cidade costeira, Porto,
+    Distrito, Cidade soterrada, Cidades históricas, Capital em ruínas, Ilha, Fazenda,
+    Mercado.
+  - **queda:** `Queda` (os sítios das Grandes Quedas — 5).
+  - **marco:** todo o resto (Vulcão, Bosque(s), Ruínas, Pântano, Fronteira, Fortalezas,
+    Floresta, Castelo, Lagoa, Terras mágicas, Cordilheira, Mar).
+- Botões de camada (rodapé do mapa e no painel do T32): **Automático · Regiões · Cidades
+  · Marcos · Quedas · Tudo**. `state.map.layer` guarda a escolha; `Automático` = regra do
+  zoom (T18).
+- **Mostrar/ocultar no mapa por lugar:** setting `quedaco.mapHidden` (Set de ids). Os 5
+  `Queda` entram **ocultos por padrão**. No painel do T32 e no modo "Mover pinos" (T17):
+  toggle "no mapa" por lugar; arrastar para dentro coloca e marca visível, botão remove
+  (tira da vista, continua no dado). Teste de `placeLayer` + de default oculto das Quedas.
+
+## T32 — Painel lateral direito: Atlas (árvore de regiões + controles do mapa)
+
+Tirar a faixa de "Liberar mapa / Liberar todas as regiões" de cima e virar um **painel à
+direita** do visor (`.sy-atlas`), fixo, rolável.
+
+- **Árvore:** cada região é um item recolhível (quadradinho + nome + ponto de cor T22).
+  Expandir → lista dos lugares da região agrupados por camada (Cidades / Marcos /
+  Quedas). "Além de Opath" no fim.
+- **Por nó (região ou lugar), ícones compactos:** `focar no mapa` (anima o zoom até ele),
+  `abrir dossiê` (T33 para região; `placeDetail` para lugar), toggle **Liberar** (share)
+  e toggle **no mapa** (T31).
+- **Ações em massa no topo do painel:** Liberar todas as regiões · Liberar tudo ·
+  Recolher tudo (era do T18).
+- Clicar na região no Atlas = focar no mapa **e** abrir o dossiê na gaveta.
+- Jogador: o Atlas mostra só o que foi liberado; sem toggles de GM.
+
+## T33 — Dossiê da região (documento visual, guiado, com share por bloco)
+
+Clicar numa região (pino, Atlas ou breadcrumb) abre um **documento visual** na gaveta do
+mapa — não só o parágrafo de hoje. Blocos, cada um com toggle "liberar aos jogadores"
+(GM) e escondido do jogador até liberado:
+
+1. **Capa:** imagem da região (`regionImages[id]` / `resolveImage`), nome, resumo,
+   governo, comércio, destaques (o que `regionDetail` já tem).
+2. **Cidades e locais:** cartões dos `PLACES` da região por camada (Cidades / Marcos /
+   Quedas), cada um abre `placeDetail`.
+3. **Fauna:** lista de animais da região — nova `REGIONS[i].fauna: [string]` (Codex
+   extrai do livro; Yuri revisa) ou tag em `book-monsters` (ver abaixo).
+4. **Ameaças:** monstros que aparecem na região — dos `MONSTERS` com a região na tag de
+   habitat (nova `MONSTERS[i].habitat: [regionId]` / setting `quedaco.monsterHabitats`
+   editável pelo GM; fallback: nenhum). Cada um arrastável para a cena (T20.5).
+5. **Missões abertas:** quests do Forien cujo `location`/tag casa a região ou uma cidade
+   dela (T29/Quests). Abrir quest.
+6. **NPCs conhecidos:** NPCs com `placeId` numa cidade da região (os "populares"), com
+   avatar + papel; arrastáveis.
+7. **NPCs pelo território:** NPCs com `regionId` da região e **sem** `placeId`
+   (errantes / paradeiro desconhecido) — T23. Marcador "paradeiro incerto".
+8. **Rumores:** nova `REGIONS[i].rumors` **não** no repo como dado do livro — setting
+   `quedaco.regionRumors` = `{regionId: [{text, shared}]}`, GM adiciona/edita/libera.
+- Tudo montado a partir das **tags** já existentes (placeId/regionId nos NPCs, habitat
+  nos monstros, location nas quests) — é por isso que taguear tudo importa. Onde não há
+  tag, o bloco aparece vazio com "nada marcado ainda", nunca quebrado.
+- `regionDossier(regionId, {npcs, monsters, quests, settings})` puro devolve o modelo de
+  cada bloco → testável sem Foundry.
+
+### Dados a acrescentar (Codex propõe do livro, Yuri revisa)
+- `REGIONS[i].fauna: string[]` em `src/book-world.mjs`.
+- Habitat de monstro: **não** inventar no `book-monsters.mjs` sem base; criar o setting
+  `quedaco.monsterHabitats` (`{monsterId:[regionId]}`) e uma UI mínima na aba Monstros
+  ("aparece em: [regiões]"). Se o livro disser explicitamente onde vive, aí sim pode ir
+  no dado com página.
+
+## Sugestão de nomes (o Yuri pediu)
+
+- Camadas do mapa: **Regiões · Cidades · Marcos · Quedas · Tudo** (+ Automático).
+  - *Cidades* = capitais, vilas, portos, distritos (assentamentos).
+  - *Marcos* = ruínas, vulcões, bosques, lagoas, cordilheiras, pontos de interesse.
+  - *Quedas* = os sítios das Grandes Quedas (tema do cenário); nascem fora do mapa.
+- Painel da direita: **Atlas**.
+- A página da região: **Dossiê da Região** (ou "Verbete", se quiser tom de enciclopédia
+  in-world).
