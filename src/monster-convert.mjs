@@ -182,7 +182,7 @@ export function toSkyfallNpc(mob,{hierarchy=null,boss=null}={}){
       biography:buildBiography(mob,nd,{tier,archetype,dr,prof,trained,hpSource:diceMax!=null?'dice':'estimado',attacksFound})
     },
     items:attackItems,
-    flags:{quedaco:{convertedFrom:'dnd5e',sourceCr:String(mob.cr??''),sourceName:String(mob.name||'')}}
+    flags:{quedaco:{convertedFrom:mob.source==='homebrew'?'homebrew':'dnd5e',sourceCr:String(mob.cr??''),sourceName:String(mob.name||'')}}
   };
   if(mob.img&&/^https?:|^\w[\w./-]*\.(webp|png|jpe?g)$/i.test(String(mob.img)))source.img=String(mob.img);
   return source;
@@ -323,7 +323,10 @@ function normalizeOneJson(obj){
   if(!obj||typeof obj!=='object')return null;
   // 5e.tools tem chaves capitalizadas com espaço; Open5e tem snake_case.
   const is5eTools='STR' in obj||'Armor Class' in obj||'Challenge' in obj||'Hit Points' in obj;
-  return is5eTools?normalize5eTools(obj):normalizeOpen5e(obj);
+  const mob=is5eTools?normalize5eTools(obj):normalizeOpen5e(obj);
+  // "source":"homebrew" no JSON colado marca a criatura como personalizada da mesa, não D&D 5e.
+  if(mob&&obj.source==='homebrew')mob.source='homebrew';
+  return mob;
 }
 export function normalizeMonsterInput(input){
   if(input&&typeof input==='object'&&!Array.isArray(input))return normalizeOneJson(input);
