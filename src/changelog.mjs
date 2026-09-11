@@ -1,5 +1,13 @@
 export const CHANGELOG = [
   {
+    version:'0.4.32',
+    date:'2026-09-11',
+    title:'Corrige a caixa de importar D&D 5e ficar vazia bem na hora do clique',
+    notes:[
+      'Achado o bug de verdade por trás do "nada acontece" ao converter monstro/item de D&D: clicar no botão tira o foco da caixa de texto primeiro, o que disparava uma re-renderização geral da tela — e como o texto colado nunca ficava guardado em lugar nenhum, a caixa voltava vazia bem antes do clique processar. Agora as caixas de colar/texto livre (importar monstro, item, guilda; adicionar rumor; anotação de mapa) não re-renderizam ao perder o foco.'
+    ]
+  },
+  {
     version:'0.4.31',
     date:'2026-09-11',
     title:'Log de diagnóstico visível por padrão',

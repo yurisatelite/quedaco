@@ -256,6 +256,10 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   applyFixed(){const base=[3,2,1,1,0,-1];Object.keys(ABILITIES).forEach((k,i)=>{this.draft.attributes[k]=base[this.draft.slots[i]]+(i===this.draft.boost?1:0);});}
   async handleChange(event){
     const {name,value}=event.target;if(!name)return;
+    // caixas de colar/texto livre lidas só na hora do clique (Converter e criar, Adicionar
+    // rumor...) não podem re-renderizar ao perder o foco — isso troca a caixa por uma vazia
+    // antes do botão ler o valor, porque o texto nunca fica guardado em lugar nenhum.
+    if(['monsterImport','itemImport','guildImport','rumorText','regionSceneInfo','rumorEditText'].includes(name))return;
     if(name==='libraryQuery'||name==='libraryCategory'){this.library.filter(this.element);return;}
     if(event.target.matches?.('[data-monster-facet]')){
       const facet=event.target.dataset.monsterFacet,checked=Array.from(this.element.querySelectorAll(`[data-monster-facet="${facet}"]:checked`)).map(input=>input.value);
