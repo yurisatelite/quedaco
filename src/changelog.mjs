@@ -1,5 +1,17 @@
 export const CHANGELOG = [
   {
+    version:'0.4.27',
+    date:'2026-09-10',
+    title:'Região vira painel, monstros com localidade e importador de itens D&D',
+    notes:[
+      'Nova visão de Região: clique em "Abrir região" no Mapa e a região assume a tela — foto grande fixa (com lápis pra trocar), carrossel dos mapas vinculados (com "Todos"/"Sem cena" e busca por papel), lista de NPCs com imagem e tags como na aba NPCs (cada linha escolhe o mapa do NPC na hora), abas de Rumores (com "Sortear 1d4" e edição) e Mapas e cenas (vincular, ver as cenas por pasta do Foundry, anotação por mapa).',
+      'Conserta o importador de D&D 5e: colar um JSON com vírgula sobrando antes de "]" (como o statblock do Aboleth copiado do 5e.tools) fazia a importação não criar nada. Agora também aceita blocos ```json colados com a cerca.',
+      'Monstros ganham localidade: cada carta tem "Onde aparece" — regiões e locais específicos, ou um toggle "aparece em qualquer lugar" pra bandidos e animais comuns, que entram automaticamente no dossiê de toda região.',
+      'Aba Itens ganha o mesmo importador de D&D 5e da aba Monstros — cria o Item de Mundo (nome, categoria, imagem); preço e mecânica de dano ficam para revisão manual porque a economia do Skyfall não corresponde à de D&D.',
+      'Tira a contagem "44 blocos do livro..." do topo da aba Monstros.'
+    ]
+  },
+  {
     version:'0.4.26',
     date:'2026-09-10',
     title:'Guildas com cor, taguear tudo e fim dos erros de imagem',
