@@ -55,6 +55,55 @@ export function rdForArchetype(tier,archetype,nd){
   return soft?1:hard?3:4;
 }
 
+// Tipos de dano do Skyfall (vistos em system.modifiers.damage.taken de uma ficha
+// nativa) — D&D usa quase os mesmos nomes; "force" não existe no Skyfall, vira "energy".
+const DAMAGE_TYPE_MAP={acid:'acid',bludgeoning:'bludgeoning',cold:'cold',fire:'fire',force:'energy',lightning:'lightning',necrotic:'necrotic',piercing:'piercing',poison:'poison',psychic:'psychic',radiant:'radiant',slashing:'slashing',thunder:'thunder'};
+function randomKey(len=16){const chars='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';let out='';for(let i=0;i<len;i++)out+=chars[Math.floor(Math.random()*chars.length)];return out;}
+/** Lê ataques do texto de Ações do D&D ("Nome. Melee Weapon Attack: +X to hit ... Hit: N (dado) tipo damage."). */
+export function parseAttacksFromText(text){
+  const raw=String(text||'').replace(/<[^>]*>/g,' ');
+  const re=/([A-Z][A-Za-z' -]{1,40}?)\.\s*(Melee|Ranged|Melee or Ranged)\s+(?:Weapon|Spell)?\s*Attack:?\s*\+?-?\d+\s*to\s*hit[\s\S]*?(?:(?:reach|range)\s*([\d/]+)\s*ft\.?)?[\s\S]*?Hit:\s*(\d+)\s*\([^)]*\)\s*([a-z]+)\s*damage/gi;
+  const out=[];let m;
+  while((m=re.exec(raw))){
+    const [,name,kind,rangeFt,avg,type]=m;
+    out.push({name:name.trim(),ranged:/ranged/i.test(kind),rangeFt:rangeFt?Number(rangeFt.split('/')[0]):null,damage:Math.max(1,Number(avg)||1),damageType:DAMAGE_TYPE_MAP[type.toLowerCase()]||'mundane'});
+  }
+  return out;
+}
+/** Monta um Item `ability` de ataque no molde exato de uma ficha nativa do Skyfall
+ * (dano fixo, rolagem de ataque = atributo + proficiência — sem dado de dano). */
+export function buildAttackItem(atk){
+  const ability=atk.ranged?'dex':'str';
+  const range=atk.ranged?(atk.rangeFt?feetToMeters(atk.rangeFt)||6:6):1.5;
+  const hitText=`<p><strong>Acerto:</strong> ${atk.damage} pontos de dano &amp;Reference[${atk.damageType}].</p>`;
+  return {
+    name:`${atk.name} (Ataque ${atk.ranged?'à Distância':'Corpo a Corpo'})`,
+    type:'ability',
+    img:atk.ranged?'icons/weapons/bows/shortbow-leather.webp':'icons/weapons/swords/sword-guard-worn-brown.webp',
+    system:{
+      description:{value:hitText,flavor:''},
+      origin:[''],
+      descriptors:['attack','weapon',atk.damageType],
+      activation:{type:'action',cost:null,repeatable:false,recharge:null},
+      trigger:{descriptive:''},
+      duration:{descriptive:'',value:null,units:'',event:'',concentration:false},
+      target:{descriptive:'',type:'creature',quantity:1,shape:'',length:null,width:null,units:'m'},
+      range:{descriptive:'',value:range,units:'m'},
+      attack:{descriptive:'',hit:hitText,miss:'',type:null,ability,protection:ability,damage:String(atk.damage)},
+      effect:{descriptive:'',damage:''},
+      special:{descriptive:''},
+      uses:{value:null,max:null,per:null,recovery:''},
+      consume:{type:'',target:null,amount:null,scale:false},
+      rolls:{
+        [randomKey()]:{label:'Ataque',type:'attack',protection:ability,terms:[{expression:`@${ability}`,flavor:'',data:'',source:''},{expression:'@proficiency',flavor:'',data:'',source:''}]},
+        [randomKey()]:{label:'Dano',type:'damage',terms:[{expression:String(atk.damage),flavor:'',data:'',source:''}],protection:'str'}
+      },
+      identifier:'',
+      wip:{rolls:{},description:''}
+    }
+  };
+}
+
 export function guessHierarchy(mob){
   if(mob.legendary||/legendary (actions?|resistance)/i.test(mob.text||''))return 'boss';
   if(mob.multiattack||/multiattack/i.test(mob.text||'')||parseCr(mob.cr)>=5)return 'complex';
@@ -71,13 +120,14 @@ export function guessArchetype(mob){
   return 'brute';
 }
 
-function buildBiography(mob,nd,{tier,archetype,dr,prof,trained,hpSource}){
+function buildBiography(mob,nd,{tier,archetype,dr,prof,trained,hpSource,attacksFound}){
   const lines=[];
   lines.push(`<p><em>Convertido de D&amp;D 5e${mob.cr!=null&&mob.cr!==''?` — CR ${mob.cr}`:''} → ND ${nd}, seguindo o guia do Movimento RPG.</em></p>`);
   lines.push(`<p><strong>PV:</strong> ${hpSource==='dice'?'máximo dos dados de vida da ficha 5e':'estimado — sem dados de vida no JSON, revise'}. <strong>RD ${dr}</strong> pela faixa de ${tier==='boss'?'chefão':'ameaça'}/arquétipo (${archetype}) — não é derivado da CA; ajuste conforme o papel da criatura na cena.</p>`);
   lines.push(`<p><strong>Proteções treinadas</strong> (10 + atributo + proficiência ${prof}): ${trained.map(k=>k.toUpperCase()).join(' e ')}. Se a Proteção de DES ficar bem abaixo da CA original, considere uma passiva "Armadura Natural" somando a diferença.</p>`);
   if(tier==='boss')lines.push('<p><strong>Chefão:</strong> adicione as passivas "Chefão" (3 iniciativas dividindo o deslocamento) e "Resistência do Chefe" (encerra uma condição no fim do turno) e a ação bônus "Deslocar-se". Ações lendárias de 1–2 ações viram ações normais; as de 3 ações viram habilidade de recarga. Se a criatura tinha ações lendárias, mantenha o nº de ataques; senão, reduza o multiataque em 1 (mín. 1). Habilidades de recarga em área: +2 dados (ou +1 categoria de dado); ataques em área comuns: +1 dado.</p>');
   else lines.push('<p><strong>Ataques:</strong> reduza o nº de multiataques em 1 (mínimo 1 por turno).</p>');
+  lines.push(`<p><strong>Itens de ataque:</strong> ${attacksFound?'lidos do texto original (nome, alcance, dano e tipo)':'nenhum ataque reconhecido no texto — foi criado 1 ataque genérico'}. Dano fixo, sem dado — a rolagem de ataque usa atributo + proficiência, como nas fichas nativas do Skyfall. Confira alcance, tipo de dano e nome.</p>`);
   if(mob.ac)lines.push(`<p><strong>CA original (5e):</strong> ${mob.ac}</p>`);
   if(mob.hp)lines.push(`<p><strong>PV original (5e):</strong> ${mob.hp}</p>`);
   if(mob.resistances)lines.push(`<p><strong>Resistências:</strong> ${mob.resistances}</p>`);
@@ -106,6 +156,10 @@ export function toSkyfallNpc(mob,{hierarchy=null,boss=null}={}){
   const hp=diceMax??Math.max(10,Math.round(nd*8+10));
   const dr=rdForArchetype(tier,archetype,nd);
   const speed=mob.speed||{};
+  const parsedAttacks=parseAttacksFromText(mob.text).slice(0,4);
+  const attacksFound=parsedAttacks.length>0;
+  const fallbackDamage=Math.max(2,Math.round(3+nd*1.5));
+  const attackItems=(attacksFound?parsedAttacks:[{name:'Ataque',ranged:archetype==='ranged',rangeFt:archetype==='ranged'?60:null,damage:fallbackDamage,damageType:'mundane'}]).map(buildAttackItem);
   const source={
     name:String(mob.name||'Criatura convertida').trim(),
     type:'npc',
@@ -124,8 +178,9 @@ export function toSkyfallNpc(mob,{hierarchy=null,boss=null}={}){
       hierarchy:tier,
       archetype:[archetype],
       dr,
-      biography:buildBiography(mob,nd,{tier,archetype,dr,prof,trained,hpSource:diceMax!=null?'dice':'estimado'})
+      biography:buildBiography(mob,nd,{tier,archetype,dr,prof,trained,hpSource:diceMax!=null?'dice':'estimado',attacksFound})
     },
+    items:attackItems,
     flags:{quedaco:{convertedFrom:'dnd5e',sourceCr:String(mob.cr??''),sourceName:String(mob.name||'')}}
   };
   if(mob.img&&/^https?:|^\w[\w./-]*\.(webp|png|jpe?g)$/i.test(String(mob.img)))source.img=String(mob.img);

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {crToNd,abilityMod,feetToMeters,skyfallCreatureType,parseCr,guessHierarchy,guessArchetype,toSkyfallNpc,normalizeOpen5e,parseStatblock,normalizeMonsterInput,parseHitDice,dndProficiencyForCr,rdForArchetype} from '../src/monster-convert.mjs';
+import {crToNd,abilityMod,feetToMeters,skyfallCreatureType,parseCr,guessHierarchy,guessArchetype,toSkyfallNpc,normalizeOpen5e,parseStatblock,normalizeMonsterInput,parseHitDice,dndProficiencyForCr,rdForArchetype,parseAttacksFromText} from '../src/monster-convert.mjs';
 
 test('CR de D&D vira ND do Skyfall com teto 12',()=>{
   assert.equal(crToNd('1/4'),1);
@@ -150,4 +150,38 @@ test('Aboleth colado do gist (formato 5e.tools) converte de ponta a ponta',()=>{
   assert.equal(src.system.resources.hp.max,216);
   assert.equal(src.system.hierarchy,'boss');
   assert.ok(src.system.dr>0);
+});
+
+test('toSkyfallNpc cria Itens de ataque no molde da ficha nativa (dano fixo, sem dado)',()=>{
+  const text='Multiattack. The bandit makes two melee attacks.\n\nScimitar. Melee Weapon Attack: +3 to hit, reach 5 ft., one target. Hit: 4 (1d6 + 1) slashing damage.\n\nLight Crossbow. Ranged Weapon Attack: +3 to hit, range 80/320 ft., one target. Hit: 5 (1d8 + 1) piercing damage.';
+  const mob={name:'Bandido D&D',cr:'1/8',abilities:{str:11,dex:12,con:12,int:10,wis:10,cha:10},ac:12,hp:'11 (2d8 + 2)',speed:{walk:30},type:'humanoid',text};
+  const src=toSkyfallNpc(mob);
+  assert.equal(src.items.length,2);
+  const [melee,ranged]=src.items;
+  assert.equal(melee.name,'Scimitar (Ataque Corpo a Corpo)');
+  assert.equal(melee.type,'ability');
+  assert.equal(melee.system.attack.ability,'str');
+  assert.equal(melee.system.attack.damage,'4');
+  assert.equal(melee.system.descriptors.includes('slashing'),true);
+  assert.equal(ranged.system.attack.ability,'dex');
+  assert.equal(ranged.system.attack.damage,'5');
+  const rolls=Object.values(melee.system.rolls);
+  assert.equal(rolls.find(r=>r.type==='attack').terms[0].expression,'@str');
+  assert.equal(rolls.find(r=>r.type==='damage').terms[0].expression,'4');
+});
+
+test('sem ataque reconhecível no texto, cria 1 ataque genérico com dano fixo',()=>{
+  const src=toSkyfallNpc({name:'Coisa Estranha',cr:2,abilities:{str:14,dex:14,con:14,int:8,wis:8,cha:8},ac:13,hp:'30 (4d8+12)',speed:{walk:30},type:'ooze',text:'Sem ações descritas.'});
+  assert.equal(src.items.length,1);
+  assert.match(src.items[0].name,/^Ataque/);
+  assert.ok(Number(src.items[0].system.attack.damage)>=2);
+});
+
+test('parseAttacksFromText separa múltiplos ataques por nome, alcance e tipo de dano',()=>{
+  const atks=parseAttacksFromText('Bite. Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 7 (2d4 + 2) piercing damage.\n\nClaw. Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d4 + 2) slashing damage.');
+  assert.equal(atks.length,2);
+  assert.equal(atks[0].name,'Bite');
+  assert.equal(atks[0].damageType,'piercing');
+  assert.equal(atks[1].name,'Claw');
+  assert.equal(atks[1].damageType,'slashing');
 });
