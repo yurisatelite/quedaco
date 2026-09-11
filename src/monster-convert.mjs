@@ -1,7 +1,10 @@
 // T34/T8 — converte um bloco de criatura de D&D 5e num Actor `npc` do Skyfall.
-// Skyfall vai até ND 12 (equivale a ~CR 20 / nível 20 de D&D). A conversão é uma
-// aproximação: atributos e movimento saem certos; PV, RD e ataques são estimados
-// e ficam anotados na biografia para o mestre ajustar na ficha.
+// Segue os guias do Movimento RPG (movimentorpg.com.br) "Guia para Adaptar
+// Ameaças de D&D5e para SkyfallRPG" e "...Chefões/Boss...": PV = máximo dos
+// dados de vida, atributo = modificador de D&D, proteção treinada nos dois
+// atributos mais altos (empate = ambos), proficiência pela tabela de CR de
+// D&D, RD por faixa de arquétipo/chefão. Ataques, recargas e habilidades de
+// chefão ficam anotados na biografia — o mestre monta os Itens de ação.
 
 const CREATURE_TYPES=new Set(['celestial','construct','dragon','elemental','fey','beast','giant','ooze','humanoid','fiend','monstrosity','undead','plant']);
 const TYPE_ALIASES={aberration:'monstrosity',swarm:'beast',swarms:'beast',monster:'monstrosity'};
@@ -33,6 +36,24 @@ export function skyfallCreatureType(type){
   return 'monstrosity';
 }
 function proficiencyForNd(nd){return nd>=17?6:nd>=13?5:nd>=9?4:nd>=5?3:2;}
+/** Bônus de proficiência pela tabela de CR de D&D (usado pra treinar proteções). */
+export function dndProficiencyForCr(cr){
+  const v=parseCr(cr);
+  if(v<5)return 2;if(v<9)return 3;if(v<13)return 4;if(v<17)return 5;if(v<21)return 6;if(v<25)return 7;return v<29?8:9;
+}
+/** PV = máximo dos dados de vida (guia oficial), ex.: "18d10 + 36" → 18×10+36. */
+export function parseHitDice(text){
+  const m=String(text||'').match(/(\d+)\s*d\s*(\d+)\s*([+-]\s*\d+)?/i);
+  if(!m)return null;
+  const n=Number(m[1]),sides=Number(m[2]),bonus=m[3]?Number(m[3].replace(/\s+/g,'')):0;
+  return Number.isFinite(n)&&Number.isFinite(sides)?n*sides+bonus:null;
+}
+/** RD pela faixa de arquétipo/chefão dos dois guias (não é derivado da CA); pega a ponta baixa de cada faixa — o mestre pode subir. */
+export function rdForArchetype(tier,archetype,nd){
+  const soft=['group','ranged'].includes(archetype),hard=['brute','mount'].includes(archetype);
+  if(tier==='boss')return soft?1:hard?4:(nd>=9?9:6);
+  return soft?1:hard?3:4;
+}
 
 export function guessHierarchy(mob){
   if(mob.legendary||/legendary (actions?|resistance)/i.test(mob.text||''))return 'boss';
@@ -50,10 +71,14 @@ export function guessArchetype(mob){
   return 'brute';
 }
 
-function buildBiography(mob,nd){
+function buildBiography(mob,nd,{tier,archetype,dr,prof,trained,hpSource}){
   const lines=[];
-  lines.push(`<p><em>Convertido de D&amp;D 5e${mob.cr!=null&&mob.cr!==''?` — CR ${mob.cr}`:''} → ND ${nd}.</em> Revise PV, RD, deslocamento e ataques.</p>`);
-  if(mob.ac)lines.push(`<p><strong>CA original:</strong> ${mob.ac}</p>`);
+  lines.push(`<p><em>Convertido de D&amp;D 5e${mob.cr!=null&&mob.cr!==''?` — CR ${mob.cr}`:''} → ND ${nd}, seguindo o guia do Movimento RPG.</em></p>`);
+  lines.push(`<p><strong>PV:</strong> ${hpSource==='dice'?'máximo dos dados de vida da ficha 5e':'estimado — sem dados de vida no JSON, revise'}. <strong>RD ${dr}</strong> pela faixa de ${tier==='boss'?'chefão':'ameaça'}/arquétipo (${archetype}) — não é derivado da CA; ajuste conforme o papel da criatura na cena.</p>`);
+  lines.push(`<p><strong>Proteções treinadas</strong> (10 + atributo + proficiência ${prof}): ${trained.map(k=>k.toUpperCase()).join(' e ')}. Se a Proteção de DES ficar bem abaixo da CA original, considere uma passiva "Armadura Natural" somando a diferença.</p>`);
+  if(tier==='boss')lines.push('<p><strong>Chefão:</strong> adicione as passivas "Chefão" (3 iniciativas dividindo o deslocamento) e "Resistência do Chefe" (encerra uma condição no fim do turno) e a ação bônus "Deslocar-se". Ações lendárias de 1–2 ações viram ações normais; as de 3 ações viram habilidade de recarga. Se a criatura tinha ações lendárias, mantenha o nº de ataques; senão, reduza o multiataque em 1 (mín. 1). Habilidades de recarga em área: +2 dados (ou +1 categoria de dado); ataques em área comuns: +1 dado.</p>');
+  else lines.push('<p><strong>Ataques:</strong> reduza o nº de multiataques em 1 (mínimo 1 por turno).</p>');
+  if(mob.ac)lines.push(`<p><strong>CA original (5e):</strong> ${mob.ac}</p>`);
   if(mob.hp)lines.push(`<p><strong>PV original (5e):</strong> ${mob.hp}</p>`);
   if(mob.resistances)lines.push(`<p><strong>Resistências:</strong> ${mob.resistances}</p>`);
   if(mob.immunities)lines.push(`<p><strong>Imunidades:</strong> ${mob.immunities}</p>`);
@@ -69,12 +94,17 @@ export function toSkyfallNpc(mob,{hierarchy=null,boss=null}={}){
   const abilities={};
   for(const key of ABILITIES)abilities[key]={value:abilityMod(mob.abilities?.[key])};
   const tier=hierarchy||(boss?'boss':guessHierarchy(mob));
-  const conMod=abilities.con.value;
-  let hp=Math.round(nd*(9+conMod)+10);
-  if(tier==='boss')hp=Math.round(hp*1.6);
-  else if(tier==='complex')hp=Math.round(hp*1.15);
-  hp=Math.max(10,hp);
-  const dr=Math.max(0,Math.min(8,Math.round(((Number(mob.ac)||12)-12)/2)));
+  const archetype=guessArchetype(mob);
+  // proteção treinada nos DOIS atributos mais altos (empate no 2º lugar = todos os empatados)
+  const sortedValues=[...ABILITIES.map(k=>abilities[k].value)].sort((a,b)=>b-a);
+  const threshold=sortedValues[1]??sortedValues[0];
+  const trained=ABILITIES.filter(k=>abilities[k].value>=threshold);
+  for(const k of trained)abilities[k].proficient=true;
+  const prof=(mob.cr!=null&&mob.cr!=='')?dndProficiencyForCr(mob.cr):proficiencyForNd(nd);
+  // PV = máximo dos dados de vida (não média, não fórmula própria)
+  const diceMax=parseHitDice(mob.hitDice)??parseHitDice(mob.hp);
+  const hp=diceMax??Math.max(10,Math.round(nd*8+10));
+  const dr=rdForArchetype(tier,archetype,nd);
   const speed=mob.speed||{};
   const source={
     name:String(mob.name||'Criatura convertida').trim(),
@@ -82,7 +112,7 @@ export function toSkyfallNpc(mob,{hierarchy=null,boss=null}={}){
     system:{
       abilities,
       level:{value:nd},
-      proficiency:proficiencyForNd(nd),
+      proficiency:prof,
       resources:{hp:{value:hp,max:hp,temp:0},shadow:{value:5}},
       movement:{
         walk:feetToMeters(speed.walk??30)||9,
@@ -92,9 +122,9 @@ export function toSkyfallNpc(mob,{hierarchy=null,boss=null}={}){
       },
       creatureType:skyfallCreatureType(mob.type),
       hierarchy:tier,
-      archetype:[guessArchetype(mob)],
+      archetype:[archetype],
       dr,
-      biography:buildBiography(mob,nd)
+      biography:buildBiography(mob,nd,{tier,archetype,dr,prof,trained,hpSource:diceMax!=null?'dice':'estimado'})
     },
     flags:{quedaco:{convertedFrom:'dnd5e',sourceCr:String(mob.cr??''),sourceName:String(mob.name||'')}}
   };
@@ -121,6 +151,7 @@ export function normalizeOpen5e(json){
     abilities:ab,
     ac:Number.isFinite(ac)?ac:null,
     hp:hpRaw!=null?String(hpRaw):'',
+    hitDice:typeof json.hit_dice==='string'?json.hit_dice:'',
     speed:speed||{},
     type:json.type??json.details?.type?.value??json.details?.type,
     resistances:[json.damage_resistances,json.condition_immunities].filter(Boolean).join('; ')||'',

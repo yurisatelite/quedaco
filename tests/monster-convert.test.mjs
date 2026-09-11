@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {crToNd,abilityMod,feetToMeters,skyfallCreatureType,parseCr,guessHierarchy,guessArchetype,toSkyfallNpc,normalizeOpen5e,parseStatblock,normalizeMonsterInput} from '../src/monster-convert.mjs';
+import {crToNd,abilityMod,feetToMeters,skyfallCreatureType,parseCr,guessHierarchy,guessArchetype,toSkyfallNpc,normalizeOpen5e,parseStatblock,normalizeMonsterInput,parseHitDice,dndProficiencyForCr,rdForArchetype} from '../src/monster-convert.mjs';
 
 test('CR de D&D vira ND do Skyfall com teto 12',()=>{
   assert.equal(crToNd('1/4'),1);
@@ -104,4 +104,50 @@ test('recupera JSON colado sem fechar o colchete / com vírgula solta',()=>{
   const m=normalizeMonsterInput(raw);
   assert.equal(m?.name,'Ogre');
   assert.equal(m.abilities.str,19);
+});
+
+test('PV usa o máximo dos dados de vida (guia do Movimento RPG), não uma fórmula própria',()=>{
+  assert.equal(parseHitDice('18d10 + 36'),216);
+  assert.equal(parseHitDice('7d8+21'),77);
+  assert.equal(parseHitDice('sem dados aqui'),null);
+});
+
+test('bônus de proficiência segue a tabela de CR de D&D',()=>{
+  assert.equal(dndProficiencyForCr(2),2);
+  assert.equal(dndProficiencyForCr(5),3);
+  assert.equal(dndProficiencyForCr(10),4);
+  assert.equal(dndProficiencyForCr(17),6);
+  assert.equal(dndProficiencyForCr(30),9);
+});
+
+test('RD vem da faixa de arquétipo/chefão do guia, não da CA',()=>{
+  assert.equal(rdForArchetype('complex','group',2),1);
+  assert.equal(rdForArchetype('complex','brute',2),3);
+  assert.equal(rdForArchetype('complex','defender',2),4);
+  assert.equal(rdForArchetype('boss','brute',5),4);
+  assert.equal(rdForArchetype('boss','defender',12),9);
+});
+
+test('exemplo do guia (Dragão das Cavernas): PV 77, proficiência +2, RD 3, FOR e CON treinados',()=>{
+  const mob={name:'Dragão das Cavernas',cr:2,abilities:{str:18,dex:12,con:16,int:8,wis:10,cha:12},ac:16,hp:'52 (7d8 + 21)',speed:{walk:30,swim:20,fly:20},type:'dragon',text:'Multiattack. The dragon makes two attacks.'};
+  const src=toSkyfallNpc(mob);
+  assert.equal(src.system.resources.hp.max,77);
+  assert.equal(src.system.proficiency,2);
+  assert.equal(src.system.dr,3);
+  assert.equal(src.system.abilities.str.proficient,true);
+  assert.equal(src.system.abilities.con.proficient,true);
+  assert.equal(src.system.abilities.dex.proficient,undefined);
+  assert.equal(src.system.movement.walk,9);
+  assert.equal(src.system.movement.swim,6);
+  assert.equal(src.system.movement.flight,6);
+});
+
+test('Aboleth colado do gist (formato 5e.tools) converte de ponta a ponta',()=>{
+  const raw='[ {"name":"Aboleth","meta":"Large aberration, lawful evil","Armor Class":"17 (Natural Armor)","Hit Points":"135 (18d10 + 36)","Speed":"10 ft., swim 40 ft.","STR":"21","DEX":"9","CON":"15","INT":"18","WIS":"15","CHA":"18","Saving Throws":"CON +6, INT +8, WIS +6","Challenge":"10 (5,900 XP)","Traits":"<p>x</p>","Actions":"<p>Multiattack.</p>","Legendary Actions":"<p>y</p>"}, ]';
+  const mob=normalizeMonsterInput(raw);
+  assert.equal(mob.name,'Aboleth');
+  const src=toSkyfallNpc(mob);
+  assert.equal(src.system.resources.hp.max,216);
+  assert.equal(src.system.hierarchy,'boss');
+  assert.ok(src.system.dr>0);
 });
