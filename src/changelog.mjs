@@ -1,5 +1,13 @@
 export const CHANGELOG = [
   {
+    version:'0.4.31',
+    date:'2026-09-11',
+    title:'Log de diagnóstico visível por padrão',
+    notes:[
+      'A 0.4.30 usava console.debug — o Chrome esconde esse nível por padrão no Console, então o log de diagnóstico não aparecia mesmo funcionando. Troca pra console.log, que sempre aparece.'
+    ]
+  },
+  {
     version:'0.4.30',
     date:'2026-09-11',
     title:'Log de diagnóstico no clique dos botões',

@@ -514,18 +514,18 @@ export class CampaignLibrary {
     const actor=await Actor.create({name,type:'character',img:this.image('npc',name,'','icons/svg/mystery-man.svg').src,flags:{[MODULE_ID]:{npc:flag}},prototypeToken:{actorLink:true}});if(actor)this.state.npcActor=actor.id;return actor;
   }
   async importMonster(input){
-    console.debug(MODULE_ID,'importMonster: chamado, tamanho do input:',String(input??'').length);
+    console.log(MODULE_ID,'importMonster: chamado, tamanho do input:',String(input??'').length);
     this.assertGM();
     const mobs=normalizeMonsterList(input);
-    console.debug(MODULE_ID,'importMonster: normalizados:',mobs.length,mobs.map(m=>m.name));
+    console.log(MODULE_ID,'importMonster: normalizados:',mobs.length,mobs.map(m=>m.name));
     if(!mobs.length)throw Error('Não reconheci o bloco. Cole o JSON do 5e.tools / Open5e (um objeto ou a lista [ ... ] inteira) ou o texto do statblock.');
     if(mobs.length===1){
       const mob=mobs[0];
       if(!Object.keys(mob.abilities||{}).length&&!mob.cr&&!mob.ac)throw Error(`Li o nome "${mob.name}" mas não achei atributos, CR nem CA. Confira se o JSON está completo (sem faltar o "]" ou "}" no fim).`);
       const source=toSkyfallNpc(mob),token={actorLink:true};if(source.img)token.texture={src:source.img};
-      console.debug(MODULE_ID,'importMonster: criando Actor...',source.name);
+      console.log(MODULE_ID,'importMonster: criando Actor...',source.name);
       const actor=await Actor.create({...source,prototypeToken:token});
-      console.debug(MODULE_ID,'importMonster: Actor.create retornou',actor?.id,actor?.name);
+      console.log(MODULE_ID,'importMonster: Actor.create retornou',actor?.id,actor?.name);
       if(!actor?.id)throw Error('O Foundry não criou a ficha.');
       globalThis.ui?.notifications?.info?.(`"${actor.name}" criado como ND ${source.system.level.value}. Revise PV, RD e ataques na ficha.`);
       return 1;
