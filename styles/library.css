@@ -198,6 +198,22 @@
 .sy-creator .sy-guild-facet-chip i{opacity:.8}
 .sy-creator .sy-stance-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:var(--sy-role,#5a6b7d);display:inline-block}
 /* cartão de guilda — colorido/dinâmico */
+.sy-creator .sy-guild-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+.sy-creator .sy-guild-grid .sy-library-card-content{padding:9px}
+.sy-creator .sy-guild-grid h3{font-size:14px;margin:3px 0}
+.sy-creator .sy-guild-grid p{font-size:11px;margin:5px 0;line-height:1.35}
+.sy-creator .sy-guild-grid .sy-guild-head{gap:6px}
+.sy-creator .sy-guild-grid .sy-guild-icon{font-size:14px}
+.sy-creator .sy-guild-grid .sy-guild-abils{margin:5px 0;gap:3px}
+.sy-creator .sy-guild-grid .sy-guild-abil{font-size:10px;padding:2px 5px}
+.sy-creator .sy-guild-grid .sy-library-tabs{gap:4px;margin:6px 0 0}
+.sy-creator .sy-guild-grid .sy-library-tabs button{padding:4px 8px;font-size:11px}
+.sy-creator .sy-guild-grid .sy-guild-seal{width:20px;height:20px;flex:0 0 20px}
+.sy-creator .sy-npc-dragon{display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:10px;background:#d4372c22;border:1px solid #d4372c;color:#ff9b8c;font-size:10px;font-weight:700}
+.sy-creator .sy-npc-card.sy-npc-is-dragon{border-color:#d4372c}
+.sy-creator .sy-npc-dragon-filter{flex:0 0 auto;align-self:flex-end;padding-bottom:8px}
+.sy-creator .sy-guild-card.is-archived{opacity:.55}
+.sy-creator .sy-guild-archived-tag{color:#f0c674}
 .sy-creator .sy-guild-card{border-left:3px solid var(--sy-stance,#5a6b7d)}
 .sy-creator .sy-guild-card.sy-guild-hansa{border-left-style:dashed}
 .sy-creator .sy-guild-card .sy-library-card-content{background:linear-gradient(180deg,color-mix(in srgb,var(--sy-kind,#5a9fd0) 8%,transparent),transparent 90px)}
@@ -262,7 +278,9 @@
 .sy-creator .sy-region-npcs{position:sticky;top:6px;display:flex;flex-direction:column;gap:8px;max-height:78vh;overflow:auto;padding-right:2px}
 .sy-creator .sy-region-npcs h4{margin:0;color:#9ae8ff;font-size:12px;text-transform:uppercase;letter-spacing:.08em}
 .sy-creator .sy-region-npc-count{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--sy-region,#3a495b);color:#04121c;font-weight:700;text-align:center}
-.sy-creator .sy-region-npc-list{display:flex;flex-direction:column;gap:6px}
+.sy-creator .sy-region-npc-list{display:flex;flex-direction:column;gap:8px}
+.sy-creator .sy-region-npc-item{display:flex;flex-direction:column;gap:0}
+.sy-creator .sy-region-npc-item .sy-npc-row-scene{width:100%;margin-top:-1px;font-size:11px;padding:3px 6px;border-top:0;border-radius:0 0 8px 8px}
 .sy-creator .sy-npc-row{display:grid;grid-template-columns:36px 1fr auto;gap:8px;align-items:center;padding:6px;border:1px solid #2c3a49;border-left:3px solid var(--sy-region,#3a495b);border-radius:8px;background:#0f1620}
 .sy-creator .sy-npc-row.is-editing{border-color:#38bdd7}
 .sy-creator .sy-npc-row.is-live{box-shadow:inset 2px 0 0 #50d89a}
