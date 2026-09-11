@@ -1,5 +1,13 @@
 export const CHANGELOG = [
   {
+    version:'0.4.28',
+    date:'2026-09-11',
+    title:'Republicação da 0.4.27',
+    notes:[
+      'A 0.4.27 não apareceu como atualização disponível pra alguns mestres. Sem mudança de código — só nova versão e novo pacote pra forçar o Foundry a detectar a atualização.'
+    ]
+  },
+  {
     version:'0.4.27',
     date:'2026-09-10',
     title:'Região vira painel, monstros com localidade e importador de itens D&D',

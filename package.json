@@ -1,6 +1,6 @@
 {
   "name": "quedaco",
-  "version": "0.4.27",
+  "version": "0.4.28",
   "private": true,
   "type": "module",
   "scripts": { "test": "node --test tests/*.test.mjs", "package": "node tools/package.mjs", "release": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/release.ps1" }

@@ -10,8 +10,8 @@ test('comparação semver identifica somente versões posteriores',()=>{
 });
 
 test('changelog retorna a faixa nova e limita primeira instalação à mais recente',()=>{
-  assert.deepEqual(entriesSince(CHANGELOG,'0.4.8').map(entry=>entry.version),['0.4.27','0.4.26','0.4.25','0.4.24','0.4.23','0.4.22','0.4.21','0.4.20','0.4.19','0.4.18','0.4.17','0.4.16','0.4.15','0.4.13','0.4.12','0.4.11','0.4.10','0.4.9']);
-  assert.deepEqual(entriesSince(CHANGELOG,'0.4.9').map(entry=>entry.version),['0.4.27','0.4.26','0.4.25','0.4.24','0.4.23','0.4.22','0.4.21','0.4.20','0.4.19','0.4.18','0.4.17','0.4.16','0.4.15','0.4.13','0.4.12','0.4.11','0.4.10']);
+  assert.deepEqual(entriesSince(CHANGELOG,'0.4.8').map(entry=>entry.version),['0.4.28','0.4.27','0.4.26','0.4.25','0.4.24','0.4.23','0.4.22','0.4.21','0.4.20','0.4.19','0.4.18','0.4.17','0.4.16','0.4.15','0.4.13','0.4.12','0.4.11','0.4.10','0.4.9']);
+  assert.deepEqual(entriesSince(CHANGELOG,'0.4.9').map(entry=>entry.version),['0.4.28','0.4.27','0.4.26','0.4.25','0.4.24','0.4.23','0.4.22','0.4.21','0.4.20','0.4.19','0.4.18','0.4.17','0.4.16','0.4.15','0.4.13','0.4.12','0.4.11','0.4.10']);
   assert.equal(entriesSince(CHANGELOG,'').length,1);
   assert.equal(entriesSince(CHANGELOG,'')[0],CHANGELOG[0]);
 });
