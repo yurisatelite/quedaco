@@ -133,6 +133,7 @@ function buildBiography(mob,nd,{tier,archetype,dr,prof,trained,hpSource,attacksF
   if(mob.resistances)lines.push(`<p><strong>Resistências:</strong> ${mob.resistances}</p>`);
   if(mob.immunities)lines.push(`<p><strong>Imunidades:</strong> ${mob.immunities}</p>`);
   if(mob.senses)lines.push(`<p><strong>Sentidos:</strong> ${mob.senses}</p>`);
+  if(mob.img)lines.push(`<p><strong>Imagem:</strong> a arte de referência do JSON virou o retrato — geralmente vem com fundo próprio (não recortado), então serve pra identificar mas não fica boa como token. O token nasce com o ícone padrão; troque por um pacote de tokens de verdade se quiser um pra mesa.</p>`);
   if(mob.text)lines.push(`<hr><p><strong>Traços e ações (texto original):</strong></p><p>${String(mob.text).replace(/\n{2,}/g,'</p><p>').replace(/\n/g,'<br>')}</p>`);
   return lines.join('');
 }

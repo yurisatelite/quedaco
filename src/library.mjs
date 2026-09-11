@@ -522,7 +522,7 @@ export class CampaignLibrary {
     if(mobs.length===1){
       const mob=mobs[0];
       if(!Object.keys(mob.abilities||{}).length&&!mob.cr&&!mob.ac)throw Error(`Li o nome "${mob.name}" mas não achei atributos, CR nem CA. Confira se o JSON está completo (sem faltar o "]" ou "}" no fim).`);
-      const source=toSkyfallNpc(mob),token={actorLink:true};if(source.img)token.texture={src:source.img};
+      const source=toSkyfallNpc(mob),token={actorLink:true,texture:{src:'icons/svg/mystery-man.svg'}};
       console.log(MODULE_ID,'importMonster: criando Actor...',source.name);
       const actor=await Actor.create({...source,prototypeToken:token});
       console.log(MODULE_ID,'importMonster: Actor.create retornou',actor?.id,actor?.name);
@@ -541,7 +541,7 @@ export class CampaignLibrary {
       if(existentes.has(nameKey(mob.name)))continue;
       existentes.add(nameKey(mob.name));
       const source=toSkyfallNpc(mob);if(folder?.id)source.folder=folder.id;
-      if(source.img)source.prototypeToken={texture:{src:source.img}};
+      source.prototypeToken={texture:{src:'icons/svg/mystery-man.svg'}};
       fontes.push(source);
     }
     if(!fontes.length){globalThis.ui?.notifications?.info?.('Nenhum monstro novo — todos já existem na mesa.');return 0;}

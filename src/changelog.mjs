@@ -1,5 +1,13 @@
 export const CHANGELOG = [
   {
+    version:'0.4.33',
+    date:'2026-09-11',
+    title:'Monstro de D&D não herda mais a arte de referência como token',
+    notes:[
+      'A imagem do JSON (img_url) virava retrato e token ao mesmo tempo — como geralmente é uma arte de referência com fundo próprio (não recortada), ficava com um quadrado feio de fundo no token. Agora só vira retrato; o token nasce com o ícone padrão do Skyfall até você trocar por um token de verdade.'
+    ]
+  },
+  {
     version:'0.4.32',
     date:'2026-09-11',
     title:'Corrige a caixa de importar D&D 5e ficar vazia bem na hora do clique',
