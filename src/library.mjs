@@ -15,6 +15,7 @@ import {regionColor} from './regions.mjs';
 import {ForienQuestIntegration,QUEST_STATUSES,questCounts} from './forien-quests.mjs';
 import {generatorScope} from './generator.mjs';
 import {normalizeMonsterInput,normalizeMonsterList,toSkyfallNpc} from './monster-convert.mjs';
+import {normalizeItemList,toSkyfallItemSource} from './item-convert.mjs';
 import {rollLevel} from './npc-level.mjs';
 import {guildKind,guildsForPlace,npcGuildLabel,cleanSeal,guildThemes,GUILD_STANCES,guildMembers,guildLevel} from './guilds.mjs';
 
@@ -434,6 +435,7 @@ export class CampaignLibrary {
     }
     if(op==='lib-gen-arch-done'){const cut=String(id).indexOf('|');const rid=String(id).slice(0,cut),arch=String(id).slice(cut+1);await this.markArchetypeDone(rid,arch,!this.archetypeDone(rid,arch));}
     if(op==='lib-monster-import')await this.importMonster(data.text);
+    if(op==='lib-item-import')await this.importItem(data.text);
     if(op==='lib-generate-monster'){
       const facets=Object.values(this.state.monsterFacets??{}).flat().filter(Boolean),archetype=facets.length?facets.join(', '):'ameaça';
       await this.runGenerator(generatorScope({kind:'monster',archetype,count:1}));
@@ -530,6 +532,26 @@ export class CampaignLibrary {
     }
     globalThis.ui?.notifications?.info?.(`${feitos} monstro(s) criados em "Monstros convertidos (D&D 5e)". Revise PV, RD e ataques.`);
     return feitos;
+  }
+  async importItem(input){
+    this.assertGM();
+    const entries=normalizeItemList(input);
+    if(!entries.length)throw Error('Não reconheci o item. Cole o JSON de um item (um objeto ou a lista [ ... ] inteira) do 5e.tools / Open5e.');
+    const FolderCls=globalThis.Folder;
+    let folder=Array.from(this.game.folders??[]).find(entry=>entry.type==='Item'&&entry.name==='Itens convertidos (D&D 5e)');
+    if(!folder&&FolderCls)folder=await FolderCls.create({name:'Itens convertidos (D&D 5e)',type:'Item'});
+    const existentes=new Set(Array.from(this.game.items??[]).map(item=>nameKey(item.name)));
+    const fontes=[];
+    for(const entry of entries){
+      if(existentes.has(nameKey(entry.name)))continue;
+      existentes.add(nameKey(entry.name));
+      const source=toSkyfallItemSource(entry,itemTypeForCategory);if(folder?.id)source.folder=folder.id;
+      fontes.push(source);
+    }
+    if(!fontes.length){globalThis.ui?.notifications?.info?.('Nenhum item novo — todos já existem no Mundo.');return 0;}
+    const docs=await Item.createDocuments(fontes);
+    globalThis.ui?.notifications?.info?.(`${docs.length} item(ns) criados em "Itens convertidos (D&D 5e)". Preço, capacidade e descritores são estimativas — o texto original do 5e ficou salvo nas flags do item para você revisar e arrastar pro compêndio.`);
+    return docs.length;
   }
   async addNpcLink(actorId,data){
     this.assertGM();const actor=this.actorById(actorId),target=String(data.target||data.text&&`txt:${data.text}`||'');if(!actor||!target)throw Error('Escolha ou informe o outro NPC.');
@@ -960,7 +982,8 @@ export class CampaignLibrary {
     }
     const visibleItems=BOOK_ITEMS.filter(i=>i.name!=='Ataque desarmado');
     const categories=[...new Set(visibleItems.map(i=>i.category))];
-    return `<p>Equipamentos, serviços e modificações do livro, com preços, volume e referências. Abra um cartão para consultar; vínculos abrem documentos existentes da mesa.</p><div class="sy-library-share-row">${this.shareButton('areas','items','✓ Aba Itens visível aos jogadores','Liberar a aba Itens aos jogadores')}</div>${this.filters(categories.map(c=>[c,c]))}<div class="sy-library-grid">${visibleItems.map(entry=>this.itemCard(entry,false)).join('')}</div>`;
+    const importer=`<details class="sy-library-guide"><summary>Importar item de D&amp;D 5e (um ou em lote)</summary><p class="sy-note">Cole <strong>um objeto</strong> <code>{ ... }</code> ou <strong>uma lista inteira</strong> <code>[ { ... }, { ... } ]</code> do 5e.tools / Open5e. O QUEDAÇO cria um Item de Mundo com nome, categoria e imagem padrão; preço e capacidade ficam estimados (0 T$ / volume pelo peso) porque a economia do Skyfall não corresponde direto à de D&amp;D. O texto original (dano, propriedades, raridade…) fica salvo para você revisar. Vai para a pasta "Itens convertidos (D&amp;D 5e)"; pula nomes que já existem.</p><textarea name="itemImport" rows="6" placeholder='{ "name": "..." }  ·  [ { ... }, { ... } ]'></textarea><div class="sy-library-tabs">${button('item-import','','Converter e criar')}</div></details>`;
+    return `<p>Equipamentos, serviços e modificações do livro, com preços, volume e referências. Abra um cartão para consultar; vínculos abrem documentos existentes da mesa.</p><div class="sy-library-share-row">${this.shareButton('areas','items','✓ Aba Itens visível aos jogadores','Liberar a aba Itens aos jogadores')}</div>${importer}${this.filters(categories.map(c=>[c,c]))}<div class="sy-library-grid">${visibleItems.map(entry=>this.itemCard(entry,false)).join('')}</div>`;
   }
   async executeImbue(){
     const buyer=this.forgeBuyer(),base=this.forgeBase();
