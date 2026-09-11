@@ -1,5 +1,13 @@
 export const CHANGELOG = [
   {
+    version:'0.4.30',
+    date:'2026-09-11',
+    title:'Log de diagnóstico no clique dos botões',
+    notes:[
+      'Sem mudança visível. Adiciona console.debug em cada clique de botão do QUEDAÇO e no caminho do importador de D&D 5e, pra localizar um travamento silencioso que alguns mestres relataram (nenhum erro aparecia nem no console).'
+    ]
+  },
+  {
     version:'0.4.29',
     date:'2026-09-11',
     title:'Corrige travamento com compêndio lento ou fora do ar',
