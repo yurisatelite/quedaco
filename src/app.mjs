@@ -191,6 +191,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     if(!this.element)return;
     const button=event.target.closest('button[data-op]');if(!button||button.disabled||this.busy)return;
     if(button.dataset.op==='lib-open'){try{await this.library.open(button.dataset.id);}catch(error){ui.notifications.warn(error.message);}return;}
+    if(button.dataset.op==='lib-region-carousel'){const strip=this.element?.querySelector('.sy-region-carousel');if(strip)strip.scrollBy({left:(button.dataset.id==='next'?1:-1)*240,behavior:'smooth'});return;}
     this.busy=true;button.disabled=true;this.message='';const navigation=['area','step','previous','next'].includes(button.dataset.op);this.element?.querySelector?.('.sy-shell')?.insertAdjacentHTML('beforeend','<div class="sy-busy" role="status"><span></span><strong>Carregando…</strong></div>');
     try{const {op,uuid,type,kind}=button.dataset;
       if(op==='area'){const target=button.dataset.area;if(target!=='characters'&&target!=='quests'&&!game.user.isGM&&!this.library.shared.areas.includes(target))throw Error('Esta área ainda não foi liberada pelo mestre.');this.area=target;if(this.area==='monsters'&&game.user.isGM)await this.library.loadActors();if(this.area==='guilds')await this.library.loadSealImages();}
@@ -259,6 +260,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     if(event.target.matches?.('[data-guild-facet]')){const facet=event.target.dataset.guildFacet,checked=Array.from(this.element.querySelectorAll(`[data-guild-facet="${facet}"]:checked`)).map(i=>i.value);this.library.state.guildFacets[facet]=checked;const d=event.target.closest('.sy-facet'),c=d?.querySelector('.sy-facet-count');if(c)c.textContent=checked.length?` (${checked.length})`:'';this.library.filter(this.element);return;}
     if(name==='guildStance'){try{await this.library.action('lib-guild-stance',event.target.dataset.id,{stance:value});}catch(error){ui.notifications.warn(error.message);}this.rerender(true);return;}
     if(name==='npcRoleQuick'){try{await this.library.action('lib-npc-role',event.target.dataset.id,{role:value});}catch(error){ui.notifications.warn(error.message);}this.rerender(true);return;}
+    if(name==='npcSceneQuick'){try{await this.library.action('lib-npc-scene',event.target.dataset.id,{scene:value});}catch(error){ui.notifications.warn(error.message);}this.rerender(true);return;}
     if(name==='npcRole'&&event.target.closest?.('[data-npc-editor]')){this.library.state.npcEditRole=value;this.rerender(true);return;}
     if(name==='npcPlace'&&event.target.closest?.('[data-npc-editor]')){this.library.state.npcEditPlace=value;this.rerender(true);return;}
     if(name==='npcPlaceFilter'){this.library.state.npcPlaceFilter=value;this.rerender(true);return;}
