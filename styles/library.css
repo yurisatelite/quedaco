@@ -210,10 +210,16 @@
 .sy-creator .sy-guild-grid .sy-library-tabs{gap:4px;margin:6px 0 0}
 .sy-creator .sy-guild-grid .sy-library-tabs button{padding:4px 8px;font-size:11px}
 .sy-creator .sy-guild-grid .sy-guild-seal{width:20px;height:20px;flex:0 0 20px}
-.sy-creator .sy-npc-dragon{display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:10px;background:#d4372c22;border:1px solid #d4372c;color:#ff9b8c;font-size:10px;font-weight:700}
-.sy-creator .sy-npc-militar{display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:10px;background:#4a5a3222;border:1px solid #7a8f52;color:#c9d99e;font-size:10px;font-weight:700}
 .sy-creator .sy-npc-card.sy-npc-is-dragon{border-color:#d4372c}
-.sy-creator .sy-npc-dragon-filter{flex:0 0 auto;align-self:flex-end;padding-bottom:8px}
+/* T-card-padrao — mesmo tamanho pra todo card de NPC: nome+nível numa linha, tags
+   numa faixa fixa embaixo (até 2 linhas, o resto corta), local vira selo cheio à direita */
+.sy-creator .sy-npc-card{min-height:158px}
+.sy-creator .sy-npc-card-grid{grid-template-columns:44px minmax(0,1fr) auto;align-items:start}
+.sy-creator .sy-npc-identity{display:flex;flex-direction:column;gap:4px;min-width:0}
+.sy-creator .sy-npc-identity-top{display:flex;align-items:center;gap:6px;min-width:0}
+.sy-creator .sy-npc-identity-top>strong{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.sy-creator .sy-npc-tags{display:flex;flex-wrap:wrap;align-items:flex-start;gap:4px;max-height:46px;overflow:hidden}
+.sy-creator .sy-npc-location-badge{align-self:flex-start;white-space:nowrap;max-width:100px;overflow:hidden;text-overflow:ellipsis;padding:3px 8px;border-radius:8px;background:var(--sy-region,#3a495b);color:#fff;font-size:10px;font-weight:700}
 .sy-creator .sy-guild-card.is-archived{opacity:.55}
 .sy-creator .sy-guild-archived-tag{color:#f0c674}
 .sy-creator .sy-guild-card{border-left:3px solid var(--sy-stance,#5a6b7d)}

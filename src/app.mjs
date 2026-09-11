@@ -272,8 +272,6 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     if(name==='npcPlaceFilter'){this.library.state.npcPlaceFilter=value;this.rerender(true);return;}
     if(name==='npcLevelMin'||name==='npcLevelMax'){this.library.state[name]=value===''?(name==='npcLevelMin'?0:12):Math.max(0,Math.min(12,Number(value)||0));this.rerender(true);return;}
     if(name==='npcLinkFilter'){this.library.state.npcLink=value;this.rerender(true);return;}
-    if(name==='npcDragonOnly'){this.library.state.npcDragonOnly=event.target.checked;this.rerender(true);return;}
-    if(name==='npcMilitarOnly'){this.library.state.npcMilitarOnly=event.target.checked;this.rerender(true);return;}
     if(name==='modBase'){this.library.modBuilder={baseId:value,materialId:'',sigils:[],tab:this.library.modBuilder.tab??'prefixo'};this.rerender(true);return;}
     if(name==='forgeMaterial'){this.library.forgeBuilder.materialId=value;this.rerender(true);return;}
     if(name==='modMaterial'){this.library.modBuilder.materialId=value;this.rerender(true);return;}
