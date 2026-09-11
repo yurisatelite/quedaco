@@ -204,6 +204,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
         if(op==='lib-place'||op==='lib-map-focus')this._scrollMapDrawerIntoView=true;
         if(op==='lib-region-rumor-add'){const wrap=button.closest('.sy-dossier-add');data={text:wrap?.querySelector('[name="rumorText"]')?.value??''};if(wrap?.querySelector('[name="rumorText"]'))wrap.querySelector('[name="rumorText"]').value='';}
         if(op==='lib-region-scene-info'){const ta=this.element.querySelector(`[name="regionSceneInfo"][data-id="${CSS.escape(button.dataset.id)}"]`)||this.element.querySelector('[name="regionSceneInfo"]');data={text:ta?.value??''};}
+        if(op==='lib-region-rumor-edit-save'){const ta=this.element.querySelector(`[name="rumorEditText"][data-id="${CSS.escape(button.dataset.id)}"]`)||this.element.querySelector('[name="rumorEditText"]');data={text:ta?.value??''};}
         if(op==='lib-monster-habitat-add'){const wrap=button.closest('.sy-dossier-add');data={monsterId:wrap?.querySelector('[name="habitatMonster"]')?.value??''};}
         if(op==='lib-monster-import'){const ta=this.element.querySelector('[name="monsterImport"]');data={text:ta?.value??''};}
         if(op==='lib-generate-npc-bulk'){data={count:this.element.querySelector('[name="npcGenCount"]')?.value};}
@@ -261,6 +262,10 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     if(name==='guildStance'){try{await this.library.action('lib-guild-stance',event.target.dataset.id,{stance:value});}catch(error){ui.notifications.warn(error.message);}this.rerender(true);return;}
     if(name==='npcRoleQuick'){try{await this.library.action('lib-npc-role',event.target.dataset.id,{role:value});}catch(error){ui.notifications.warn(error.message);}this.rerender(true);return;}
     if(name==='npcSceneQuick'){try{await this.library.action('lib-npc-scene',event.target.dataset.id,{scene:value});}catch(error){ui.notifications.warn(error.message);}this.rerender(true);return;}
+    if(name==='regionNpcRole'){try{await this.library.action('lib-region-npc-role',value);}catch(error){ui.notifications.warn(error.message);}this.rerender(true);return;}
+    if(name==='monsterHabitatAdd'&&value){try{await this.library.action('lib-monster-habitat',`${event.target.dataset.monster}|${value}|on`);}catch(error){ui.notifications.warn(error.message);}this.rerender(true);return;}
+    if(name==='monsterPlaceAdd'&&value){try{await this.library.action('lib-monster-place',`${event.target.dataset.monster}|${value}|on`);}catch(error){ui.notifications.warn(error.message);}this.rerender(true);return;}
+    if(name==='monsterAnywhere'){try{await this.library.action('lib-monster-anywhere',`${event.target.dataset.id}|${event.target.checked?'on':'off'}`);}catch(error){ui.notifications.warn(error.message);}this.rerender(true);return;}
     if(name==='npcRole'&&event.target.closest?.('[data-npc-editor]')){this.library.state.npcEditRole=value;this.rerender(true);return;}
     if(name==='npcPlace'&&event.target.closest?.('[data-npc-editor]')){this.library.state.npcEditPlace=value;this.rerender(true);return;}
     if(name==='npcPlaceFilter'){this.library.state.npcPlaceFilter=value;this.rerender(true);return;}

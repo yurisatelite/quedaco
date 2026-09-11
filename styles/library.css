@@ -240,7 +240,12 @@
 .sy-creator .sy-region-body{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(220px,.9fr);gap:16px;align-items:start}
 @media(max-width:900px){.sy-creator .sy-region-body{grid-template-columns:1fr}}
 .sy-creator .sy-region-main{display:flex;flex-direction:column;gap:10px;min-width:0}
+.sy-creator .sy-region-hero{position:relative}
 .sy-creator .sy-region-main .sy-card-figure{border-radius:12px;overflow:hidden;border:1px solid var(--sy-region,#3a495b)}
+.sy-creator .sy-region-hero-open{position:absolute;right:44px;bottom:10px;width:auto;padding:6px 12px;font-size:12px;border-radius:20px;border:1px solid var(--sy-region,#38bdd7);background:#0f1620cc;color:#cfe6ff}
+.sy-creator .sy-rumor-editing{display:flex;flex-direction:column;gap:5px;padding:6px;border:1px solid #38bdd7;border-radius:7px;background:#0f1620}
+.sy-creator .sy-rumor-editing textarea{width:100%}
+.sy-creator .sy-region-npc-rolefilter{width:100%;margin:4px 0;font-size:11px;padding:3px 5px}
 .sy-creator .sy-region-main h4{margin:6px 0 0;color:#9ae8ff;font-size:12px;text-transform:uppercase;letter-spacing:.08em}
 .sy-creator .sy-region-carousel-wrap{display:flex;align-items:stretch;gap:4px}
 .sy-creator .sy-carousel-arrow{flex:0 0 26px;width:26px;padding:0;font-size:16px;line-height:1;border:1px solid #3a495b;border-radius:8px;background:#0f1620}
@@ -273,3 +278,7 @@
 .sy-creator .sy-scene-folder strong{display:block;font-size:11px;color:#9fb6c9;margin-bottom:4px}
 .sy-creator .sy-scene-folder button{width:auto;margin:2px 4px 2px 0;padding:3px 8px;font-size:11px}
 .sy-creator .sy-rumor.is-rolled{border-left:3px solid #ffd98a;background:#ffd98a12;padding-left:8px}
+.sy-creator .sy-monster-locality select{width:100%;margin:4px 0}
+.sy-creator .sy-locality-chips{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0}
+.sy-creator .sy-locality-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 8px;border-radius:12px;border:1px solid var(--sy-region,#3a495b);background:#0f1620;font-size:11px}
+.sy-creator .sy-locality-chip button{width:auto;padding:0 5px;font-size:11px;border:0;background:none;color:#9fb6c9}

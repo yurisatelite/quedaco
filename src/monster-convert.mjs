@@ -218,10 +218,16 @@ export function normalize5eTools(json){
   };
 }
 
-function tryParseJson(str){
+export function tryParseJson(str){
   try{return JSON.parse(str);}catch{}
-  let s=str.trim().replace(/,\s*$/,'');
-  const tries=[s,s+']',s+'}',s.replace(/,\s*$/,'')+']',('['+s+']')];
+  // remove vírgulas sobrando antes de } ou ] (erro comum ao copiar do 5e.tools),
+  // comentários // e /* */, e BOM/again cerca de crase
+  let s=String(str).replace(/^﻿/,'').trim()
+    .replace(/^```(?:json)?/i,'').replace(/```$/,'')
+    .replace(/\/\*[\s\S]*?\*\//g,'').replace(/(^|[^:])\/\/[^\n\r]*/g,'$1')
+    .trim().replace(/,\s*$/,'');
+  const declutter=x=>x.replace(/,(\s*[}\]])/g,'$1');
+  const tries=[s,declutter(s),declutter(s)+']',declutter(s)+'}',declutter('['+s+']'),declutter('['+s.replace(/,\s*$/,'')+']')];
   for(const t of tries){try{return JSON.parse(t);}catch{}}
   return undefined;
 }
@@ -243,7 +249,8 @@ export function normalizeMonsterList(input){
   if(!json){
     const str=String(input||'').trim();
     if(!str)return [];
-    if(str.startsWith('{')||str.startsWith('['))json=tryParseJson(str);
+    const bare=str.replace(/^﻿/,'').replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
+    if(bare.startsWith('{')||bare.startsWith('['))json=tryParseJson(str);
     if(json===undefined)return [];
     if(!json){const one=parseStatblock(str);return one?[one]:[];}
   }
