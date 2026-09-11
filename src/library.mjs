@@ -73,6 +73,14 @@ export function registerLibrarySettings(game,onChange){
     name:'Macro geradora de conteúdo',hint:'Nome da macro do mestre que o QUEDAÇO abre quando uma ameaça não existe na biblioteca.',onChange});
 }
 const e=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// Um compêndio travado (rede, mundo corrompido, Forge fora do ar) não pode travar o
+// painel inteiro pra sempre — todo pack.getIndex() usa esse limite de tempo.
+const PACK_TIMEOUT_MS=8000;
+function withTimeout(promise,ms,message){
+  let timer;
+  const timeout=new Promise((resolve,reject)=>{timer=setTimeout(()=>reject(Error(message||'Tempo esgotado.')),ms);});
+  return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));
+}
 export const nameKey=value=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9+]+/g,' ').trim().replace(/\s+/g,' ');
 const page=entry=>`Livro Básico 1.25 · p. ${entry.page}`;
 const currency=value=>`T$ ${Number(value).toLocaleString('pt-BR')}`;
@@ -247,7 +255,7 @@ export class CampaignLibrary {
     const map={};
     for(const pack of this.game.packs??[]){
       if(pack.documentName!=='Item')continue;
-      try{const idx=await pack.getIndex({fields:['type','name','img']});for(const entry of idx)if(entry.type==='seal'&&entry.img)map[nameKey(entry.name)]=entry.img;}catch{/* sem acesso */}
+      try{const idx=await withTimeout(pack.getIndex({fields:['type','name','img']}),PACK_TIMEOUT_MS,`Tempo esgotado lendo ${pack.collection}`);for(const entry of idx)if(entry.type==='seal'&&entry.img)map[nameKey(entry.name)]=entry.img;}catch{/* sem acesso ou tempo esgotado */}
     }
     this._sealImages=map;return map;
   }
@@ -312,7 +320,7 @@ export class CampaignLibrary {
     for(const pack of this.game.packs??[]){
       if(pack.documentName!=='Actor'||(pack.metadata?.system&&pack.metadata.system!=='skyfall'))continue;
       if(pack.visible===false){this.failures.push({pack:pack.collection,reason:'Sem permissão de leitura'});continue;}
-      try{const index=await pack.getIndex({fields:['name','type','img']});for(const item of index)this.actors.push({name:item.name,type:item.type,img:item.img,uuid:item.uuid??`Compendium.${pack.collection}.Actor.${item._id}`,source:pack.metadata?.label??pack.collection});}
+      try{const index=await withTimeout(pack.getIndex({fields:['name','type','img']}),PACK_TIMEOUT_MS,`Tempo esgotado lendo ${pack.collection}`);for(const item of index)this.actors.push({name:item.name,type:item.type,img:item.img,uuid:item.uuid??`Compendium.${pack.collection}.Actor.${item._id}`,source:pack.metadata?.label??pack.collection});}
       catch(error){this.failures.push({pack:pack.collection,reason:error.message});}
     }
     this.loaded=true;

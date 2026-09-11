@@ -1,5 +1,13 @@
 export const CHANGELOG = [
   {
+    version:'0.4.29',
+    date:'2026-09-11',
+    title:'Corrige travamento com compêndio lento ou fora do ar',
+    notes:[
+      'A aba Monstros (e a leitura de selos das Guildas) varria os compêndios instalados sem limite de tempo. Se um único compêndio de outro módulo não respondesse, o painel travava por completo — nenhum botão do QUEDAÇO reagia, sem erro nenhum no console. Agora cada compêndio tem 8s de prazo; se estourar, ele entra na lista de falhas e o resto continua normal.'
+    ]
+  },
+  {
     version:'0.4.28',
     date:'2026-09-11',
     title:'Republicação da 0.4.27',
