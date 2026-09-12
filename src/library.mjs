@@ -2,7 +2,7 @@ import {REGIONS,PLACES,BEYOND} from './book-world.mjs';
 import {BASE_ITEMS,MODIFICATION_GUIDES,SIGIL_COSTS,IMBUE_COSTS} from './book-items.mjs';
 import {SIGILS} from './book-sigils.mjs';
 import {MONSTERS} from './book-monsters.mjs';
-import {MODULE_ID,purchaseItem} from './adapter.mjs';
+import {MODULE_ID,purchaseItem,baixarArquivo} from './adapter.mjs';
 import {NPC_LINK_TYPES,NPC_ROLES,NPC_ROLE_STYLE,adoptNpcFlag,inferPlaceId,inferRegionId,isGeneratedNpc,linksFromBio,itemTypeForCategory,npcCardOutline,npcCoverage,normalizeNpcLinks,npcFlag,npcLinkSummary,npcVisibility,stripTags,roleFromText} from './npcs.mjs';
 import {modifiedItemSheet} from './item-mod.mjs';
 import {clampPan,focusRegion,resolveHotspot,zoomToPoint} from './map-view.mjs';
@@ -17,6 +17,7 @@ import {generatorScope} from './generator.mjs';
 import {normalizeMonsterInput,normalizeMonsterList,toSkyfallNpc} from './monster-convert.mjs';
 import {normalizeItemList,toSkyfallItemSource} from './item-convert.mjs';
 import {rollLevel} from './npc-level.mjs';
+import {HERITAGES,LEGACIES,heritagesOf,legacyOfHeritage} from './book-heritages.mjs';
 import {guildKind,guildsForPlace,npcGuildLabel,cleanSeal,guildThemes,GUILD_STANCES,guildMembers,guildLevel} from './guilds.mjs';
 
 export const BOOK_ITEMS=[...BASE_ITEMS,...SIGILS];
@@ -150,7 +151,7 @@ const CUSTOM_TIER_LABEL={simple:'Simples',complex:'Complexo',boss:'Chefão'};
 const CUSTOM_ARCHETYPE_LABEL={flanker:'Flanqueador',sentinel:'Sentinela',defender:'Defensor',brute:'Bruto',leader:'Líder',mount:'Cavalaria',ranged:'Atirador',group:'Coletivo'};
 
 export class CampaignLibrary {
-  constructor(game,catalog){this.game=game;this.catalog=catalog;this.images=new ImageResolver(game,MODULE_ID,ASSET_ROOT_KEY);this.quests=new ForienQuestIntegration(game);this.actors=[];this.failures=[];this.loaded=false;this.state={mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null,layer:'auto',movingPins:false},npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcLevelMin:0,npcLevelMax:12,npcDragonOnly:false,npcMilitarOnly:false,npcActor:null,npcSaved:null,npcEditRole:null,npcEditPlace:null,monsterFacets:{},monsterCardSize:270,itemCardSize:270,guildCardSize:270,npcCardSize:270,npcPlayerRegion:null,npcAsPlayer:false,guildFacets:{},guildShowArchived:false,questStatus:'all',regionTakeover:false,regionScene:null,regionTab:'rumores',regionRumorRoll:null,regionRumorEdit:null,regionNpcRoleFilter:'all'};this.modBuilder={baseId:'',materialId:'',sigils:[],tab:'prefixo'};this.forgeBuilder={smithId:'',baseUuid:'',materialId:'',sigils:[],tab:'prefixo'};}
+  constructor(game,catalog){this.game=game;this.catalog=catalog;this.images=new ImageResolver(game,MODULE_ID,ASSET_ROOT_KEY);this.quests=new ForienQuestIntegration(game);this.actors=[];this.failures=[];this.loaded=false;this.state={mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null,layer:'auto',movingPins:false},npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcLevelMin:0,npcLevelMax:12,npcDragonOnly:false,npcMilitarOnly:false,npcActor:null,npcSaved:null,npcEditRole:null,npcEditPlace:null,monsterFacets:{},monsterCardSize:270,itemCardSize:270,guildCardSize:270,npcCardSize:270,npcPlayerRegion:null,npcAsPlayer:false,npcLegacyFilter:'all',npcHeritageFilter:'all',guildFacets:{},guildShowArchived:false,questStatus:'all',regionTakeover:false,regionScene:null,regionTab:'rumores',regionRumorRoll:null,regionRumorEdit:null,regionNpcRoleFilter:'all'};this.modBuilder={baseId:'',materialId:'',sigils:[],tab:'prefixo'};this.forgeBuilder={smithId:'',baseUuid:'',materialId:'',sigils:[],tab:'prefixo'};}
   image(kind,id,documentImg='',fallback='icons/svg/mystery-man.svg'){return this.images.resolve(kind,id,documentImg,fallback);}
   assertGM(){if(!this.game.user?.isGM)throw Error('Esta área está disponível somente para o mestre.');}
   get shared(){try{return {...emptyShare(),...(this.game.settings?.get(MODULE_ID,SHARED_KEY)||{})};}catch{return emptyShare();}}
@@ -441,8 +442,8 @@ export class CampaignLibrary {
     if(op==='lib-place'){const place=[...PLACES,...BEYOND].find(i=>i.id===id);if(!place||(!this.game.user?.isGM&&!this.sharedPlaceIds().has(id)))return;this.state.mapView=place.regionId?'regions':'beyond';this.state.region=place.regionId??null;this.state.place=id;}
     if(op==='lib-open')await this.open(id);
     if(op==='lib-refresh')await this.loadActors(true);
-    if(op==='lib-export-tokens'){const documents=id==='npcs'?this.npcActors().map(actor=>({uuid:actor.uuid,name:actor.name,type:actor.type,role:(npcFlag(actor)??adoptNpcFlag(actor)).role,biography:actor.system?.biography??actor.system?.details?.description??''})):monsterAudit(this.actors,this.failures,this.loaded).filter(entry=>entry.matches[0]).map(entry=>({uuid:entry.matches[0].uuid,name:entry.name,type:'npc',creatureType:entry.creatureType,role:entry.role}));saveDataToFile(JSON.stringify({documents},null,2),'application/json','fichas-para-casar.json');}
-    if(op==='lib-report')saveDataToFile(JSON.stringify(this.report(),null,2),'application/json','quedaco-monstros-pendentes.json');
+    if(op==='lib-export-tokens'){const documents=id==='npcs'?this.npcActors().map(actor=>({uuid:actor.uuid,name:actor.name,type:actor.type,role:(npcFlag(actor)??adoptNpcFlag(actor)).role,biography:actor.system?.biography??actor.system?.details?.description??''})):monsterAudit(this.actors,this.failures,this.loaded).filter(entry=>entry.matches[0]).map(entry=>({uuid:entry.matches[0].uuid,name:entry.name,type:'npc',creatureType:entry.creatureType,role:entry.role}));baixarArquivo(JSON.stringify({documents},null,2),'application/json','fichas-para-casar.json');}
+    if(op==='lib-report')baixarArquivo(JSON.stringify(this.report(),null,2),'application/json','quedaco-monstros-pendentes.json');
     if(op==='lib-share'){const idx=String(id).indexOf(':');await this.setShare(String(id).slice(0,idx),String(id).slice(idx+1));}
     if(op==='lib-scene'){const idx=String(id).indexOf(':');await this.setPlaceScene(String(id).slice(0,idx),String(id).slice(idx+1));}
     if(op==='lib-open-scene'){const scene=this.game.scenes?.get?.(id);if(scene)scene.view?.();}
@@ -548,6 +549,13 @@ export class CampaignLibrary {
   npcActors(){return Array.from(this.game.actors??[]).filter(isGeneratedNpc);}
   /** Atores 'npc' importados/gerados como monstro (flag quedaco.convertedFrom), pra aparecerem na aba Monstros junto do catálogo do livro. */
   customMonsterActors(){return Array.from(this.game.actors??[]).filter(actor=>actor.type==='npc'&&actor.getFlag?.(MODULE_ID,'convertedFrom'));}
+  /** Legado e herança lidos dos itens da própria ficha; a herança sozinha já revela o legado. */
+  npcLegacy(actor){
+    const items=Array.from(actor?.items??[]);
+    const legacy=items.find(item=>item.type==='legacy')?.name??'';
+    const heritage=items.find(item=>item.type==='heritage')?.name??'';
+    return {legacy:legacy||legacyOfHeritage(heritage)||'',heritage};
+  }
   customMonsterEntries(){
     return this.customMonsterActors().map(actor=>{
       const sys=actor.system??{},nd=Number(sys.level?.value)||0,mv=sys.movement??{};
@@ -740,9 +748,11 @@ export class CampaignLibrary {
     const body=compact||!readonly?'':(mode==='shop'?this.npcStockCard(actor,flag,true):mode==='forge'?this.renderForge(actor):'');
     const dragonBadge=flag.dragon?tagChip('fa-dragon','#d4372c','Dragão'):'';
     const militarBadge=flag.militar?tagChip('fa-shield-halved','#7a8f52','Militar'):'';
+    const {legacy,heritage}=this.npcLegacy(actor);
+    const legacyBadge=legacy?tagChip('fa-dna','#8f7ad4',heritage?`${legacy} · ${heritage}`:legacy):'';
     const levelBadge=level!=null?`<span class="sy-npc-level" title="Nível">NV ${e(level)}</span>`:'';
     const locationBadge=`<span class="sy-npc-location-badge" style="--sy-region:${e(color)}">${e(location)}${outline==='itinerant'?' · errante':''}</span>`;
-    return `<article class="sy-library-card sy-npc-card sy-npc-outline-${outline} ${editing?'is-editing':''} ${live?'is-live':''} ${flag.dragon?'sy-npc-is-dragon':''} ${body?'sy-npc-card-full':''}" style="--sy-region:${e(color)}" draggable="true" data-drag-actor="${e(actor.uuid)}" title="Arraste para a cena ou diálogo">${shareIcon}<div class="sy-library-card-content"><div class="sy-npc-card-grid">${avatarFor(this.image('npc',actor.name,actor.img,'icons/svg/mystery-man.svg'))}<div class="sy-npc-identity"><div class="sy-npc-identity-top"><strong>${e(actor.name)}</strong>${levelBadge}</div><div class="sy-npc-tags">${npcRoleChip(flag.role)}${dragonBadge}${militarBadge}</div></div>${locationBadge}</div>${actions}${body}</div></article>`;
+    return `<article class="sy-library-card sy-npc-card sy-npc-outline-${outline} ${editing?'is-editing':''} ${live?'is-live':''} ${flag.dragon?'sy-npc-is-dragon':''} ${body?'sy-npc-card-full':''}" style="--sy-region:${e(color)}" draggable="true" data-drag-actor="${e(actor.uuid)}" title="Arraste para a cena ou diálogo">${shareIcon}<div class="sy-library-card-content"><div class="sy-npc-card-grid">${avatarFor(this.image('npc',actor.name,actor.img,'icons/svg/mystery-man.svg'))}<div class="sy-npc-identity"><div class="sy-npc-identity-top"><strong>${e(actor.name)}</strong>${levelBadge}</div><div class="sy-npc-tags">${npcRoleChip(flag.role)}${legacyBadge}${dragonBadge}${militarBadge}</div></div>${locationBadge}</div>${actions}${body}</div></article>`;
   }
   /** Banner da guilda do grupo: logo, nome e atalho pra ficha. */
   playerGuildBanner(){
@@ -823,7 +833,14 @@ export class CampaignLibrary {
     const matchesLevel=actor=>{const lv=Number(actor?.system?.level?.value)||0;return lv>=lvMin&&lv<=lvMax;};
     const matchesDragon=actor=>!this.state.npcDragonOnly||Boolean(flagFor(actor).dragon);
     const matchesMilitar=actor=>!this.state.npcMilitarOnly||Boolean(flagFor(actor).militar);
-    const visible=all.filter(actor=>this.state.npcRole==='all'||flagFor(actor).role===this.state.npcRole).filter(actor=>(this.state.npcLink==='all'||keys.has(actor.uuid))&&matchesPlace(actor)&&matchesLevel(actor)&&matchesDragon(actor)&&matchesMilitar(actor));
+    const legacyFilter=this.state.npcLegacyFilter??'all',heritageFilter=this.state.npcHeritageFilter??'all';
+    const matchesLegacy=actor=>{
+      if(legacyFilter==='all'&&heritageFilter==='all')return true;
+      const {legacy,heritage}=this.npcLegacy(actor);
+      if(legacyFilter!=='all'&&legacy!==legacyFilter)return false;
+      return heritageFilter==='all'||heritage===heritageFilter;
+    };
+    const visible=all.filter(actor=>this.state.npcRole==='all'||flagFor(actor).role===this.state.npcRole).filter(actor=>(this.state.npcLink==='all'||keys.has(actor.uuid))&&matchesPlace(actor)&&matchesLevel(actor)&&matchesDragon(actor)&&matchesMilitar(actor)&&matchesLegacy(actor));
     const placeName=id=>PLACES.find(place=>place.id===id)?.name||'Sem local';
     const placeRegion=id=>PLACES.find(place=>place.id===id)?.regionId;
     const nameFor=key=>key.startsWith('txt:')?key.slice(4):this.actorById(key)?.name??key;
@@ -832,7 +849,7 @@ export class CampaignLibrary {
     const editorHtml=this.renderNpcEditor(this.actorById(this.state.npcActor));
     const cards=visible.map(actor=>`${this.npcCard(actor,{readonly})}${this.state.npcActor===actor.id?editorHtml:''}`).join('');
     const tagFilterBtn=(op,on,icon,color,label)=>`<button data-op="${op}" aria-current="${on?'page':'false'}">${tagChip(icon,color,label)}</button>`;
-    const filters=`<div class="sy-npc-toolbar"><div class="sy-library-tabs">${[['all','Todos'],...Object.entries(NPC_ROLES)].map(([id,label])=>`<button data-op="lib-npc-filter" data-id="${id}" aria-current="${this.state.npcRole===id?'page':'false'}">${id==='all'?e(label):npcRoleChip(id)}</button>`).join('')}${tagFilterBtn('lib-npc-dragon-filter',this.state.npcDragonOnly,'fa-dragon','#d4372c','Dragão')}${tagFilterBtn('lib-npc-militar-filter',this.state.npcMilitarOnly,'fa-shield-halved','#7a8f52','Militar')}</div><div class="sy-npc-filters"><label>Local<select name="npcPlaceFilter"><option value="all">Todos os locais</option>${sortByName(PLACES.filter(place=>availablePlaceIds.has(place.id))).map(place=>`<option value="${e(place.id)}" ${placeFilter===place.id?'selected':''}>${e(place.name)}</option>`).join('')}</select></label><label>Vínculo<select name="npcLinkFilter"><option value="all">Todos</option>${Object.entries(NPC_LINK_TYPES).map(([id,label])=>`<option value="${id}" ${this.state.npcLink===id?'selected':''}>${label}</option>`).join('')}</select></label><span class="sy-npc-level-range"><label>Nível de<input type="number" name="npcLevelMin" min="0" max="12" value="${e(this.state.npcLevelMin)}"></label><label>até<input type="number" name="npcLevelMax" min="0" max="12" value="${e(this.state.npcLevelMax)}"></label><button data-op="lib-npc-roll-levels">Sortear níveis ausentes</button>${button('npc-roll-levels','force','Sortear todos')}${button('npc-autotag','','Taguear tudo (papel/região/local)')}${button('npc-autotag','force','Re-taguear todos')}</span><span class="sy-npc-level-range"><label>Gerar avulsos<input type="number" name="npcGenCount" min="1" max="20" value="5"></label><button data-op="lib-generate-npc-bulk">Gerar NPCs</button></span></div></div>`;
+    const filters=`<div class="sy-npc-toolbar"><div class="sy-library-tabs">${[['all','Todos'],...Object.entries(NPC_ROLES)].map(([id,label])=>`<button data-op="lib-npc-filter" data-id="${id}" aria-current="${this.state.npcRole===id?'page':'false'}">${id==='all'?e(label):npcRoleChip(id)}</button>`).join('')}${tagFilterBtn('lib-npc-dragon-filter',this.state.npcDragonOnly,'fa-dragon','#d4372c','Dragão')}${tagFilterBtn('lib-npc-militar-filter',this.state.npcMilitarOnly,'fa-shield-halved','#7a8f52','Militar')}</div><div class="sy-npc-filters"><label>Local<select name="npcPlaceFilter"><option value="all">Todos os locais</option>${sortByName(PLACES.filter(place=>availablePlaceIds.has(place.id))).map(place=>`<option value="${e(place.id)}" ${placeFilter===place.id?'selected':''}>${e(place.name)}</option>`).join('')}</select></label><label>Vínculo<select name="npcLinkFilter"><option value="all">Todos</option>${Object.entries(NPC_LINK_TYPES).map(([id,label])=>`<option value="${id}" ${this.state.npcLink===id?'selected':''}>${label}</option>`).join('')}</select></label><label>Legado<select name="npcLegacyFilter"><option value="all">Todos os legados</option>${LEGACIES.map(name=>`<option value="${e(name)}" ${legacyFilter===name?'selected':''}>${e(name)}</option>`).join('')}</select></label><label>Herança<select name="npcHeritageFilter"><option value="all">Todas</option>${(legacyFilter==='all'?[...new Set(Object.values(HERITAGES).flat())]:heritagesOf(legacyFilter)).map(name=>`<option value="${e(name)}" ${heritageFilter===name?'selected':''}>${e(name)}</option>`).join('')}</select></label><span class="sy-npc-level-range"><label>Nível de<input type="number" name="npcLevelMin" min="0" max="12" value="${e(this.state.npcLevelMin)}"></label><label>até<input type="number" name="npcLevelMax" min="0" max="12" value="${e(this.state.npcLevelMax)}"></label><button data-op="lib-npc-roll-levels">Sortear níveis ausentes</button>${button('npc-roll-levels','force','Sortear todos')}${button('npc-autotag','','Taguear tudo (papel/região/local)')}${button('npc-autotag','force','Re-taguear todos')}</span><span class="sy-npc-level-range"><label>Gerar avulsos<input type="number" name="npcGenCount" min="1" max="20" value="5"></label><button data-op="lib-generate-npc-bulk">Gerar NPCs</button></span></div></div>`;
     const coverage=REGIONS.map(region=>{const c=npcCoverage(region,all);return {region,...c,pendentes:c.missing.filter(a=>!this.archetypeDone(region.id,a)),feitos:c.missing.filter(a=>this.archetypeDone(region.id,a))};});
     const missingCount=coverage.reduce((sum,item)=>sum+item.pendentes.length,0),batch=missingCount?`<div class="sy-library-share-row">${button('generate-npc-batch','5',`Criar ${Math.min(5,missingCount)} próximos`)}${button('generate-npc-batch','all',`Criar todos os ${missingCount}`)}</div>`:'';
     const archRow=(rid,archetype,done)=>done?`<span class="sy-arch-done">✓ ${e(archetype)} ${button('gen-arch-done',`${rid}|${archetype}`,'↺')}</span>`:`${button('generate-npc',`${rid}||${archetype}`,`Criar ${archetype}`)}${button('gen-arch-done',`${rid}|${archetype}`,'✓')}`;

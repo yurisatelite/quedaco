@@ -4,7 +4,7 @@ import {ABILITIES,classRules,backgroundRules,startingMoney,conventionalRoll,vali
 import {buildCharacterPlan,validateBenefitChoices,resolvedPlanItems} from './benefits.mjs';
 import {buildTrainingPlan,resolveTraining,actorTrainingUpdate} from './training.mjs';
 import {buildClassEquipmentPlan,buildBackgroundEquipmentPlan,resolveEquipmentPlan,mergeEquipmentResults,shopItems,resolvePurchases,totalVolume,itemVolume} from './equipment.mjs';
-import {MODULE_ID,escapeHTML as e,safeImage,createDraft,addResolvedPlan,addInventory,refillResources,applyHitPointProgression,finalizeClassProgression,finalizePathProgression} from './adapter.mjs';
+import {MODULE_ID,escapeHTML as e,safeImage,baixarArquivo,createDraft,addResolvedPlan,addInventory,refillResources,applyHitPointProgression,finalizeClassProgression,finalizePathProgression} from './adapter.mjs';
 import {classProgression,requiresSpellcasting} from './progression.mjs';
 import {clampPan,zoomToPoint} from './map-view.mjs';
 const STEPS=['Conceito','Legado','Herança','Maldição','Antecedente','Classe','Progressão e benefícios','Atributos e vida','Perícias e proficiências','Dinheiro','Equipamento','Retrato e token','Revisão'];
@@ -244,7 +244,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
       if(op==='finalizeEquipment'){await this.prepareEquipmentPlan();const initialErrors=this.equipmentResolved.errors.filter(error=>!error.includes('compra')&&!error.includes('Compras'));if(initialErrors.length)throw Error(initialErrors.join(' '));this.equipmentFinalized=true;}
       if(op==='editEquipment'){this.equipmentFinalized=false;this.purchasesCash.clear();this.purchasesBudget.clear();}
       if(['buyCash','removeCash','buyBudget','removeBudget'].includes(op)){const cart=op.includes('Budget')?this.purchasesBudget:this.purchasesCash,delta=op.startsWith('buy')?1:-1,next=(cart.get(uuid)??0)+delta;if(next>0)cart.set(uuid,next);else cart.delete(uuid);}
-      if(op==='audit'){const report={...this.catalog.report(),benefitGraph:await this.catalog.auditBenefits()};saveDataToFile(JSON.stringify(report,null,2),'application/json','skyfall-auditoria-catalogo.json');this.message=`Auditoria exportada: ${report.missing.length} nomes do livro não localizados; ${report.benefitGraph.missing.length} vínculos quebrados; ${report.benefitGraph.unlinkedHeritages.length} heranças sem legado vinculado.`;}
+      if(op==='audit'){const report={...this.catalog.report(),benefitGraph:await this.catalog.auditBenefits()};baixarArquivo(JSON.stringify(report,null,2),'application/json','skyfall-auditoria-catalogo.json');this.message=`Auditoria exportada: ${report.missing.length} nomes do livro não localizados; ${report.benefitGraph.missing.length} vínculos quebrados; ${report.benefitGraph.unlinkedHeritages.length} heranças sem legado vinculado.`;}
       if(op==='rollAttributes'||op==='rerollLowest'){const rollOne=async()=>{const roll=await new Roll('4d6').evaluate();return conventionalRoll(roll.dice[0].results.map(d=>d.result));};if(op==='rollAttributes'){this.rolls=[];for(let i=0;i<6;i++)this.rolls.push(await rollOne());this.rollSlots=[0,1,2,3,4,5];}else{const i=this.rolls.findIndex(r=>r.total===Math.min(...this.rolls.map(r=>r.total)));this.rolls[i]=await rollOne();}this.applyRolled();}
       if(op==='rollHitPoints'){const rule=classRules(this.selected('class')?.name);if(!rule?.die)throw Error('Dado de vida da classe não localizado.');const roll=await new Roll(`${this.draft.level-1}d${rule.die}`).evaluate();this.draft.hpRolls=roll.dice.flatMap(die=>die.results.map(result=>result.result));}
       if(op==='swap'){const order=[0,1,2,3,4,5];[order[this.swap[0]],order[this.swap[1]]]=[order[this.swap[1]],order[this.swap[0]]];this.rollSlots=order;this.applyRolled();}
@@ -286,6 +286,9 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     if(name==='npcRole'&&event.target.closest?.('[data-npc-editor]')){this.library.state.npcEditRole=value;this.rerender(true);return;}
     if(name==='npcPlace'&&event.target.closest?.('[data-npc-editor]')){this.library.state.npcEditPlace=value;this.rerender(true);return;}
     if(name==='npcPlaceFilter'){this.library.state.npcPlaceFilter=value;this.rerender(true);return;}
+    // trocar de legado zera a herança: as opções da lista mudam junto
+    if(name==='npcLegacyFilter'){this.library.state.npcLegacyFilter=value;this.library.state.npcHeritageFilter='all';this.rerender(true);return;}
+    if(name==='npcHeritageFilter'){this.library.state.npcHeritageFilter=value;this.rerender(true);return;}
     if(name==='npcLevelMin'||name==='npcLevelMax'){this.library.state[name]=value===''?(name==='npcLevelMin'?0:12):Math.max(0,Math.min(12,Number(value)||0));this.rerender(true);return;}
     if(name==='npcLinkFilter'){this.library.state.npcLink=value;this.rerender(true);return;}
     if(name==='modBase'){this.library.modBuilder={baseId:value,materialId:'',sigils:[],tab:this.library.modBuilder.tab??'prefixo'};this.rerender(true);return;}

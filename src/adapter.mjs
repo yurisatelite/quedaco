@@ -21,6 +21,16 @@ export function actorSource(draft, userId) {
   };
 }
 export function escapeHTML(value) {return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+/** O global saveDataToFile saiu no Foundry 13; os botões de exportar morriam calados.
+ *  Usa a API nova, cai no global antigo e, em último caso, baixa por Blob na mão. */
+export function baixarArquivo(data,type,filename) {
+  const nativo=globalThis.foundry?.utils?.saveDataToFile??globalThis.saveDataToFile;
+  if(typeof nativo==='function')return nativo(data,type,filename);
+  const blob=new Blob([data],{type}),url=URL.createObjectURL(blob);
+  const link=document.createElement('a');link.href=url;link.download=filename;
+  document.body.appendChild(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
 export function safeImage(path) {
   const value=String(path??'');
   if (!value || /^(?:javascript|data|file):/i.test(value) || value.startsWith('//')) return 'icons/svg/mystery-man.svg';

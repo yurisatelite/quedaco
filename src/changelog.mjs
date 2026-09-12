@@ -1,5 +1,24 @@
 export const CHANGELOG = [
   {
+    version:'0.5.0',
+    date:'2026-09-12',
+    title:'Aba de NPCs dos jogadores, monstros importados na lista e acabamento dos cartões',
+    notes:[
+      'A aba NPCs dos jogadores deixou de ser uma lista corrida: agora abre por região, mostrando só onde o grupo já conheceu alguém, e dentro dela os NPCs ficam agrupados por cidade ou local.',
+      'Liberar NPC virou coisa de localidade: você abre a região (ou só um local) e todo mundo que mora lá aparece pro grupo de uma vez, com a permissão de leitura concedida junto. Liberar um NPC específico continua funcionando por cima disso.',
+      'Cada jogador ganhou um espaço de anotação por NPC e escolhe se divide com o grupo. O mestre lê todas, inclusive as que não foram divididas.',
+      'A guilda do grupo aparece num banner no topo da aba, com a logo e um atalho que abre a ficha direto.',
+      'O mestre ganhou um "Ver como jogador" pra conferir a aba sem trocar de conta.',
+      'Monstros importados de D&D 5e (ou criados por você) agora aparecem na aba Monstros junto dos do livro e podem ser tagueados por região e local, entrando no dossiê de ameaças de cada região.',
+      'Legado e herança aparecem no cartão do NPC e viraram filtro — dá pra procurar, por exemplo, só os elfes da Corte do Outono.',
+      'Cartão de NPC: o botão de liberar não fica mais por cima do selo de localidade, o contorno serrilhado virou sólido e a altura fixa que deixava espaço sobrando saiu. Mercadores e ferreiros não esticam mais a linha inteira da grade.',
+      'O editor de NPC abre logo abaixo do cartão em vez de no fim da lista inteira, e o campo Nome voltou a funcionar (a edição era descartada ao sair do campo).',
+      'O seletor de Local passou a mostrar só os locais da região escolhida, separados entre cidades principais e outros locais.',
+      'Régua nova pra aumentar e diminuir as miniaturas nas abas Monstros, Itens, Guildas e NPCs.',
+      'Os botões de exportar voltaram a baixar arquivo: o Foundry 13 removeu a função que eles usavam e eles falhavam calados.'
+    ]
+  },
+  {
     version:'0.4.33',
     date:'2026-09-11',
     title:'Monstro de D&D não herda mais a arte de referência como token',
