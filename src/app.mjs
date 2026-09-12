@@ -263,6 +263,9 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     // rumor...) não podem re-renderizar ao perder o foco — isso troca a caixa por uma vazia
     // antes do botão ler o valor, porque o texto nunca fica guardado em lugar nenhum.
     if(['monsterImport','itemImport','guildImport','rumorText','regionSceneInfo','rumorEditText'].includes(name)||/^(monster|item|guild|npc)CardSize$/.test(name))return;
+    // mesma armadilha no editor de NPC: nome, nota, margens e caixas de item só são lidos
+    // quando o botão é clicado, então re-renderizar no blur devolvia o valor antigo.
+    if(['npcName','npcNote','npcGuild','npcShopNote','npcMarkup','npcForgeMarkup','npcTokenVisible','npcDragon','npcForgeEnabled','npcStockPrice','npcStockQty','npcItemName','npcItemPrice','npcItemVolume','npcLinkText','npcLinkNote','npcGenCount'].includes(name))return;
     if(name==='libraryQuery'||name==='libraryCategory'){this.library.filter(this.element);return;}
     if(event.target.matches?.('[data-monster-facet]')){
       const facet=event.target.dataset.monsterFacet,checked=Array.from(this.element.querySelectorAll(`[data-monster-facet="${facet}"]:checked`)).map(input=>input.value);
