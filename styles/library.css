@@ -319,3 +319,31 @@
 .sy-creator .sy-locality-chips{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0}
 .sy-creator .sy-locality-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 8px;border-radius:12px;border:1px solid var(--sy-region,#3a495b);background:#0f1620;font-size:11px}
 .sy-creator .sy-locality-chip button{width:auto;padding:0 5px;font-size:11px;border:0;background:none;color:#9fb6c9}
+
+/* ── Aba NPCs do jogador: entra por região, anota e chega na guilda ───────── */
+.sy-creator .sy-player-guild{display:flex;align-items:center;gap:14px;margin:0 0 16px;padding:12px 14px;border:1px solid #4a6b80;border-radius:10px;background:linear-gradient(90deg,#123044,#0f1620 70%)}
+.sy-creator .sy-player-guild img{width:64px;height:64px;flex:0 0 64px;object-fit:cover;border-radius:9px;border:1px solid #5b7f96;background:#0b1119}
+.sy-creator .sy-player-guild>div{flex:1;min-width:0;display:grid;gap:2px}
+.sy-creator .sy-player-guild small{font-size:10px;letter-spacing:.09em;color:#7fb4cd}
+.sy-creator .sy-player-guild strong{font-size:18px;color:#e9f3ff}
+.sy-creator .sy-player-guild p{margin:0;font-size:12px;color:#a8bccb;font-style:italic}
+.sy-creator .sy-player-guild button{width:auto;margin:0;white-space:nowrap}
+.sy-creator .sy-player-place{margin:18px 0}
+.sy-creator .sy-player-place>h4{margin:0 0 6px;padding-bottom:5px;border-bottom:1px solid #2c3a49;color:#bfd8e8}
+.sy-creator .sy-player-npc .sy-npc-card-grid{align-items:center}
+.sy-creator .sy-npc-note{margin-top:9px;border-top:1px solid #2c3a49;padding-top:7px}
+.sy-creator .sy-npc-note>summary{cursor:pointer;font-size:11px;color:#8fd4ee;list-style:none}
+.sy-creator .sy-npc-note textarea{width:100%;margin:6px 0}
+.sy-creator .sy-npc-note button{width:auto;margin:0;padding:5px 10px;font-size:11px}
+.sy-creator .sy-npc-note-others{margin-top:8px;padding-top:7px;border-top:1px dotted #33465a}
+.sy-creator .sy-npc-note-others p{margin:0 0 5px;font-size:12px;color:#bccddb}
+.sy-creator .sy-npc-note-others b{color:#8fd4ee}
+/* painel do mestre pra abrir localidades */
+.sy-creator .sy-locality-grid{display:grid;gap:8px;margin-top:10px}
+.sy-creator .sy-locality-row{padding:8px 10px;border-left:3px solid var(--sy-region,#3a495b);border-radius:6px;background:#131c27}
+.sy-creator .sy-locality-row>small{color:#79c79a;font-size:11px}
+.sy-creator .sy-locality-region{width:auto;margin:0 0 6px;padding:5px 11px;font-size:12px;font-weight:700;background:#1b2836;border:1px solid #44586c;color:#dbe9f5}
+.sy-creator .sy-locality-region.is-on{background:#123a2a;border-color:#4fca8f;color:#a9f2cf}
+.sy-creator .sy-locality-places{display:flex;flex-wrap:wrap;gap:5px}
+.sy-creator .sy-locality-place{width:auto;margin:0;padding:3px 9px;font-size:11px;background:#16202b;border:1px solid #3a495b;color:#b6c8d6}
+.sy-creator .sy-locality-place.is-on{background:#123a2a;border-color:#4fca8f;color:#a9f2cf}

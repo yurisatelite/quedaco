@@ -265,8 +265,23 @@ test('região aceita várias cenas vinculadas e mostra os atalhos',async()=>{
  assert.doesNotMatch(library.regionDetail(region,false),/data-op="lib-region-scene"/);
 });
 
-test('ferreiro liberado mostra zona de forja ao jogador',()=>{
+test('aba do jogador entra por região e só então mostra a forja do ferreiro',()=>{
  const actor={id:'smith',uuid:'Actor.smith',name:'Ferreiro',type:'character',flags:{quedaco:{npc:{role:'smith',regionId:'mirmir',placeId:'',forge:{enabled:true,markup:1},shop:{stock:[]}}}}};
- const shared={areas:['npcs'],npcs:['Actor.smith'],map:[],monsters:[],items:[]},game={user:{isGM:false,character:null},actors:[actor],settings:{get:(_m,key)=>key==='sharedContent'?shared:''}};
- assert.match(new CampaignLibrary(game,{items:[]}).render('npcs',true),/sy-forge/);
+ const shared={areas:['npcs'],npcs:['Actor.smith'],map:[],monsters:[],items:[]},game={user:{isGM:false,character:null},users:[],actors:[actor],settings:{get:(_m,key)=>key==='sharedContent'?shared:''}};
+ const library=new CampaignLibrary(game,{items:[]});
+ const indice=library.render('npcs',true);
+ assert.match(indice,/data-op="lib-npc-player-region" data-id="mirmir"/);
+ assert.doesNotMatch(indice,/sy-forge/);
+ library.state.npcPlayerRegion='mirmir';
+ assert.match(library.render('npcs',true),/sy-forge/);
+});
+
+test('NPC de região liberada aparece ao jogador sem ter sido liberado um a um',()=>{
+ const actor={id:'x',uuid:'Actor.x',name:'Mercador',type:'character',flags:{quedaco:{npc:{role:'merchant',regionId:'mirmir',placeId:'',shop:{stock:[]}}}}};
+ const shared={areas:['npcs'],npcs:[],map:[],monsters:[],items:[]};
+ const game={user:{isGM:false,character:null},users:[],actors:[actor],settings:{get:(_m,key)=>key==='sharedContent'?shared:key==='npcLocalities'?['region:mirmir']:''}};
+ const library=new CampaignLibrary(game,{items:[]});
+ assert.match(library.render('npcs',true),/data-op="lib-npc-player-region" data-id="mirmir"/);
+ library.state.npcPlayerRegion='mirmir';
+ assert.match(library.render('npcs',true),/Mercador/);
 });
