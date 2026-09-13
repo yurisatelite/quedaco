@@ -51,6 +51,8 @@ export const NPC_HIDDEN_KEY='npcHidden';
 /** Anotação de NPC: fica nas flags do próprio User, porque jogador não escreve
  *  setting de mundo. Cada um guarda a sua e escolhe se divide com o grupo. */
 export const NPC_NOTES_FLAG='npcNotes';
+/** Papel secundário do NPC — a tag que os jogadores atribuem quando conhecem alguém. */
+export const NPC_ROLES2_FLAG='npcRoles2';
 export const NPC_GRAPH_KEY='npcGraph';
 export const GENERATOR_MACRO_KEY='generatorMacro';
 export const DEFAULT_GENERATOR_MACRO='Skyfall — Criador de Conteúdo';
@@ -112,7 +114,13 @@ const npcRoleChip=role=>{const style=NPC_ROLE_STYLE[role]??NPC_ROLE_STYLE.extra;
 function tagChip(icon,color,label){return `<span class="sy-npc-role" style="--sy-role:${e(color)}"><i class="fa-solid ${e(icon)}" aria-hidden="true"></i>${e(label)}</span>`;}
 const sortByName=list=>[...(list??[])].sort((a,b)=>String(a?.name??'').localeCompare(String(b?.name??''),'pt-BR'));
 const NPC_ASPECTS=[['legacy','Legado'],['heritage','Herança'],['class','Classe'],['path','Trilha'],['curse','Maldição'],['background','Antecedente']];
-const npcAspectChips=actor=>NPC_ASPECTS.map(([type,label])=>{const it=Array.from(actor?.items??[]).find(entry=>entry.type===type);if(!it)return '';const img=it.img&&!/mystery-man|svg\/(item|blank)/.test(String(it.img))?`<img src="${e(it.img)}" alt="" loading="lazy">`:'';return `<span class="sy-npc-chip" title="${e(label)}: ${e(it.name)}">${img}<b>${e(label)}</b>${e(it.name)}</span>`;}).filter(Boolean).join('');
+/** Resumo em texto puro da descrição do item, pro balão de ajuda do chip. */
+const aspectSummary=item=>{
+  const raw=item?.system?.description?.value??item?.system?.description??'';
+  const texto=stripTags(String(raw)).replace(/\s+/g,' ').trim();
+  return texto?(texto.length>320?`${texto.slice(0,320)}…`:texto):'';
+};
+const npcAspectChips=actor=>NPC_ASPECTS.map(([type,label])=>{const it=Array.from(actor?.items??[]).find(entry=>entry.type===type);if(!it)return '';const img=it.img&&!/mystery-man|svg\/(item|blank)/.test(String(it.img))?`<img src="${e(it.img)}" alt="" loading="lazy">`:'';const resumo=aspectSummary(it);return `<span class="sy-npc-chip${resumo?' has-tip':''}" title="${e(label)}: ${e(it.name)}">${img}<b>${e(label)}</b>${e(it.name)}${resumo?`<span class="sy-chip-tip"><b>${e(it.name)}</b>${e(resumo)}</span>`:''}</span>`;}).filter(Boolean).join('');
 const npcStatBadges=actor=>{const s=actor?.system??{},out=[];const lvl=s.level?.value;if(lvl!=null)out.push(`<span class="sy-npc-stat is-level" title="Nível"><b>Nv</b>${e(lvl)}</span>`);const hp=s.resources?.hp;if(hp&&hp.max)out.push(`<span class="sy-npc-stat is-hp" title="Pontos de Vida"><b>PV</b>${e(hp.value??0)}/${e(hp.max)}</span>`);const ep=s.resources?.ep;if(ep&&ep.max)out.push(`<span class="sy-npc-stat is-ep" title="Pontos de Esforço"><b>PE</b>${e(ep.value??0)}/${e(ep.max)}</span>`);const sh=s.resources?.shadow;if(sh&&sh.value!=null)out.push(`<span class="sy-npc-stat is-shadow" title="Pontos de Sombra gastos"><b>Sombra</b>${e(Math.max(0,5-(Number(sh.value)||0)))}/5</span>`);return out.length?`<div class="sy-npc-stats">${out.join('')}</div>`:'';};
 const figurePencil=edit=>edit?`<button class="sy-figure-edit" data-op="lib-${e(edit.op)}" data-id="${e(edit.id)}" title="Trocar imagem" aria-label="Trocar imagem"><i class="fa-solid fa-pencil" aria-hidden="true"></i></button>`:'';
 const cardFigure=(src,name,size='wide',fallback='',edit=null)=>{const fallbacks=(Array.isArray(fallback)?fallback:[fallback]).filter(Boolean);return src?`<div class="sy-card-figure sy-card-figure-${e(size)}"><img src="${e(src)}" alt="${e(name)}" loading="lazy"${fallbacks.length?` data-fallback-srcs="${e(fallbacks.join('||'))}"`:''}>${figurePencil(edit)}</div>`:(edit?`<div class="sy-card-figure sy-card-figure-${e(size)} sy-card-figure-empty">${figurePencil(edit)}</div>`:'');};
@@ -174,7 +182,42 @@ export class CampaignLibrary {
   async setRegionMainScene(regionId,sceneId){this.assertGM();if(!regionId||!REGIONS.some(r=>r.id===regionId))return;const map=this.regionMainScene;if(!sceneId||map[regionId]===sceneId)delete map[regionId];else map[regionId]=sceneId;await this.game.settings.set(MODULE_ID,REGION_MAIN_SCENE_KEY,map);}
   get regionSceneInfo(){try{return {...(this.game.settings?.get(MODULE_ID,REGION_SCENE_INFO_KEY)||{})};}catch{return {};}}
   async setRegionSceneInfo(sceneId,text){this.assertGM();if(!sceneId)return;const map=this.regionSceneInfo,t=String(text??'').trim();if(t)map[sceneId]=t;else delete map[sceneId];await this.game.settings.set(MODULE_ID,REGION_SCENE_INFO_KEY,map);}
-  rollRegionRumors(regionId){const list=this.regionRumors[regionId]||[];if(!list.length){this.state.regionRumorRoll={regionId,count:0,ids:[]};return;}const idx=[...list.keys()];for(let i=idx.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}const count=Math.min(list.length,1+Math.floor(Math.random()*4));this.state.regionRumorRoll={regionId,count,ids:idx.slice(0,count).map(i=>list[i].id)};}
+  /** Ganchos montados com quem realmente mora na região, pra tabela nunca sair vazia.
+   *  O rumor escrito à mão continua tendo preferência; isto só completa o 1d4. */
+  rumorSeeds(regionId){
+    const npcs=this.npcActors().map(actor=>({actor,flag:npcFlag(actor)??adoptNpcFlag(actor)}))
+      .filter(({flag})=>(flag.regionId||PLACES.find(p=>p.id===flag.placeId)?.regionId)===regionId);
+    if(!npcs.length)return [];
+    const nome=i=>npcs[i%npcs.length].actor.name;
+    const local=i=>PLACES.find(p=>p.id===npcs[i%npcs.length].flag.placeId)?.name||REGIONS.find(r=>r.id===regionId)?.name||'por aqui';
+    const papel=i=>NPC_ROLES[npcs[i%npcs.length].flag.role]?.toLowerCase()||'gente';
+    const MOLDES=[
+      i=>`Dizem que ${nome(i)} anda pagando bem por quem não faz pergunta.`,
+      i=>`Sumiu carga a caminho de ${local(i)}. ${nome(i)} jura que não foi descuido.`,
+      i=>`${nome(i)} não aparece há dias. A porta continua destrancada.`,
+      i=>`Tem ${papel(i)} novo em ${local(i)}, e ninguém sabe de onde veio.`,
+      i=>`${nome(i)} deve favor a gente que não costuma esquecer.`,
+      i=>`Ouviram barulho à noite perto de ${local(i)}. ${nome(i)} mandou não comentar.`,
+      i=>`${nome(i)} está juntando dinheiro rápido demais pro ofício que diz ter.`,
+      i=>`Alguém viu ${nome(i)} conversando com quem não devia, longe de ${local(i)}.`,
+      i=>`Fizeram uma oferta por algo que ${nome(i)} não admite ter.`,
+      i=>`${nome(i)} anda armado desde a última lua. Não diz contra o quê.`,
+      i=>`Quem passa por ${local(i)} tem voltado com uma história a menos pra contar.`,
+      i=>`${nome(i)} procura alguém de fora — e faz questão de que seja de fora.`,
+    ];
+    const semente=`${regionId}|${npcs.length}`;
+    let h=2166136261;for(let i=0;i<semente.length;i++){h^=semente.charCodeAt(i);h=Math.imul(h,16777619);}
+    return MOLDES.map((molde,i)=>({id:`auto-${i}`,text:molde((h>>>0)+i*7),auto:true}));
+  }
+  rollRegionRumors(regionId){
+    const escritos=this.regionRumors[regionId]||[];
+    const list=[...escritos,...this.rumorSeeds(regionId)];
+    if(!list.length){this.state.regionRumorRoll={regionId,count:0,ids:[]};return;}
+    const idx=[...list.keys()];
+    for(let i=idx.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}
+    const count=Math.min(list.length,1+Math.floor(Math.random()*4));
+    this.state.regionRumorRoll={regionId,count,ids:idx.slice(0,count).map(i=>list[i].id)};
+  }
   get mapHotspots(){try{return {...(this.game.settings?.get(MODULE_ID,MAP_HOTSPOTS_KEY)||{regions:{},places:{}})};}catch{return {regions:{},places:{}};}}
   async setMapHotspot(kind,id,point){this.assertGM();if(!['regions','places'].includes(kind)||!id)return;const current={regions:{...(this.mapHotspots.regions??{})},places:{...(this.mapHotspots.places??{})}};if(point)current[kind][id]=point;else delete current[kind][id];await this.game.settings.set(MODULE_ID,MAP_HOTSPOTS_KEY,current);}
   get mapHidden(){try{const value=this.game.settings?.get(MODULE_ID,MAP_HIDDEN_KEY);return Array.isArray(value)?new Set(value):defaultHiddenPlaces(PLACES);}catch{return defaultHiddenPlaces(PLACES);}}
@@ -251,6 +294,24 @@ export class CampaignLibrary {
       others.push({user:user.name,text:note.text,shared:Boolean(note.shared)});
     }
     return {mine,others};
+  }
+  /** Papel secundário: a tag que os jogadores põem quando conhecem alguém.
+   *  Mora nas flags do User (jogador não escreve setting de mundo); o que o
+   *  mestre marcar vale mais que o dos jogadores. */
+  npcRoleSecondary(uuid){
+    let doMestre='',dePlayer='';
+    for(const user of this.game.users??[]){
+      const role=user.flags?.[MODULE_ID]?.[NPC_ROLES2_FLAG]?.[uuid];
+      if(!role||!NPC_ROLES[role])continue;
+      if(user.isGM)doMestre=role;else if(!dePlayer)dePlayer=role;
+    }
+    return doMestre||dePlayer||'';
+  }
+  async setNpcRoleSecondary(uuid,role){
+    const user=this.game.user;if(!uuid||!user)return;
+    const all={...(user.flags?.[MODULE_ID]?.[NPC_ROLES2_FLAG]??{})};
+    if(NPC_ROLES[role])all[uuid]=role;else delete all[uuid];
+    await user.setFlag(MODULE_ID,NPC_ROLES2_FLAG,all);
   }
   async saveNpcNote(uuid,text,shared){
     if(!uuid)return;
@@ -419,7 +480,9 @@ export class CampaignLibrary {
     document.sheet.render(true);
   }
   async action(op,id,data={}){
-    const openOps=['lib-map','lib-region','lib-place','lib-map-focus','lib-map-zoom','lib-map-reset','lib-map-layer','lib-open-scene','lib-npc-buy','lib-npc-open','lib-forge-clear','lib-forge-add','lib-forge-remove','lib-forge-imbue','lib-forge-tab','lib-forge-pay','lib-forge-base','lib-imbue-pay','lib-guild-open','lib-quest-filter','lib-quest-open'];
+    const openOps=['lib-map','lib-region','lib-place','lib-map-focus','lib-map-zoom','lib-map-reset','lib-map-layer','lib-open-scene','lib-npc-buy','lib-npc-open','lib-forge-clear','lib-forge-add','lib-forge-remove','lib-forge-imbue','lib-forge-tab','lib-forge-pay','lib-forge-base','lib-imbue-pay','lib-guild-open','lib-quest-filter','lib-quest-open',
+      // aba de NPCs do jogador: navegar, anotar e marcar a tag do grupo são dele
+      'lib-npc-player-region','lib-npc-note-save','lib-npc-role2'];
     if(!openOps.includes(op))this.assertGM();
     if(op==='lib-map'){this.state.mapView=id;this.state.region=null;this.state.place=null;this.state.regionTakeover=false;if(id==='regions')this.state.map={scale:1,tx:0,ty:0,focus:null};}
     if(op==='lib-region'){if(!REGIONS.some(i=>i.id===id)||(!this.game.user?.isGM&&!this.shared.map.includes(id)))return;this.state.mapView='regions';this.state.region=id;this.state.place=null;}
@@ -446,6 +509,7 @@ export class CampaignLibrary {
     if(op==='lib-region-main-scene'){const cut=String(id).indexOf(':');await this.setRegionMainScene(String(id).slice(0,cut),String(id).slice(cut+1));}
     if(op==='lib-region-scene-info')await this.setRegionSceneInfo(id,data.text);
     if(op==='lib-region-rumor-roll')this.rollRegionRumors(id);
+    if(op==='lib-region-rumor-keep'){const [regionId,seedId]=String(id).split('|');const seed=this.rumorSeeds(regionId).find(r=>r.id===seedId);if(seed)await this.addRegionRumor(regionId,seed.text);}
     if(op==='lib-region-rumor-edit')this.state.regionRumorEdit=this.state.regionRumorEdit===id?null:id;
     if(op==='lib-region-rumor-edit-save'){const [regionId,rumorId]=String(id).split('|');await this.setRegionRumorText(regionId,rumorId,data.text);this.state.regionRumorEdit=null;}
     if(op==='lib-region-npc-role')this.state.regionNpcRoleFilter=NPC_ROLES[id]?id:'all';
@@ -486,6 +550,7 @@ export class CampaignLibrary {
     if(op==='lib-npc-locality'){const [kind,localityId]=String(id).split(':');await this.setNpcLocality(kind,localityId);}
     if(op==='lib-npc-note-save')await this.saveNpcNote(id,data.noteText,data.noteShared);
     if(op==='lib-npc-hide')await this.toggleNpcHidden(id);
+    if(op==='lib-npc-role2')await this.setNpcRoleSecondary(id,data.role2);
     if(op==='lib-npc-filter')this.state.npcRole=NPC_ROLES[id]?id:'all';
     if(op==='lib-npc-dragon-filter')this.state.npcDragonOnly=!this.state.npcDragonOnly;
     if(op==='lib-npc-militar-filter')this.state.npcMilitarOnly=!this.state.npcMilitarOnly;
@@ -785,6 +850,11 @@ export class CampaignLibrary {
     const motto=stripTags(guild.system?.motto??'');
     return `<section class="sy-player-guild"><img src="${e(img.src)}" alt="" loading="lazy"${img.fallbacks.length?` data-fallback-srcs="${e(img.fallbacks.join('||'))}"`:''}><div><small>SUA GUILDA</small><strong>${e(guild.name)}</strong>${motto?`<p>${e(motto)}</p>`:''}</div><button data-op="lib-guild-open" data-id="${e(guild.uuid)}">Abrir ficha da guilda</button></section>`;
   }
+  /** Quem o grupo achou que essa pessoa é — qualquer jogador pode marcar. */
+  npcRoleSecondaryPicker(actor,atual){
+    const opcoes=Object.entries(NPC_ROLES).sort((a,b)=>a[1].localeCompare(b[1],'pt-BR')).map(([id,label])=>`<option value="${id}" ${atual===id?'selected':''}>${e(label)}</option>`).join('');
+    return `<div class="sy-npc-role2"><select name="npcRole2" data-id="${e(actor.uuid)}"><option value="">— o que essa pessoa é? —</option>${opcoes}</select>${button('npc-role2',actor.uuid,'Marcar')}</div>`;
+  }
   npcNoteBlock(actor){
     const {mine,others}=this.npcNotes(actor.uuid);
     const grupo=others.length?`<div class="sy-npc-note-others">${others.map(note=>`<p><b>${e(note.user)}</b>${note.shared?'':' <em>(privada)</em>'} — ${e(note.text)}</p>`).join('')}</div>`:'';
@@ -799,10 +869,11 @@ export class CampaignLibrary {
     const {legacy,heritage,melancolia}=this.npcLegacy(actor);
     const heritageLabel=melancolia||heritage;
     const legacyBadge=legacy?tagChip('fa-dna','#8f7ad4',heritageLabel?`${legacy} · ${heritageLabel}`:legacy):'';
+    const role2=this.npcRoleSecondary(actor.uuid);
     // o mestre pode tirar alguém de cena sem fechar a localidade inteira
     const escondido=this.npcHidden.has(actor.uuid);
     const ocultar=gm?`<button class="sy-npc-live-dot ${escondido?'':'is-live'}" data-op="lib-npc-hide" data-id="${e(actor.uuid)}" title="${escondido?'Escondido dos jogadores — clique para mostrar':'Visível aos jogadores — clique para esconder'}"><i class="fa-solid ${escondido?'fa-eye-slash':'fa-eye'}" aria-hidden="true"></i></button>`:'';
-    return `<article class="sy-library-card sy-npc-card sy-player-npc ${escondido?'is-hidden-npc':''} ${loja?'sy-npc-card-full':''}" style="--sy-region:${e(color)}" data-search="${e(nameKey(`${actor.name} ${NPC_ROLES[flag.roleSecondary]??''} ${legacy} ${heritageLabel} ${place?.name??''}`))}">${ocultar}<div class="sy-library-card-content"><div class="sy-npc-card-grid">${this.npcPortrait(actor)}<div class="sy-npc-identity"><div class="sy-npc-identity-top"><strong>${e(actor.name)}</strong>${place?`<span class="sy-npc-location-badge" style="--sy-region:${e(color)}">${e(place.name)}</span>`:''}</div><div class="sy-npc-tags">${flag.roleSecondary&&NPC_ROLES[flag.roleSecondary]?npcRoleChip(flag.roleSecondary):''}${legacyBadge}</div>${this.npcNoteBlock(actor)}</div></div>${loja}</div></article>`;
+    return `<article class="sy-library-card sy-npc-card sy-player-npc ${escondido?'is-hidden-npc':''} ${loja?'sy-npc-card-full':''}" style="--sy-region:${e(color)}" data-search="${e(nameKey(`${actor.name} ${NPC_ROLES[flag.roleSecondary]??''} ${legacy} ${heritageLabel} ${place?.name??''}`))}">${ocultar}<div class="sy-library-card-content"><div class="sy-npc-card-grid">${this.npcPortrait(actor)}<div class="sy-npc-identity"><div class="sy-npc-identity-top"><strong>${e(actor.name)}</strong>${place?`<span class="sy-npc-location-badge" style="--sy-region:${e(color)}">${e(place.name)}</span>`:''}</div><div class="sy-npc-tags">${role2?npcRoleChip(role2):''}${legacyBadge}</div>${this.npcRoleSecondaryPicker(actor,role2)}${this.npcNoteBlock(actor)}</div></div>${loja}</div></article>`;
   }
   /** Aba NPCs do jogador: entra por região liberada, depois lista quem mora lá. */
   renderNpcsPlayer(preview=false){
@@ -928,7 +999,7 @@ export class CampaignLibrary {
     const shared=this.shared.guilds,archived=this.archivedGuilds;
     const allGuilds=this.guildActors().filter(guild=>!readonly||shared.includes(guild.uuid));
     const showArchived=readonly||this.state.guildShowArchived;
-    const guilds=showArchived?allGuilds:allGuilds.filter(guild=>!archived.has(guild.uuid));
+    const guilds=sortByName(showArchived?allGuilds:allGuilds.filter(guild=>!archived.has(guild.uuid)));
     const archivedCount=allGuilds.filter(guild=>archived.has(guild.uuid)).length;
     const abilityLabels={cunning:'Astúcia',knowledge:'Conhecimento',crafting:'Ofício',reputation:'Reputação'};
     const resolve=uuid=>this.resolveActor(uuid);
@@ -967,6 +1038,17 @@ export class CampaignLibrary {
     const importer=readonly?'':`<details class="sy-library-guide"><summary>Importar guildas do apêndice</summary><p class="sy-note">Cole aqui o conteúdo de <code>.local/guildas-foundry.json</code> (gerado por <code>tools/parse-guilds.mjs</code>) ou deixe o arquivo em <code>Data/modules/quedaco/.local/</code> e clique sem colar nada. Cria os Actors <code>guild</code> numa pasta "Guildas · Apêndice B"; pula as que já existem.</p><textarea name="guildImport" rows="4" placeholder='[ { "type": "guild", "name": "...", ... } ]'></textarea><div class="sy-library-tabs">${button('guild-import','','Importar')}</div></details>`;
     return `<p>Guildas e Hansas registradas como fichas nativas do Skyfall.</p>${readonly?'':`<div class="sy-library-share-row">${this.shareButton('areas','guilds','✓ Aba Guildas visível aos jogadores','Liberar a aba Guildas aos jogadores')}</div>`}${importer}${archiveBar}${this.filters([],'Buscar por nome, criador ou descrição')}${facetsHtml}${this.sizeControl('guild')}<div class="sy-library-grid sy-guild-grid" ${this.gridStyle('guild')}>${cards||'<p class="sy-library-deferred">Nenhuma guilda disponível.</p>'}</div>`;
   }
+  /** O que o NPC carrega de fato na ficha — itens e dinheiro — pra não precisar abrir a ficha só pra ver. */
+  npcInventory(actor){
+    const TIPOS={weapon:'Arma',armor:'Armadura',clothing:'Vestimenta',equipment:'Equipamento',consumable:'Consumível',loot:'Item',sigil:'Sigilo',seal:'Selo'};
+    const itens=Array.from(actor?.items??[]).filter(item=>TIPOS[item.type]&&item.name!=='Ataque desarmado'&&item.system?.natural!==true);
+    const moeda=walletTotal(actor?.system?.currency??{});
+    const linhas=sortByName(itens).map(item=>{
+      const qtd=Number(item.system?.quantity)||1;
+      return `<div><span>${item.img&&!/mystery-man|svg\/(item|blank)/.test(String(item.img))?`<img class="sy-inv-img" src="${e(item.img)}" alt="" loading="lazy">`:''}<b>${e(item.name)}</b>${qtd>1?` ×${qtd}`:''}</span><small>${e(TIPOS[item.type])}</small></div>`;
+    }).join('');
+    return `<details class="sy-library-guide"><summary>Inventário${itens.length?` · ${itens.length} item(ns)`:''}${moeda?` · ${currency(moeda)}`:''}</summary><div class="sy-npc-inventory">${linhas||'<small>Nada na ficha.</small>'}</div><p class="sy-note">Lido direto da ficha do Skyfall. Para mudar, abra a ficha — aqui é só consulta.</p></details>`;
+  }
   renderNpcEditor(actor){
     if(!actor)return '';const flag=npcFlag(actor)??adoptNpcFlag(actor);
     const role=NPC_ROLES[this.state.npcEditRole]?this.state.npcEditRole:flag.role;
@@ -987,15 +1069,18 @@ export class CampaignLibrary {
     const ehCidade=place=>/cidade|capital|vila|porto/i.test(nameKey(place.kind));
     const placeGroup=(label,cidades)=>{const list=sortByName(placePool.filter(place=>ehCidade(place)===cidades));return list.length?`<optgroup label="${e(label)}">${list.map(place=>`<option value="${e(place.id)}" ${placeId===place.id?'selected':''}>${e(place.name)}${cidades?'':` · ${e(place.kind)}`}</option>`).join('')}</optgroup>`:'';};
     const placeOptions=`${placeGroup('Cidades principais',true)}${placeGroup('Outros locais',false)}`;
+    // cenas da região + a cena da própria cidade do NPC; só aparece se existir alguma
     const regionSceneIds=Array.isArray(this.regionScenes[regionId])?this.regionScenes[regionId]:[];
+    const placeSceneId=placeId?this.placeScenes[placeId]:'';
+    const sceneIds=[...new Set([...(placeSceneId?[placeSceneId]:[]),...regionSceneIds])];
     const allScenes=Array.from(this.game.scenes??[]);
-    const sceneOptions=regionSceneIds.map(sid=>allScenes.find(s=>s.id===sid)).filter(Boolean).map(s=>`<option value="${e(s.id)}" ${flag.sceneId===s.id?'selected':''}>${e(s.name)}</option>`).join('');
+    const sceneOptions=sceneIds.map(sid=>allScenes.find(s=>s.id===sid)).filter(Boolean).map(s=>`<option value="${e(s.id)}" ${flag.sceneId===s.id?'selected':''}>${e(s.name)}${s.id===placeSceneId?' · do local':''}</option>`).join('');
     const guilds=this.guildActors(),guildLabel=npcGuildLabel(flag,guilds);
     const guildOptions=guilds.map(guild=>`<option value="${e(guild.uuid)}" ${flag.guildUuid===guild.uuid?'selected':''}>${e(guild.name)}</option>`).join('');
     const portrait=this.image('npc',actor.name,actor.img,'icons/svg/mystery-man.svg');
     const shopFields=role==='merchant'?`<label>Margem da loja<input type="number" name="npcMarkup" min="0.1" step="0.1" value="${e(flag.shop?.markup??1)}"></label><label>Apresentação da loja<textarea name="npcShopNote">${e(flag.shop?.note??'')}</textarea></label>`:`<input type="hidden" name="npcMarkup" value="${e(flag.shop?.markup??1)}"><input type="hidden" name="npcShopNote" value="${e(flag.shop?.note??'')}">`;
     const forgeFields=role==='smith'?`<label class="sy-inline-check"><input type="checkbox" name="npcForgeEnabled" ${flag.forge?.enabled?'checked':''}> Forja habilitada</label><label>Margem da forja<input type="number" name="npcForgeMarkup" min="0.1" step="0.1" value="${e(flag.forge?.markup??1)}"></label>`:`<input type="hidden" name="npcForgeEnabled" value="${flag.forge?.enabled?'on':''}"><input type="hidden" name="npcForgeMarkup" value="${e(flag.forge?.markup??1)}">`;
-    return `<section class="sy-library-detail sy-npc-editor" data-npc-editor="${e(actor.id)}"><img class="sy-npc-editor-portrait" src="${e(portrait.src)}" alt="" loading="lazy"${portrait.fallbacks.length?` data-fallback-srcs="${e(portrait.fallbacks.join('||'))}"`:''}><div class="sy-npc-editor-head"><h3>Editar · ${e(actor.name)}</h3><span class="sy-npc-saved" ${this.state.npcSaved===actor.id?'':'hidden'}>✓ salvo</span>${button('npc-open',actor.id,'Abrir ficha')}${button('npc-close',actor.id,'Fechar edição')}</div>${(npcStatBadges(actor)||npcAspectChips(actor)||guildLabel)?`<div class="sy-npc-editor-summary">${npcStatBadges(actor)}<div class="sy-npc-tags">${(()=>{const {legacy,heritage,melancolia,klass}=this.npcLegacy(actor);const cs=CLASS_STYLE[klass];const hl=melancolia||heritage;return `${cs?tagChip(cs.icon,cs.color,klass):''}${legacy?tagChip('fa-dna','#8f7ad4',hl?`${legacy} · ${hl}`:legacy):''}`;})()}</div><div class="sy-npc-chip-row">${npcAspectChips(actor)}${guildLabel?`<span class="sy-npc-chip sy-npc-chip-guild" title="Guilda / Hansa"><b>Guilda</b>${e(guildLabel)}</span>`:''}</div></div>`:''}${suggestedPlace?`<p class="sy-hint"><span>Local sugerido: <strong>${e(suggestedPlace.name)}</strong></span>${button('npc-place-accept',`${actor.id}:${suggestedPlace.id}`,'Usar local sugerido')}</p>`:''}<div class="sy-npc-form"><label>Nome<input name="npcName" value="${e(actor.name)}"></label><label>Papel<select name="npcRole">${roleOptions}</select></label><label>Região<select name="npcRegion" ${placeId?'disabled':''}><option value="">Sem região</option>${regionOptions}</select>${placeId?`<small class="sy-hint-inline">Definida pelo local: ${e(PLACES.find(p=>p.id===placeId)?.name??'')}</small>`:''}</label><label>Local<select name="npcPlace"><option value="">Sem local</option>${placeOptions}</select>${placeId?'':'<small class="sy-hint-inline">Ao escolher o local, a região é preenchida sozinha.</small>'}</label><label>Mapa / cena<select name="npcScene"><option value="">— toda a região —</option>${sceneOptions}</select>${regionSceneIds.length?'':'<small class="sy-hint-inline">Vincule cenas à região na aba Mapa para escolher aqui.</small>'}</label><label>Guilda / Hansa da mesa<select name="npcGuildUuid"><option value="">Nenhuma ficha vinculada</option>${guildOptions}</select></label><label>Outra Guilda / Hansa<input name="npcGuild" value="${e(flag.guild??'')}" placeholder="Nome livre"></label><label>Nota<textarea name="npcNote">${e(flag.note??'')}</textarea></label><label class="sy-inline-check"><input type="checkbox" name="npcTokenVisible" ${flag.tokenVisible!==false?'checked':''}> Jogadores podem ver o token</label><label class="sy-inline-check"><input type="checkbox" name="npcDragon" ${flag.dragon?'checked':''}> 🐉 Dragão</label>${shopFields}${forgeFields}</div>${button('npc-save',actor.id,'Salvar NPC')}<details class="sy-library-guide"><summary>Estoque de compêndio${stock.length?` · ${stock.length}`:''}</summary><div class="sy-npc-stock">${stock.map(item=>`<div><code>${e(item.uuid)}</code><span>${item.price==null?'Preço do item':currency(item.price)} · ${item.qty==null?'sem limite':e(item.qty)+' un.'}</span>${button('npc-stock-remove',`${actor.id}|${item.uuid}`,'Remover')}</div>`).join('')||'<small>Estoque vazio.</small>'}</div><div class="sy-npc-stock-add"><select name="npcStockUuid"><option value="">Adicionar item…</option>${catalogItems.map(item=>`<option value="${e(item.uuid)}">${e(item.name)} · ${e(item.source)}</option>`).join('')}</select><input name="npcStockPrice" type="number" min="0" placeholder="Preço opcional"><input name="npcStockQty" type="number" min="0" placeholder="Qtd. vazia = infinita">${button('npc-stock-add',actor.id,'Adicionar ao estoque')}</div></details><details class="sy-library-guide"><summary>Criar item tabelado</summary>${compendium?`<div class="sy-npc-new-item"><input name="npcItemName" placeholder="Nome"><select name="npcItemCategory">${[...new Set(BOOK_ITEMS.map(item=>item.category))].map(category=>`<option>${e(category)}</option>`).join('')}</select><input name="npcItemPrice" type="number" min="0" placeholder="Preço em T$"><input name="npcItemVolume" type="number" min="0" step="0.1" placeholder="Volume">${button('npc-create-item',actor.id,'Criar no compêndio e adicionar')}</div>`:'<p class="sy-alert">Configure “Compêndio de itens do QUEDAÇO” para criar itens tabelados. Nenhum item solto de Mundo será criado.</p>'}</details><details class="sy-library-guide"><summary>Vínculos${linkRows?'':' · nenhum'}</summary>${suggestionRows?`<div class="sy-npc-suggestions"><strong>Detectados na bio</strong>${suggestionRows}</div>`:''}<div class="sy-npc-stock">${linkRows||'<small>Nenhum vínculo.</small>'}</div><div class="sy-npc-link-add"><select name="npcLinkType">${Object.entries(NPC_LINK_TYPES).map(([id,label])=>`<option value="${id}">${label}</option>`).join('')}</select><select name="npcLinkTarget"><option value="">Outro NPC…</option>${marked.map(item=>`<option value="${e(item.uuid)}">${e(item.name)}</option>`).join('')}</select><input name="npcLinkText" placeholder="Ou nome fora da mesa"><input name="npcLinkNote" placeholder="Nota opcional">${button('npc-link-add',actor.id,'Adicionar vínculo')}</div></details></section>`;
+    return `<section class="sy-library-detail sy-npc-editor" data-npc-editor="${e(actor.id)}"><img class="sy-npc-editor-portrait" src="${e(portrait.src)}" alt="" loading="lazy"${portrait.fallbacks.length?` data-fallback-srcs="${e(portrait.fallbacks.join('||'))}"`:''}><div class="sy-npc-editor-head"><h3>Editar · ${e(actor.name)}</h3><span class="sy-npc-saved" ${this.state.npcSaved===actor.id?'':'hidden'}>✓ salvo</span>${button('npc-open',actor.id,'Abrir ficha')}${button('npc-close',actor.id,'Fechar edição')}</div>${(npcStatBadges(actor)||npcAspectChips(actor)||guildLabel)?`<div class="sy-npc-editor-summary">${npcStatBadges(actor)}<div class="sy-npc-tags">${(()=>{const {legacy,heritage,melancolia,klass}=this.npcLegacy(actor);const cs=CLASS_STYLE[klass];const hl=melancolia||heritage;return `${cs?tagChip(cs.icon,cs.color,klass):''}${legacy?tagChip('fa-dna','#8f7ad4',hl?`${legacy} · ${hl}`:legacy):''}`;})()}</div><div class="sy-npc-chip-row">${npcAspectChips(actor)}${guildLabel?`<span class="sy-npc-chip sy-npc-chip-guild" title="Guilda / Hansa"><b>Guilda</b>${e(guildLabel)}</span>`:''}</div></div>`:''}${suggestedPlace?`<p class="sy-hint"><span>Local sugerido: <strong>${e(suggestedPlace.name)}</strong></span>${button('npc-place-accept',`${actor.id}:${suggestedPlace.id}`,'Usar local sugerido')}</p>`:''}<div class="sy-npc-form"><label>Nome<input name="npcName" value="${e(actor.name)}"></label><label>Papel<select name="npcRole">${roleOptions}</select></label><label>Região<select name="npcRegion" ${placeId?'disabled':''}><option value="">Sem região</option>${regionOptions}</select>${placeId?`<small class="sy-hint-inline">Definida pelo local: ${e(PLACES.find(p=>p.id===placeId)?.name??'')}</small>`:''}</label><label>Local<select name="npcPlace"><option value="">Sem local</option>${placeOptions}</select>${placeId?'':'<small class="sy-hint-inline">Ao escolher o local, a região é preenchida sozinha.</small>'}</label>${sceneOptions?`<label>Mapa / cena<select name="npcScene"><option value="">— toda a região —</option>${sceneOptions}</select></label>`:`<input type="hidden" name="npcScene" value="${e(flag.sceneId??'')}">`}<label>Guilda / Hansa da mesa<select name="npcGuildUuid"><option value="">Nenhuma ficha vinculada</option>${guildOptions}</select></label><label>Outra Guilda / Hansa<input name="npcGuild" value="${e(flag.guild??'')}" placeholder="Nome livre"></label><label>Nota<textarea name="npcNote">${e(flag.note??'')}</textarea></label><label class="sy-inline-check"><input type="checkbox" name="npcTokenVisible" ${flag.tokenVisible!==false?'checked':''}> Jogadores podem ver o token</label><label class="sy-inline-check"><input type="checkbox" name="npcDragon" ${flag.dragon?'checked':''}> 🐉 Dragão</label>${shopFields}${forgeFields}</div>${button('npc-save',actor.id,'Salvar NPC')}${this.npcInventory(actor)}<details class="sy-library-guide"><summary>Estoque de compêndio${stock.length?` · ${stock.length}`:''}</summary><div class="sy-npc-stock">${stock.map(item=>`<div><code>${e(item.uuid)}</code><span>${item.price==null?'Preço do item':currency(item.price)} · ${item.qty==null?'sem limite':e(item.qty)+' un.'}</span>${button('npc-stock-remove',`${actor.id}|${item.uuid}`,'Remover')}</div>`).join('')||'<small>Estoque vazio.</small>'}</div><div class="sy-npc-stock-add"><select name="npcStockUuid"><option value="">Adicionar item…</option>${catalogItems.map(item=>`<option value="${e(item.uuid)}">${e(item.name)} · ${e(item.source)}</option>`).join('')}</select><input name="npcStockPrice" type="number" min="0" placeholder="Preço opcional"><input name="npcStockQty" type="number" min="0" placeholder="Qtd. vazia = infinita">${button('npc-stock-add',actor.id,'Adicionar ao estoque')}</div></details><details class="sy-library-guide"><summary>Criar item tabelado</summary>${compendium?`<div class="sy-npc-new-item"><input name="npcItemName" placeholder="Nome"><select name="npcItemCategory">${[...new Set(BOOK_ITEMS.map(item=>item.category))].map(category=>`<option>${e(category)}</option>`).join('')}</select><input name="npcItemPrice" type="number" min="0" placeholder="Preço em T$"><input name="npcItemVolume" type="number" min="0" step="0.1" placeholder="Volume">${button('npc-create-item',actor.id,'Criar no compêndio e adicionar')}</div>`:'<p class="sy-alert">Configure “Compêndio de itens do QUEDAÇO” para criar itens tabelados. Nenhum item solto de Mundo será criado.</p>'}</details><details class="sy-library-guide"><summary>Vínculos${linkRows?'':' · nenhum'}</summary>${suggestionRows?`<div class="sy-npc-suggestions"><strong>Detectados na bio</strong>${suggestionRows}</div>`:''}<div class="sy-npc-stock">${linkRows||'<small>Nenhum vínculo.</small>'}</div><div class="sy-npc-link-add"><select name="npcLinkType">${Object.entries(NPC_LINK_TYPES).map(([id,label])=>`<option value="${id}">${label}</option>`).join('')}</select><select name="npcLinkTarget"><option value="">Outro NPC…</option>${marked.map(item=>`<option value="${e(item.uuid)}">${e(item.name)}</option>`).join('')}</select><input name="npcLinkText" placeholder="Ou nome fora da mesa"><input name="npcLinkNote" placeholder="Nota opcional">${button('npc-link-add',actor.id,'Adicionar vínculo')}</div></details></section>`;
   }
   npcsForLocation(regionId,placeId=null,readonly=false){
     const shared=this.shared.npcs;
@@ -1143,7 +1228,11 @@ export class CampaignLibrary {
     const rumorRow=r=>this.state.regionRumorEdit===r.id
       ?`<div class="sy-rumor sy-rumor-editing"><textarea name="rumorEditText" data-id="${e(region.id)}|${e(r.id)}" rows="2">${e(r.text)}</textarea><div class="sy-library-share-row">${button('region-rumor-edit-save',`${region.id}|${r.id}`,'Salvar')}${button('region-rumor-edit',r.id,'Cancelar')}</div></div>`
       :`<p class="sy-rumor ${r.shared?'is-shared':''} ${roll&&roll.ids.includes(r.id)?'is-rolled':''}">${e(r.text)} ${button('region-rumor-edit',r.id,'editar')} ${button('region-rumor',`${region.id}|${r.id}|share`,r.shared?'✓ liberado':'liberar')} ${button('region-rumor',`${region.id}|${r.id}|remove`,'×')}</p>`;
-    const rumoresHtml=`<section class="sy-dossier-rumors"><div class="sy-library-share-row">${button('region-rumor-roll',region.id,'🎲 Sortear 1d4 rumores')}${roll?`<small>Saíram ${roll.count} de ${rumors.length}</small>`:''}</div>${rumors.map(rumorRow).join('')||'<small>Nenhum rumor ainda.</small>'}<div class="sy-dossier-add"><input name="rumorText" placeholder="Novo rumor"><button data-op="lib-region-rumor-add" data-id="${e(region.id)}">Adicionar</button></div></section>`;
+    // ganchos montados com os NPCs da região: entram só no sorteio, não viram rumor gravado
+    const seeds=this.rumorSeeds(region.id);
+    const sorteados=roll?[...rumors,...seeds].filter(r=>roll.ids.includes(r.id)):[];
+    const sorteioHtml=roll?`<div class="sy-rumor-roll">${sorteados.length?sorteados.map(r=>`<p class="sy-rumor is-rolled${r.auto?' is-auto':''}">${e(r.text)}${r.auto?`<small> · gancho gerado ${button('region-rumor-keep',`${e(region.id)}|${e(r.id)}`,'guardar como rumor')}</small>`:''}</p>`).join(''):'<small>Nada saiu.</small>'}</div>`:'';
+    const rumoresHtml=`<section class="sy-dossier-rumors"><div class="sy-library-share-row">${button('region-rumor-roll',region.id,'🎲 Sortear 1d4 rumores')}${roll?`<small>Saíram ${roll.count} de ${rumors.length+seeds.length} (${rumors.length} seus + ${seeds.length} ganchos)</small>`:''}</div>${sorteioHtml}${rumors.map(rumorRow).join('')||'<small>Nenhum rumor escrito ainda — o sorteio usa os ganchos gerados com os NPCs daqui.</small>'}<div class="sy-dossier-add"><input name="rumorText" placeholder="Novo rumor"><button data-op="lib-region-rumor-add" data-id="${e(region.id)}">Adicionar</button></div></section>`;
     // aba inferior: mapas e cenas
     const sceneFolders=Array.from(this.game.folders??[]).filter(f=>f.type==='Scene');
     const looseScenes=scenes.filter(s=>!s.folder);
@@ -1206,7 +1295,10 @@ export class CampaignLibrary {
   filter(root){
     const query=nameKey(root.querySelector('[name="libraryQuery"]')?.value),category=root.querySelector('[name="libraryCategory"]')?.value??'';
     const facets={};for(const input of root.querySelectorAll('[data-monster-facet]:checked'))(facets[input.dataset.monsterFacet]??=[]).push(input.value);for(const input of root.querySelectorAll('[data-guild-facet]:checked'))(facets[input.dataset.guildFacet]??=[]).push(input.value);
-    let count=0;for(const card of root.querySelectorAll('[data-search]')){const tokens=(card.dataset.category??'').split('|'),facetMatch=Object.entries(facets).every(([facet,selected])=>selected.some(value=>tokens.includes(`${facet}:${value}`)));card.hidden=!(card.dataset.search.includes(query)&&(!category||tokens.includes(category))&&facetMatch);if(!card.hidden)count++;}
+    // "P.I.P.I." vira "p i p i" na normalização; comparar também sem espaço nenhum
+    // faz "pipi" achar a guilda, que era o caso que não funcionava.
+    const colado=query.replace(/\s+/g,'');
+    let count=0;for(const card of root.querySelectorAll('[data-search]')){const tokens=(card.dataset.category??'').split('|'),facetMatch=Object.entries(facets).every(([facet,selected])=>selected.some(value=>tokens.includes(`${facet}:${value}`)));const alvo=card.dataset.search,bate=!query||alvo.includes(query)||alvo.replace(/\s+/g,'').includes(colado);card.hidden=!(bate&&(!category||tokens.includes(category))&&facetMatch);if(!card.hidden)count++;}
     const label=root.querySelector('.sy-library-count');if(label)label.textContent=`${count} entradas`;
     const empty=root.querySelector('.sy-library-no-results');if(empty)empty.hidden=count!==0;
   }

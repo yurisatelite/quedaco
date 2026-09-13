@@ -276,7 +276,10 @@
 @media(max-width:900px){.sy-creator .sy-region-body{grid-template-columns:1fr}}
 .sy-creator .sy-region-main{display:flex;flex-direction:column;gap:10px;min-width:0}
 .sy-creator .sy-region-hero{position:relative}
-.sy-creator .sy-region-main .sy-card-figure{border-radius:12px;overflow:hidden;border:1px solid var(--sy-region,#3a495b)}
+/* a imagem da região/cidade é o assunto da tela — ocupa altura de verdade em vez de
+   uma faixa fina com metade do espaço sobrando embaixo */
+.sy-creator .sy-region-main .sy-card-figure{border-radius:12px;overflow:hidden;border:1px solid var(--sy-region,#3a495b);height:clamp(320px,46vh,560px)}
+.sy-creator .sy-region-main .sy-card-figure img{object-fit:cover;object-position:50% 45%}
 .sy-creator .sy-region-hero-open{position:absolute;right:44px;bottom:10px;width:auto;padding:6px 12px;font-size:12px;border-radius:20px;border:1px solid var(--sy-region,#38bdd7);background:#0f1620cc;color:#cfe6ff}
 .sy-creator .sy-rumor-editing{display:flex;flex-direction:column;gap:5px;padding:6px;border:1px solid #38bdd7;border-radius:7px;background:#0f1620}
 .sy-creator .sy-rumor-editing textarea{width:100%}
@@ -360,3 +363,28 @@
 .sy-creator .sy-npc-location-badge{margin-right:0;max-width:none;flex:0 0 auto}
 /* o card do jogador esconde a foto do NPC bloqueado sem tirar ele da lista do mestre */
 .sy-creator .sy-npc-card.is-hidden-npc{opacity:.5;border-style:dashed}
+
+/* Balão de descrição no chip de Trilha/Antecedente/Legado, sem precisar clicar */
+.sy-creator .sy-npc-chip.has-tip{position:relative;cursor:help}
+.sy-creator .sy-chip-tip{position:absolute;left:0;top:calc(100% + 6px);z-index:20;display:none;width:max-content;max-width:330px;padding:9px 11px;border:1px solid #4da1b4;border-radius:8px;background:#0e1a24;box-shadow:0 6px 20px #0009;color:#d8e8f4;font-size:12px;line-height:1.5;font-weight:500;white-space:normal;text-align:left}
+.sy-creator .sy-chip-tip>b{display:block;margin-bottom:3px;color:#9ae8ff}
+.sy-creator .sy-npc-chip.has-tip:hover .sy-chip-tip,.sy-creator .sy-npc-chip.has-tip:focus-within .sy-chip-tip{display:block}
+
+/* Inventário lido da ficha, dentro do editor de NPC */
+.sy-creator .sy-npc-inventory{display:grid;gap:4px;margin-top:8px}
+.sy-creator .sy-npc-inventory>div{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 8px;border-radius:6px;background:#131c27}
+.sy-creator .sy-npc-inventory>div>span{display:flex;align-items:center;gap:7px;min-width:0;color:#dbe9f5;font-size:12px}
+.sy-creator .sy-npc-inventory>div>small{color:#8aa0b3;font-size:11px;white-space:nowrap}
+.sy-creator .sy-inv-img{width:22px;height:22px;flex:0 0 22px;object-fit:cover;border-radius:4px;border:1px solid #3a4a5c}
+
+/* Tag que o grupo atribui ao NPC, no cartão do jogador */
+.sy-creator .sy-npc-role2{display:flex;gap:6px;align-items:center;margin-top:7px}
+.sy-creator .sy-npc-role2 select{flex:1;min-width:0;margin:0;padding:4px 6px;font-size:11px}
+.sy-creator .sy-npc-role2 button{width:auto;margin:0;padding:4px 10px;font-size:11px}
+
+/* Resultado do 1d4 de rumores, com os ganchos gerados destacados */
+.sy-creator .sy-rumor-roll{margin:8px 0 12px;padding:10px;border:1px solid #38bdd7;border-radius:8px;background:#0f1f29}
+.sy-creator .sy-rumor.is-auto{border-left:3px solid #d7ad46;padding-left:8px}
+.sy-creator .sy-rumor.is-auto small{color:#d7ad46}
+.sy-creator .sy-rumor-roll .sy-rumor{margin:0 0 7px}
+.sy-creator .sy-rumor-roll .sy-rumor:last-child{margin-bottom:0}
