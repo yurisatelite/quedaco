@@ -388,3 +388,14 @@
 .sy-creator .sy-rumor.is-auto small{color:#d7ad46}
 .sy-creator .sy-rumor-roll .sy-rumor{margin:0 0 7px}
 .sy-creator .sy-rumor-roll .sy-rumor:last-child{margin-bottom:0}
+
+/* ── Tabela de loja: controle fino de preço, quantidade e capacidade ───────── */
+.sy-creator .sy-shop-table{width:100%;margin:10px 0;border-collapse:collapse;font-size:12px}
+.sy-creator .sy-shop-table th{padding:5px 6px;text-align:left;color:#9ae8ff;font-size:11px;font-weight:600;border-bottom:1px solid #2c3a49;background:transparent}
+.sy-creator .sy-shop-table td{padding:4px 6px;border-bottom:1px solid #22303d;background:transparent;vertical-align:middle}
+.sy-creator .sy-shop-table tr.is-falta td{background:#2a1f14}
+.sy-creator .sy-shop-table input[type="number"]{width:62px;margin:0;padding:3px 5px;font-size:11px}
+.sy-creator .sy-shop-qty{white-space:nowrap}
+.sy-creator .sy-shop-qty input{width:48px}
+.sy-creator .sy-shop-table button{width:auto;min-width:0;margin:0 1px;padding:3px 7px;font-size:11px}
+.sy-creator .sy-shop-falta{color:#f0a860}

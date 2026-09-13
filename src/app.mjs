@@ -221,6 +221,8 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
           // anotação do jogador: os campos moram no próprio cartão, não no editor do mestre
           if(op==='lib-npc-note-save'){const box=button.closest('.sy-npc-note');data={noteText:box?.querySelector('[name="npcNoteText"]')?.value??'',noteShared:Boolean(box?.querySelector('[name="npcNoteShared"]')?.checked)};}
           if(op==='lib-npc-role2')data={role2:button.closest('.sy-npc-role2')?.querySelector('[name="npcRole2"]')?.value??''};
+          // linha da tabela de loja: preço, quantidade e capacidade vêm da própria linha
+          if(op==='lib-npc-stock-save'){const tr=button.closest('tr'),v=n=>tr?.querySelector(`[name="${n}"]`)?.value;data={price:v('shopPrice'),qty:v('shopQty'),qtyMax:v('shopQtyMax')};}
           if(op==='lib-npc-save'&&editor){const g=n=>editor.querySelector(`[name="${n}"]`),chk=n=>{const el=g(n);return el?(el.type==='checkbox'?el.checked:el.value==='on'):false;};data={name:g('npcName')?.value,role:g('npcRole')?.value,regionId:g('npcRegion')?.value,placeId:g('npcPlace')?.value,scene:g('npcScene')?.value??'',guildUuid:g('npcGuildUuid')?.value,guild:g('npcGuild')?.value,note:g('npcNote')?.value,tokenVisible:chk('npcTokenVisible'),dragon:chk('npcDragon'),militar:chk('npcMilitar'),markup:g('npcMarkup')?.value,shopNote:g('npcShopNote')?.value,forgeEnabled:chk('npcForgeEnabled'),forgeMarkup:g('npcForgeMarkup')?.value};}
           if(op==='lib-npc-stock-add'&&editor)data={uuid:editor.querySelector('[name="npcStockUuid"]')?.value,price:editor.querySelector('[name="npcStockPrice"]')?.value===''?null:Number(editor.querySelector('[name="npcStockPrice"]')?.value),qty:editor.querySelector('[name="npcStockQty"]')?.value===''?null:Number(editor.querySelector('[name="npcStockQty"]')?.value)};
           if(op==='lib-npc-create-item'&&editor)data={name:editor.querySelector('[name="npcItemName"]')?.value,category:editor.querySelector('[name="npcItemCategory"]')?.value,price:editor.querySelector('[name="npcItemPrice"]')?.value,volume:editor.querySelector('[name="npcItemVolume"]')?.value};
@@ -268,7 +270,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     if(['monsterImport','itemImport','guildImport','rumorText','regionSceneInfo','rumorEditText'].includes(name)||/^(monster|item|guild|npc)CardSize$/.test(name))return;
     // mesma armadilha no editor de NPC: nome, nota, margens e caixas de item só são lidos
     // quando o botão é clicado, então re-renderizar no blur devolvia o valor antigo.
-    if(['npcName','npcNote','npcGuild','npcShopNote','npcMarkup','npcForgeMarkup','npcTokenVisible','npcDragon','npcForgeEnabled','npcStockPrice','npcStockQty','npcItemName','npcItemPrice','npcItemVolume','npcLinkText','npcLinkNote','npcGenCount','npcNoteText','npcNoteShared','npcRole2'].includes(name))return;
+    if(['npcName','npcNote','npcGuild','npcShopNote','npcMarkup','npcForgeMarkup','npcTokenVisible','npcDragon','npcForgeEnabled','npcStockPrice','npcStockQty','npcItemName','npcItemPrice','npcItemVolume','npcLinkText','npcLinkNote','npcGenCount','npcNoteText','npcNoteShared','npcRole2','shopPrice','shopQty','shopQtyMax'].includes(name))return;
     if(name==='libraryQuery'||name==='libraryCategory'){this.library.filter(this.element);return;}
     if(event.target.matches?.('[data-monster-facet]')){
       const facet=event.target.dataset.monsterFacet,checked=Array.from(this.element.querySelectorAll(`[data-monster-facet="${facet}"]:checked`)).map(input=>input.value);
