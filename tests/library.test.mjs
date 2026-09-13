@@ -185,7 +185,7 @@ test('todo NPC gerado aparece direto, edita sem adoção e protege Actor com don
   const first=makeActor('a'),owned=makeActor('b',true),library=new CampaignLibrary({user:{isGM:true},actors:[first,owned]},{items:[]});
   const html=library.render('npcs');
   assert.match(html,/Guia de Kravokia/);assert.doesNotMatch(html,/Detectados nas pastas|Adotar todos|Ativar|Inativo/);
-  assert.match(html,/draggable="true" data-drag-actor="Actor\.a"/);assert.match(html,/sy-library-thumb/);
+  assert.match(html,/draggable="true" data-drag-actor="Actor\.a"/);assert.match(html,/sy-npc-portrait-card/);
   assert.match(html,/data-op="lib-npc-edit" data-id="a"/);
   assert.match(html,/data-op="lib-npc-delete" data-id="a"/);
   assert.doesNotMatch(html,/data-op="lib-npc-delete" data-id="b"/);

@@ -26,6 +26,7 @@ const VOCAB = {
   sacerdote: 'priest', sacerdotisa: 'priestess', clérigo: 'cleric', clerigo: 'cleric', acólito: 'acolyte', acolito: 'acolyte', monge: 'monk', druida: 'druid', xamã: 'shaman', xama: 'shaman', oráculo: 'oracle', oraculo: 'oracle', vidente: 'seer', profeta: 'prophet', místico: 'mystic', mistico: 'mystic', cultista: 'cultist', ritualista: 'ritualist',
   curandeiro: 'healer', curandeira: 'healer', médico: 'physician', medico: 'physician', boticário: 'apothecary', boticario: 'apothecary', herbalista: 'herbalist', enfermeiro: 'medic',
   pescador: 'fisher', pescadora: 'fisher', marinheiro: 'sailor', nauta: 'sailor', navegante: 'mariner', pirata: 'pirate', corsário: 'pirate', corsario: 'pirate', contrabandista: 'smuggler', estivador: 'dockworker', recife: 'sailor', arquipelago: 'sailor', ilha: 'sailor', barco: 'sailor', navio: 'sailor', vela: 'sailor', capita: 'captain', timoneiro: 'sailor', naufrago: 'sailor',
+  artesao: 'artisan', artesa: 'artisan', habitante: 'villager', morador: 'villager', moradora: 'villager', devoto: 'priest', devota: 'priestess', figurante: 'commoner',
   picareta: 'miner', mina: 'miner', mineracao: 'miner', geologo: 'miner', domador: 'hunter', domadora: 'hunter', farejador: 'tracker', farejadora: 'tracker', guardia: 'guard', guardiao: 'guard', governador: 'noble', conselheiro: 'diplomat', conselheira: 'diplomat', capataz: 'worker', eremita: 'hermit', herdeira: 'noble', herdeiro: 'noble',
   agricultor: 'farmer', fazendeiro: 'farmer', camponês: 'peasant', campones: 'peasant', pastor: 'shepherd', lenhador: 'lumberjack', minerador: 'miner', mineiro: 'miner', pedreiro: 'bricklayer', carpinteiro: 'carpenter', padeiro: 'baker', cozinheiro: 'cook', açougueiro: 'butcher', cervejeiro: 'brewer', taverneiro: 'innkeeper', taberneiro: 'innkeeper', estalajadeiro: 'innkeeper', criado: 'servant', criada: 'maid', mordomo: 'butler',
   mendigo: 'beggar', vagabundo: 'vagrant', órfão: 'urchin', orfao: 'urchin', ladrão: 'thief', ladra: 'thief', gatuno: 'rogue', trapaceiro: 'scoundrel', bandido: 'bandit', salteador: 'brigand', assassino: 'assassin', assassina: 'assassin', espião: 'spy', espia: 'spy', informante: 'spy', batedor: 'scout', explorador: 'scout', exploradora: 'scout', guia: 'scout', caçador: 'hunter', caçadora: 'hunter', rastreador: 'tracker', trapper: 'trapper',
@@ -36,6 +37,28 @@ const VOCAB = {
   barbudo: 'bearded', barba: 'bearded', encapuzado: 'hooded', encapuzada: 'hooded', capuz: 'hooded', manto: 'cloaked', capa: 'cloaked', armadura: 'armored', blindado: 'armored', robe: 'robed', túnica: 'robed', tunica: 'robed', mascarado: 'masked', máscara: 'masked', mascara: 'masked', cicatriz: 'scarred', tatuado: 'tattooed', tatuagem: 'tattooed', cego: 'blind', selvagem: 'wild', grisalho: 'grizzled', severo: 'stern', bravo: 'angry', irritado: 'angry', sorridente: 'smiling', sorrindo: 'smiling', misterioso: 'mysterious', bêbado: 'drunk', bebado: 'drunk',
   aldeão: 'villager', aldea: 'villager', cidadão: 'citizen', cidada: 'citizen', plebeu: 'commoner', plebeia: 'commoner', trabalhador: 'worker', operário: 'worker', operario: 'worker', nômade: 'nomad', nomade: 'nomad', andarilho: 'wanderer', errante: 'wanderer', peregrino: 'pilgrim', viajante: 'traveller', refugiado: 'refugee', bárbaro: 'barbarian', barbaro: 'barbarian', tribal: 'tribal', desertor: 'soldier', fugitivo: 'rogue', maltrapilho: 'beggar',
   corvo: 'raven', lobo: 'wolf', urso: 'bear', raposa: 'fox', gato: 'feline', serpente: 'snake',
+};
+// O papel vem em inglês na ficha (role: 'artisan', 'extra'...) e quase todo NPC tem um,
+// mesmo sem bio nenhuma — é a pista mais confiável que existe hoje.
+const ROLE_KW = {
+  merchant: ['merchant', 'shopkeeper', 'trader'], smith: ['blacksmith', 'smith', 'armorer'],
+  guard: ['guard', 'soldier', 'watchman'], scholar: ['scholar', 'sage', 'scribe'],
+  healer: ['healer', 'physician', 'apothecary', 'priest', 'robed', 'cleric'], clergy: ['priest', 'acolyte', 'monk'],
+  artisan: ['artisan', 'craftsman', 'carpenter', 'worker'], noble: ['noble', 'lord', 'courtier'],
+  spy: ['spy', 'rogue', 'scout'], informant: ['spy', 'rogue', 'beggar'],
+  mercenary: ['mercenary', 'warrior', 'veteran'], diplomat: ['diplomat', 'courtier', 'emissary', 'noble', 'robed'],
+  usurer: ['merchant', 'noble'], authority: ['noble', 'captain', 'lord'],
+  ally: ['commoner', 'villager'], rival: ['rogue', 'scoundrel'],
+  extra: ['commoner', 'villager', 'peasant', 'citizen'],
+};
+// Legado do Skyfall → raça mais próxima no pacote de tokens (human, elf, dwarf, goblin,
+// orc, tiefling, halfling, dragonborn, kobold, kenku, gnome, gnoll, halforc, beastfolk).
+// É aproximação deliberada: o pacote não tem arte específica pra cada legado de Opath.
+const LEGACY_RACE = {
+  walshie: 'gnome', elfe: 'elf', jotun: 'orc', gnomo: 'gnome', herculen: 'orc',
+  tatsunoko: 'dragonborn', sanguir: 'tiefling', draco: 'dragonborn', humani: 'human',
+  querub: 'human', petalin: 'elf', kishin: 'kenku', tora: 'dwarf', naga: 'kobold',
+  anuro: 'beastfolk', urodelo: 'beastfolk',
 };
 const stripTags = s => String(s || '').replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ');
 const norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -55,6 +78,11 @@ function keywords(npc) {
   }
   // pistas de raça no nome/bio completo também
   for (const [pt, en] of Object.entries(RACE)) if (!race && norm(bio).includes(pt)) race = en;
+  // legado da própria ficha manda mais que qualquer palpite de texto
+  const legado = norm(String(npc.legacy || '').replace(/[^A-Za-zÀ-ÿ ]/g, '')).trim();
+  if (legado && LEGACY_RACE[legado]) race = LEGACY_RACE[legado];
+  // papel da ficha: quase todo NPC tem, mesmo sem bio
+  for (const k of ROLE_KW[String(npc.role || '').trim()] || []) kw.add(k);
   let sex = '';
   if (/\bela\b|feminin|mulher|senhora|dama/.test(text)) sex = 'f';
   else if (/\bele\b|masculin|homem|senhor|rapaz/.test(text)) sex = 'm';

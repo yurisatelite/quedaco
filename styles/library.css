@@ -222,7 +222,7 @@
 /* T-card-padrao — mesmo tamanho pra todo card de NPC: nome+nível numa linha, tags
    numa faixa fixa embaixo (até 2 linhas, o resto corta), local vira selo cheio à direita */
 .sy-creator .sy-npc-card{min-height:0}
-.sy-creator .sy-npc-card-grid{grid-template-columns:44px minmax(0,1fr) auto;align-items:start}
+
 .sy-creator .sy-npc-identity{display:flex;flex-direction:column;gap:4px;min-width:0}
 .sy-creator .sy-npc-identity-top{display:flex;align-items:center;gap:6px;min-width:0}
 .sy-creator .sy-npc-identity-top>strong{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
@@ -347,3 +347,16 @@
 .sy-creator .sy-locality-places{display:flex;flex-wrap:wrap;gap:5px}
 .sy-creator .sy-locality-place{width:auto;margin:0;padding:3px 9px;font-size:11px;background:#16202b;border:1px solid #3a495b;color:#b6c8d6}
 .sy-creator .sy-locality-place.is-on{background:#123a2a;border-color:#4fca8f;color:#a9f2cf}
+
+/* ── Cartão de NPC: retrato 3:4 à esquerda, tudo o mais empurrado pra direita ── */
+.sy-creator .sy-npc-card .sy-library-card-content{padding:0}
+.sy-creator .sy-npc-card-grid{display:grid;grid-template-columns:var(--sy-face,96px) minmax(0,1fr);align-items:stretch;gap:0;min-height:0}
+.sy-creator .sy-npc-portrait-card{display:block;width:100%;height:100%;min-height:calc(var(--sy-face,96px) * 4 / 3);object-fit:cover;object-position:50% 28%;border:0;border-right:1px solid #2c3a49;background:#0f1620}
+.sy-creator .sy-npc-identity{display:flex;flex-direction:column;gap:6px;min-width:0;padding:10px 11px}
+.sy-creator .sy-npc-identity-top{display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:0;padding-right:26px}
+.sy-creator .sy-npc-identity-top>strong{font-size:15px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1 1 auto}
+.sy-creator .sy-npc-tags{display:flex;flex-wrap:wrap;align-items:flex-start;gap:4px;max-height:none;overflow:visible}
+.sy-creator .sy-npc-card .sy-npc-actions{margin:auto 0 0}
+.sy-creator .sy-npc-location-badge{margin-right:0;max-width:none;flex:0 0 auto}
+/* o card do jogador esconde a foto do NPC bloqueado sem tirar ele da lista do mestre */
+.sy-creator .sy-npc-card.is-hidden-npc{opacity:.5;border-style:dashed}

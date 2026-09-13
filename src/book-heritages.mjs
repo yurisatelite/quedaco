@@ -20,6 +20,14 @@ export const HERITAGES={
   Urodelo:['Herança Ácida','Herança Elétrica','Herança Gélida','Herança Ígnea'],
 };
 export const LEGACIES=Object.keys(HERITAGES);
+/** Humani é o único legado com duas melancolias; no cartão vale mais o nome curto delas. */
+export const MELANCOLIA={'Herança Mortalha':"M'bo",'Herança Maresia':'Kia'};
+/** Ícone e cor de cada classe, pra marcar o cartão sem precisar ler o texto. */
+export const CLASS_STYLE={
+  Combatente:{icon:'fa-shield-halved',color:'#c9603f'},
+  Especialista:{icon:'fa-user-secret',color:'#4fa3c7'},
+  Ocultista:{icon:'fa-hat-wizard',color:'#9a6fc4'},
+};
 const chave=value=>String(value??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
 /** Descobre o legado a partir do nome da herança, pra taguear NPC que só tem a herança na ficha. */
 export function legacyOfHeritage(heritage){
