@@ -1,4 +1,5 @@
 import { ABILITIES, wallet, walletTotal } from './rules.mjs';
+import { DEFAULT_ATTITUDE, buyerConditions, itemKind, quote } from './negotiation.mjs';
 export const MODULE_ID='quedaco';
 /** Adapter for the inspected Skyfall 1.0.1 schema. Never reimplements its effects. */
 export function assertCompatible(game) {
@@ -63,7 +64,7 @@ export function embeddedSource(document,originId=null,level=null) {
   if(document.type==='class') {const target=Math.max(1,Math.min(12,Number(level)||1));data.system.level=target;data.system.initial=true;data.system.origin=classOrigins(target);data.system.hitDie.value=target;}
   return data;
 }
-export async function purchaseItem(buyer,merchantActor,entry,qty=1,resolveDocument=globalThis.fromUuid){
+export async function purchaseItem(buyer,merchantActor,entry,qty=1,resolveDocument=globalThis.fromUuid,{haggleWon=false}={}){
   if(!buyer?.isOwner)throw Error('Você não tem acesso de edição ao comprador.');
   if(!Number.isInteger(qty)||qty<1)throw Error('A quantidade deve ser um inteiro positivo.');
   if(!String(entry?.uuid??'').startsWith('Compendium.'))throw Error('A loja só entrega itens vindos de compêndio.');
@@ -74,11 +75,20 @@ export async function purchaseItem(buyer,merchantActor,entry,qty=1,resolveDocume
   const stockEntry=stockIndex>=0?stock[stockIndex]:entry;
   if(Number.isFinite(stockEntry.qty)&&stockEntry.qty<qty)throw Error('A loja não possui essa quantidade.');
   const basePrice=Number(document.system?.price??0),markup=Number(shop.markup??1);
-  const unit=entry.price==null?Math.round(basePrice*(Number.isFinite(markup)&&markup>0?markup:1)):Number(entry.price);
-  if(!Number.isSafeInteger(unit)||unit<0)throw Error('O preço deste item é inválido.');
-  const total=unit*qty,current=walletTotal(buyer.system?.currency??{});
+  const tabelado=entry.price==null?Math.round(basePrice*(Number.isFinite(markup)&&markup>0?markup:1)):Number(entry.price);
+  if(!Number.isSafeInteger(tabelado)||tabelado<0)throw Error('O preço deste item é inválido.');
+  // atitude do mercador + condições do livro na ficha de quem compra
+  const conta=quote({unitBase:tabelado,attitude:shop.attitude??DEFAULT_ATTITUDE,attitudeOverride:shop.attitudeOverride,
+    conditions:buyerConditions(buyer),kind:itemKind(document),haggleWon:Boolean(haggleWon),qty});
+  const unit=conta.unit,total=conta.total,current=walletTotal(buyer.system?.currency??{});
   if(current<total)throw Error('Moeda insuficiente.');
   const source=embeddedSource(document);source.system={...source.system,quantity:qty};
+  // Crime que Compensa troca preço por desgaste: o descritor QUEBRADIÇO é do próprio
+  // sistema Skyfall (chave 'brittle'), então o item comprado assim já nasce marcado.
+  if(conta.brittle){
+    const atuais=Array.from(source.system.descriptors??[]);
+    if(!atuais.includes('brittle'))source.system={...source.system,descriptors:[...atuais,'brittle']};
+  }
   await buyer.update({'system.currency':wallet(current-total)});
   try{await buyer.createEmbeddedDocuments('Item',[source]);}
   catch(error){await buyer.update({'system.currency':wallet(current)});throw error;}
@@ -86,7 +96,7 @@ export async function purchaseItem(buyer,merchantActor,entry,qty=1,resolveDocume
     stock[stockIndex]={...stockEntry,qty:stockEntry.qty-qty};
     await merchantActor.update({[`flags.${MODULE_ID}.npc.shop.stock`]:stock});
   }
-  return {unit,total,remaining:current-total,source};
+  return {unit,total,remaining:current-total,source,quote:conta};
 }
 /** O _preCreate da classe reescreve origin para ['class-01']; refixa a lista completa por update. */
 export async function finalizeClassProgression(actor,targetLevel) {

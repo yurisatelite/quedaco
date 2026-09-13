@@ -399,3 +399,13 @@
 .sy-creator .sy-shop-qty input{width:48px}
 .sy-creator .sy-shop-table button{width:auto;min-width:0;margin:0 1px;padding:3px 7px;font-size:11px}
 .sy-creator .sy-shop-falta{color:#f0a860}
+
+/* ── Barra de negociação na loja: atitude, condições do livro e pechincha ──── */
+.sy-creator .sy-shop-bar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 10px;padding:7px 9px;border-radius:8px;background:#131c27;border-left:3px solid var(--sy-att,#8a99a8)}
+.sy-creator .sy-shop-attitude{padding:2px 9px;border-radius:999px;background:var(--sy-att,#8a99a8);color:#0c1219;font-size:11px;font-weight:700;white-space:nowrap;cursor:help}
+.sy-creator .sy-shop-conds{display:flex;flex-wrap:wrap;gap:5px}
+.sy-creator .sy-shop-conds em{font-style:normal;padding:2px 7px;border-radius:5px;border:1px dashed #6f8fa5;color:#bcd6e6;font-size:11px;cursor:help}
+.sy-creator .sy-shop-bar button{width:auto;margin:0;padding:4px 11px;font-size:11px}
+.sy-creator .sy-shop-haggle{font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px}
+.sy-creator .sy-shop-haggle.is-won{background:#123a2a;color:#a9f2cf;border:1px solid #4fca8f}
+.sy-creator .sy-shop-haggle.is-lost{background:#341c1c;color:#f0b2b2;border:1px solid #b45757}

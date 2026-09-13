@@ -17,6 +17,7 @@ import {generatorScope} from './generator.mjs';
 import {normalizeMonsterInput,normalizeMonsterList,toSkyfallNpc} from './monster-convert.mjs';
 import {normalizeItemList,toSkyfallItemSource} from './item-convert.mjs';
 import {rollLevel} from './npc-level.mjs';
+import {ATTITUDES,DEFAULT_ATTITUDE,buyerConditions} from './negotiation.mjs';
 import {HERITAGES,LEGACIES,MELANCOLIA,CLASS_STYLE,heritagesOf,legacyOfHeritage} from './book-heritages.mjs';
 import {guildKind,guildsForPlace,npcGuildLabel,cleanSeal,guildThemes,GUILD_STANCES,guildMembers,guildLevel} from './guilds.mjs';
 
@@ -482,7 +483,7 @@ export class CampaignLibrary {
   async action(op,id,data={}){
     const openOps=['lib-map','lib-region','lib-place','lib-map-focus','lib-map-zoom','lib-map-reset','lib-map-layer','lib-open-scene','lib-npc-buy','lib-npc-open','lib-forge-clear','lib-forge-add','lib-forge-remove','lib-forge-imbue','lib-forge-tab','lib-forge-pay','lib-forge-base','lib-imbue-pay','lib-guild-open','lib-quest-filter','lib-quest-open',
       // aba de NPCs do jogador: navegar, anotar e marcar a tag do grupo são dele
-      'lib-npc-player-region','lib-npc-note-save','lib-npc-role2'];
+      'lib-npc-player-region','lib-npc-note-save','lib-npc-role2','lib-npc-haggle'];
     if(!openOps.includes(op))this.assertGM();
     if(op==='lib-map'){this.state.mapView=id;this.state.region=null;this.state.place=null;this.state.regionTakeover=false;if(id==='regions')this.state.map={scale:1,tx:0,ty:0,focus:null};}
     if(op==='lib-region'){if(!REGIONS.some(i=>i.id===id)||(!this.game.user?.isGM&&!this.shared.map.includes(id)))return;this.state.mapView='regions';this.state.region=id;this.state.place=null;}
@@ -625,8 +626,11 @@ export class CampaignLibrary {
       if(!actor||npcVisibility({...flag,shared,gm:this.game.user?.isGM})!=='shop')throw Error('Esta loja não está disponível.');
       const entry=flag.shop?.stock?.find(item=>item.uuid===uuid);if(!entry)throw Error('Item fora do estoque.');
       const buyer=this.game.user?.character;if(!buyer)throw Error('Escolha um personagem para seu usuário antes de comprar.');
-      await purchaseItem(buyer,actor,entry,Math.max(1,Number(data.qty)||1));
+      const pechincha=this.state.haggle?.actorId===actor.id?this.state.haggle:null;
+      const compra=await purchaseItem(buyer,actor,entry,Math.max(1,Number(data.qty)||1),undefined,{haggleWon:Boolean(pechincha?.won)});
+      this.anunciarCompra(compra);
     }
+    if(op==='lib-npc-haggle')await this.haggle(id);
   }
   actorById(id){return Array.from(this.game.actors??[]).find(actor=>actor.id===id||actor.uuid===id);}
   npcActors(){return Array.from(this.game.actors??[]).filter(isGeneratedNpc);}
@@ -670,10 +674,39 @@ export class CampaignLibrary {
     const placeId=PLACES.some(place=>place.id===data.placeId)?data.placeId:'',place=PLACES.find(entry=>entry.id===placeId),regionId=place?.regionId??(REGIONS.some(region=>region.id===data.regionId)?data.regionId:'');
     const guildUuid=this.guildActors().some(guild=>guild.uuid===data.guildUuid)?String(data.guildUuid):'';
     const sceneId=data.scene!==undefined?(this.game.scenes?.get?.(String(data.scene))?String(data.scene):''):(current.sceneId??'');
-    const next={...current,role,regionId,placeId,sceneId,guildUuid,guild:String(data.guild??'').trim(),tokenVisible:Boolean(data.tokenVisible),note:String(data.note??''),dragon:Boolean(data.dragon),militar:data.militar===undefined?Boolean(current.militar):Boolean(data.militar),forge:{...current.forge,enabled:Boolean(data.forgeEnabled),markup:Math.max(.1,Number(data.forgeMarkup)||1)},shop:{...current.shop,markup:Math.max(.1,Number(data.markup)||1),note:String(data.shopNote??'')}};
+    const next={...current,role,regionId,placeId,sceneId,guildUuid,guild:String(data.guild??'').trim(),tokenVisible:Boolean(data.tokenVisible),note:String(data.note??''),dragon:Boolean(data.dragon),militar:data.militar===undefined?Boolean(current.militar):Boolean(data.militar),forge:{...current.forge,enabled:Boolean(data.forgeEnabled),markup:Math.max(.1,Number(data.forgeMarkup)||1)},shop:{...current.shop,markup:Math.max(.1,Number(data.markup)||1),note:String(data.shopNote??''),attitude:ATTITUDES[data.attitude]?data.attitude:(current.shop?.attitude??DEFAULT_ATTITUDE),attitudeOverride:String(data.attitudeOverride??'').trim()===''?null:Number(data.attitudeOverride)/100}};
     const update={[`flags.${MODULE_ID}.npc`]:next};if(next.tokenVisible)update.ownership={...(actor.ownership??{}),default:Math.max(1,Number(actor.ownership?.default)||0)};
     const nome=String(data.name??'').trim();if(nome&&nome!==actor.name){update.name=nome;update['prototypeToken.name']=nome;}
     delete next.active;await actor.update(update);this.state.npcActor=actor.id;this.state.npcSaved=actor.id;this.state.npcEditRole=null;this.state.npcEditPlace=null;ui.notifications.info('NPC atualizado.');
+  }
+  /** Avisa na tela o que entrou no preço — o desconto é automático, mas nunca silencioso. */
+  anunciarCompra(compra){
+    const conta=compra?.quote;if(!conta)return;
+    const pct=v=>`${v>0?'+':''}${Math.round(v*100)}%`;
+    const partes=conta.linhas.filter(l=>l.percent).map(l=>`${l.label} ${pct(l.percent)}`);
+    const base=conta.unitBase!==conta.unit?`T$ ${conta.unitBase} → T$ ${conta.unit}`:`T$ ${conta.unit}`;
+    const brittle=conta.brittle?' · o item veio QUEBRADIÇO':'';
+    globalThis.ui?.notifications?.info?.(`${base}${partes.length?` (${partes.join(', ')})`:''}${brittle}`);
+    if(conta.ignoradas?.length)globalThis.ui?.notifications?.warn?.(`Não entrou: ${conta.ignoradas.map(c=>c.label).join(', ')} — depende de pechinchar antes.`);
+  }
+  /** Um teste por cena de compra, como o livro descreve: CAR contra a Proteção de CAR
+   *  do vendedor. Vale enquanto o grupo estiver naquela loja. */
+  async haggle(actorId){
+    const mercador=this.actorById(actorId);if(!mercador)throw Error('Mercador não encontrado.');
+    const buyer=this.game.user?.character;if(!buyer)throw Error('Escolha um personagem para seu usuário antes de pechinchar.');
+    const conds=buyerConditions(buyer).filter(cond=>cond.roll);
+    if(!conds.length)throw Error('Esta personagem não tem nenhuma condição de pechincha na ficha.');
+    const vantagem=conds.some(cond=>cond.advantage);
+    const car=Number(buyer.system?.abilities?.cha?.value)||0;
+    const alvo=Number(mercador.system?.abilities?.cha?.protection?.bonus)||10+(Number(mercador.system?.abilities?.cha?.value)||0);
+    const formula=vantagem?'2d20kh + @car':'1d20 + @car';
+    const rolagem=await new Roll(formula,{car}).evaluate();
+    await rolagem.toMessage({speaker:{alias:buyer.name},flavor:`Pechincha com ${mercador.name} — CAR contra Proteção de CAR (${alvo})${vantagem?' · com vantagem':''}`});
+    const won=rolagem.total>=alvo;
+    this.state.haggle={actorId:mercador.id,won,total:rolagem.total,alvo};
+    globalThis.ui?.notifications?.[won?'info':'warn']?.(won
+      ?`Pechincha aceita (${rolagem.total} contra ${alvo}). O desconto vale nesta loja.`
+      :`Pechincha recusada (${rolagem.total} contra ${alvo}). Preço de tabela.`);
   }
   /** Ajuste fino de uma linha do estoque: quantidade atual, capacidade e preço.
    *  `qty` null continua significando estoque sem limite. */
@@ -861,7 +894,14 @@ export class CampaignLibrary {
   }
   npcStockCard(actor,flag,player){
     const stock=flag.shop?.stock??[];if(flag.role!=='merchant')return '';
-    return `<div class="sy-shop-stock">${flag.shop?.note?`<p>${e(flag.shop.note)}</p>`:''}${stock.map(item=>{const entry=this.catalog?.entry?.(item.uuid)??this.catalog?.items?.find(i=>i.uuid===item.uuid),name=entry?.name??item.uuid,price=item.price??entry?.system?.price??0,drag=String(item.uuid).startsWith('Compendium.')?` draggable="true" data-drag-item="${e(item.uuid)}" title="Arraste para uma ficha ou diálogo"`:'';return `<article${drag}><span><strong>${e(name)}</strong><small>T$ ${e(price)}${item.qty==null?'':' · '+e(item.qty)+' restantes'}</small></span>${player?`<input type="number" min="1" value="1" aria-label="Quantidade"><button data-op="lib-npc-buy" data-id="${e(actor.id)}|${e(item.uuid)}|1">Comprar</button>`:''}</article>`;}).join('')||'<small>Estoque vazio.</small>'}</div>`;
+    // pechincha: um teste por cena, e a conta aparece aberta antes de comprar
+    const buyer=this.game.user?.character;
+    const conds=buyer?buyerConditions(buyer):[];
+    const pechincha=this.state.haggle?.actorId===actor.id?this.state.haggle:null;
+    const podePechinchar=conds.some(cond=>cond.roll)&&!pechincha;
+    const atitude=flag.shop?.attitude??DEFAULT_ATTITUDE,estilo=ATTITUDES[atitude]??ATTITUDES[DEFAULT_ATTITUDE];
+    const barra=`<div class="sy-shop-bar"><span class="sy-shop-attitude" style="--sy-att:${e(estilo.color)}" title="${e(estilo.hint)}">${e(estilo.label)}</span>${conds.length?`<span class="sy-shop-conds">${conds.map(cond=>`<em title="${e(cond.note)}">${e(cond.label)}</em>`).join('')}</span>`:''}${podePechinchar?button('npc-haggle',actor.id,'🎲 Pechinchar'):''}${pechincha?`<span class="sy-shop-haggle ${pechincha.won?'is-won':'is-lost'}">${pechincha.won?`Pechincha aceita (${e(pechincha.total)} × ${e(pechincha.alvo)})`:`Pechincha recusada (${e(pechincha.total)} × ${e(pechincha.alvo)})`}</span>`:''}</div>`;
+    return `<div class="sy-shop-stock">${barra}${flag.shop?.note?`<p>${e(flag.shop.note)}</p>`:''}${stock.map(item=>{const entry=this.catalog?.entry?.(item.uuid)??this.catalog?.items?.find(i=>i.uuid===item.uuid),name=entry?.name??item.uuid,price=item.price??entry?.system?.price??0,drag=String(item.uuid).startsWith('Compendium.')?` draggable="true" data-drag-item="${e(item.uuid)}" title="Arraste para uma ficha ou diálogo"`:'';return `<article${drag}><span><strong>${e(name)}</strong><small>T$ ${e(price)}${item.qty==null?'':' · '+e(item.qty)+' restantes'}</small></span>${player?`<input type="number" min="1" value="1" aria-label="Quantidade"><button data-op="lib-npc-buy" data-id="${e(actor.id)}|${e(item.uuid)}|1">Comprar</button>`:''}</article>`;}).join('')||'<small>Estoque vazio.</small>'}</div>`;
   }
   /** Retrato do cartão: coluna à esquerda em 3:4, preenchida por inteiro. */
   npcPortrait(actor){
@@ -1129,7 +1169,9 @@ export class CampaignLibrary {
     const guilds=this.guildActors(),guildLabel=npcGuildLabel(flag,guilds);
     const guildOptions=guilds.map(guild=>`<option value="${e(guild.uuid)}" ${flag.guildUuid===guild.uuid?'selected':''}>${e(guild.name)}</option>`).join('');
     const portrait=this.image('npc',actor.name,actor.img,'icons/svg/mystery-man.svg');
-    const shopFields=role==='merchant'?`<label>Margem da loja<input type="number" name="npcMarkup" min="0.1" step="0.1" value="${e(flag.shop?.markup??1)}"></label><label>Apresentação da loja<textarea name="npcShopNote">${e(flag.shop?.note??'')}</textarea></label>`:`<input type="hidden" name="npcMarkup" value="${e(flag.shop?.markup??1)}"><input type="hidden" name="npcShopNote" value="${e(flag.shop?.note??'')}">`;
+    const atitudeAtual=flag.shop?.attitude??DEFAULT_ATTITUDE;
+    const atitudeSel=`<label>Atitude com o grupo<select name="npcAttitude">${Object.entries(ATTITUDES).map(([id,estilo])=>`<option value="${e(id)}" ${atitudeAtual===id?'selected':''}>${e(estilo.label)} (${estilo.modifier>0?'+':''}${Math.round(estilo.modifier*100)}%)</option>`).join('')}</select><small class="sy-hint-inline">${e(ATTITUDES[atitudeAtual]?.hint??'')}</small></label><label>Ajuste próprio de preço<input type="number" name="npcAttitudeOverride" step="5" placeholder="use o sugerido" value="${flag.shop?.attitudeOverride==null?'':e(Math.round(Number(flag.shop.attitudeOverride)*100))}"><small class="sy-hint-inline">Em %. O livro diz que a atitude mexe no preço, mas não tabela quanto — aqui você manda.</small></label>`;
+    const shopFields=role==='merchant'?`${atitudeSel}<label>Margem da loja<input type="number" name="npcMarkup" min="0.1" step="0.1" value="${e(flag.shop?.markup??1)}"></label><label>Apresentação da loja<textarea name="npcShopNote">${e(flag.shop?.note??'')}</textarea></label>`:`<input type="hidden" name="npcMarkup" value="${e(flag.shop?.markup??1)}"><input type="hidden" name="npcShopNote" value="${e(flag.shop?.note??'')}">`;
     const forgeFields=role==='smith'?`<label class="sy-inline-check"><input type="checkbox" name="npcForgeEnabled" ${flag.forge?.enabled?'checked':''}> Forja habilitada</label><label>Margem da forja<input type="number" name="npcForgeMarkup" min="0.1" step="0.1" value="${e(flag.forge?.markup??1)}"></label>`:`<input type="hidden" name="npcForgeEnabled" value="${flag.forge?.enabled?'on':''}"><input type="hidden" name="npcForgeMarkup" value="${e(flag.forge?.markup??1)}">`;
     return `<section class="sy-library-detail sy-npc-editor" data-npc-editor="${e(actor.id)}"><img class="sy-npc-editor-portrait" src="${e(portrait.src)}" alt="" loading="lazy"${portrait.fallbacks.length?` data-fallback-srcs="${e(portrait.fallbacks.join('||'))}"`:''}><div class="sy-npc-editor-head"><h3>Editar · ${e(actor.name)}</h3><span class="sy-npc-saved" ${this.state.npcSaved===actor.id?'':'hidden'}>✓ salvo</span>${button('npc-open',actor.id,'Abrir ficha')}${button('npc-close',actor.id,'Fechar edição')}</div>${(npcStatBadges(actor)||npcAspectChips(actor)||guildLabel)?`<div class="sy-npc-editor-summary">${npcStatBadges(actor)}<div class="sy-npc-tags">${(()=>{const {legacy,heritage,melancolia,klass}=this.npcLegacy(actor);const cs=CLASS_STYLE[klass];const hl=melancolia||heritage;return `${cs?tagChip(cs.icon,cs.color,klass):''}${legacy?tagChip('fa-dna','#8f7ad4',hl?`${legacy} · ${hl}`:legacy):''}`;})()}</div><div class="sy-npc-chip-row">${npcAspectChips(actor)}${guildLabel?`<span class="sy-npc-chip sy-npc-chip-guild" title="Guilda / Hansa"><b>Guilda</b>${e(guildLabel)}</span>`:''}</div></div>`:''}${suggestedPlace?`<p class="sy-hint"><span>Local sugerido: <strong>${e(suggestedPlace.name)}</strong></span>${button('npc-place-accept',`${actor.id}:${suggestedPlace.id}`,'Usar local sugerido')}</p>`:''}<div class="sy-npc-form"><label>Nome<input name="npcName" value="${e(actor.name)}"></label><label>Papel<select name="npcRole">${roleOptions}</select></label><label>Região<select name="npcRegion" ${placeId?'disabled':''}><option value="">Sem região</option>${regionOptions}</select>${placeId?`<small class="sy-hint-inline">Definida pelo local: ${e(PLACES.find(p=>p.id===placeId)?.name??'')}</small>`:''}</label><label>Local<select name="npcPlace"><option value="">Sem local</option>${placeOptions}</select>${placeId?'':'<small class="sy-hint-inline">Ao escolher o local, a região é preenchida sozinha.</small>'}</label>${sceneOptions?`<label>Mapa / cena<select name="npcScene"><option value="">— toda a região —</option>${sceneOptions}</select></label>`:`<input type="hidden" name="npcScene" value="${e(flag.sceneId??'')}">`}<label>Guilda / Hansa da mesa<select name="npcGuildUuid"><option value="">Nenhuma ficha vinculada</option>${guildOptions}</select></label><label>Outra Guilda / Hansa<input name="npcGuild" value="${e(flag.guild??'')}" placeholder="Nome livre"></label><label>Nota<textarea name="npcNote">${e(flag.note??'')}</textarea></label><label class="sy-inline-check"><input type="checkbox" name="npcTokenVisible" ${flag.tokenVisible!==false?'checked':''}> Jogadores podem ver o token</label><label class="sy-inline-check"><input type="checkbox" name="npcDragon" ${flag.dragon?'checked':''}> 🐉 Dragão</label>${shopFields}${forgeFields}</div>${button('npc-save',actor.id,'Salvar NPC')}${this.npcInventory(actor)}<details class="sy-library-guide"><summary>Loja${stock.length?` · ${stock.length} linha(s)`:''}${(()=>{const f=stock.filter(it=>it.qtyMax!=null&&Number(it.qty||0)<it.qtyMax).length;return f?` · ${f} em falta`:'';})()}</summary><div class="sy-library-share-row">${button('npc-shop-refill',actor.id,'Repor tudo até a capacidade')}${button('npc-shop-stock-locality',actor.id,'Sugerir estoque pela localidade')}</div><table class="sy-shop-table"><thead><tr><th>Item</th><th>Preço</th><th>Tem</th><th>Cap.</th><th>Falta</th><th></th></tr></thead><tbody>${stock.map(item=>{const entry=this.catalog?.entry?.(item.uuid)??this.catalog?.items?.find(i=>i.uuid===item.uuid);const nome=entry?.name??String(item.uuid).split('.').pop();const falta=item.qtyMax!=null?Math.max(0,item.qtyMax-Number(item.qty||0)):null;const id=`${actor.id}|${item.uuid}`;return `<tr class="${falta?'is-falta':''}"><td title="${e(item.uuid)}">${e(nome)}</td><td><input type="number" min="0" name="shopPrice" data-id="${e(id)}" value="${item.price==null?'':e(item.price)}" placeholder="tabela"></td><td class="sy-shop-qty">${item.qty==null?'<small>∞</small>':`${button('npc-stock-minus',id,'−')}<input type="number" min="0" name="shopQty" data-id="${e(id)}" value="${e(item.qty)}">${button('npc-stock-plus',id,'+')}`}</td><td><input type="number" min="0" name="shopQtyMax" data-id="${e(id)}" value="${item.qtyMax==null?'':e(item.qtyMax)}" placeholder="∞"></td><td>${falta?`<b class="sy-shop-falta">${falta}</b>`:'<small>—</small>'}</td><td>${button('npc-stock-save',id,'✓')}${button('npc-stock-remove',id,'×')}</td></tr>`;}).join('')||'<tr><td colspan="6"><small>Loja vazia. Use "Sugerir estoque pela localidade" ou adicione abaixo.</small></td></tr>'}</tbody></table><p class="sy-note">Preço vazio usa o da tabela do livro. Capacidade vazia = estoque sem limite. "Falta" é o que sumiu desde a última reposição.</p><div class="sy-npc-stock-add"><select name="npcStockUuid"><option value="">Adicionar item…</option>${catalogItems.map(item=>`<option value="${e(item.uuid)}">${e(item.name)} · ${e(item.source)}</option>`).join('')}</select><input name="npcStockPrice" type="number" min="0" placeholder="Preço opcional"><input name="npcStockQty" type="number" min="0" placeholder="Qtd. vazia = infinita">${button('npc-stock-add',actor.id,'Adicionar')}</div></details><details class="sy-library-guide"><summary>Criar item tabelado</summary>${compendium?`<div class="sy-npc-new-item"><input name="npcItemName" placeholder="Nome"><select name="npcItemCategory">${[...new Set(BOOK_ITEMS.map(item=>item.category))].map(category=>`<option>${e(category)}</option>`).join('')}</select><input name="npcItemPrice" type="number" min="0" placeholder="Preço em T$"><input name="npcItemVolume" type="number" min="0" step="0.1" placeholder="Volume">${button('npc-create-item',actor.id,'Criar no compêndio e adicionar')}</div>`:'<p class="sy-alert">Configure “Compêndio de itens do QUEDAÇO” para criar itens tabelados. Nenhum item solto de Mundo será criado.</p>'}</details><details class="sy-library-guide"><summary>Vínculos${linkRows?'':' · nenhum'}</summary>${suggestionRows?`<div class="sy-npc-suggestions"><strong>Detectados na bio</strong>${suggestionRows}</div>`:''}<div class="sy-npc-stock">${linkRows||'<small>Nenhum vínculo.</small>'}</div><div class="sy-npc-link-add"><select name="npcLinkType">${Object.entries(NPC_LINK_TYPES).map(([id,label])=>`<option value="${id}">${label}</option>`).join('')}</select><select name="npcLinkTarget"><option value="">Outro NPC…</option>${marked.map(item=>`<option value="${e(item.uuid)}">${e(item.name)}</option>`).join('')}</select><input name="npcLinkText" placeholder="Ou nome fora da mesa"><input name="npcLinkNote" placeholder="Nota opcional">${button('npc-link-add',actor.id,'Adicionar vínculo')}</div></details></section>`;
   }

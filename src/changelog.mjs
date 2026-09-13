@@ -2,7 +2,7 @@ export const CHANGELOG = [
   {
     version:'0.6.0',
     date:'2026-09-12',
-    title:'Cartão de NPC repaginado, tag do grupo e rumores que usam a sua gente',
+    title:'Vendinhas com negociação, cartão de NPC repaginado e rumores que usam a sua gente',
     notes:[
       'O cartão de NPC foi repaginado: o retrato agora ocupa a altura toda do cartão, em pé, recortado no rosto — e nome, nível, localidade, tags e botões ficam todos à direita.',
       'A classe do NPC ganhou ícone e cor próprios, no cartão e na tela de edição: escudo pro Combatente, olho pro Especialista, chapéu pro Ocultista.',
@@ -14,6 +14,11 @@ export const CHANGELOG = [
       'A busca passou a achar nome com pontuação: digitar "pipi" encontra a P.I.P.I. As guildas também saem em ordem alfabética.',
       'O seletor de mapa/cena some quando a região não tem cena nenhuma vinculada, e passou a oferecer também a cena da cidade do próprio NPC.',
       'A imagem da região ou cidade ficou grande de verdade, em vez de uma faixa fina com a tela vazia embaixo.',
+      'Negociação de preço entrou no módulo, seguindo o livro: cada mercador tem uma atitude com o grupo (hostil, negativo, indiferente, prestativo ou aliado) que mexe no preço, e você ajusta o quanto ela pesa.',
+      'O módulo lê a ficha de quem está comprando e aplica sozinho o que o livro concede — Artimanha de Diplomacia, "Na minha mão é mais barato!" e Crime que Compensa — sempre avisando na tela o que entrou na conta e o que ficou de fora.',
+      'Pechinchar virou um botão na loja: rola CAR contra a Proteção de CAR do vendedor uma vez por visita, como o livro descreve, e o desconto vale enquanto o grupo estiver ali.',
+      'Arma, armadura ou escudo comprado pelo Crime que Compensa já nasce com o descritor QUEBRADIÇO do próprio sistema Skyfall, sem precisar marcar na mão.',
+      'A loja do NPC ganhou controle de verdade: preço, quanto tem, capacidade e quanto está faltando, com botões de mais e menos por item, repor tudo e sugerir estoque pela localidade.',
       'A tabela de rumores voltou a funcionar: além dos que você escreve, o 1d4 sorteia entre doze ganchos montados na hora com os nomes e lugares reais daquela região. Gostou de um? Dá pra guardar como rumor de verdade.'
     ]
   },
