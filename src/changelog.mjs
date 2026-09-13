@@ -1,5 +1,23 @@
 export const CHANGELOG = [
   {
+    version:'0.6.0',
+    date:'2026-09-12',
+    title:'Cartão de NPC repaginado, tag do grupo e rumores que usam a sua gente',
+    notes:[
+      'O cartão de NPC foi repaginado: o retrato agora ocupa a altura toda do cartão, em pé, recortado no rosto — e nome, nível, localidade, tags e botões ficam todos à direita.',
+      'A classe do NPC ganhou ícone e cor próprios, no cartão e na tela de edição: escudo pro Combatente, olho pro Especialista, chapéu pro Ocultista.',
+      'Humani agora mostra a melancolia — M\'bo ou Kia — no lugar do nome comprido da herança.',
+      'Os jogadores podem marcar a segunda tag de cada NPC ("o que essa pessoa é?") conforme vão conhecendo gente. O que você marcar vale mais que o deles.',
+      'Dá pra esconder um NPC específico da visão dos jogadores sem precisar fechar a região inteira: é o olho no cartão, dentro do "Ver como jogador".',
+      'A tela de edição passou a mostrar o inventário do NPC lido direto da ficha, com os itens e o dinheiro somado.',
+      'Trilha, Antecedente, Legado e Classe mostram a descrição ao passar o mouse, sem precisar abrir a ficha.',
+      'A busca passou a achar nome com pontuação: digitar "pipi" encontra a P.I.P.I. As guildas também saem em ordem alfabética.',
+      'O seletor de mapa/cena some quando a região não tem cena nenhuma vinculada, e passou a oferecer também a cena da cidade do próprio NPC.',
+      'A imagem da região ou cidade ficou grande de verdade, em vez de uma faixa fina com a tela vazia embaixo.',
+      'A tabela de rumores voltou a funcionar: além dos que você escreve, o 1d4 sorteia entre doze ganchos montados na hora com os nomes e lugares reais daquela região. Gostou de um? Dá pra guardar como rumor de verdade.'
+    ]
+  },
+  {
     version:'0.5.0',
     date:'2026-09-12',
     title:'Aba de NPCs dos jogadores, monstros importados na lista e acabamento dos cartões',
