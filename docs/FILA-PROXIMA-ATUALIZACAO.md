@@ -22,6 +22,13 @@ depois dela (monstros na aba Monstros, regulador de miniaturas, cartão/editor d
 - Militar sai do editor; Dragão vira marca discreta.
 - Gavetas do editor: Estoque → Criar item → Vínculos (Vínculos por último).
 - Retrato ancorado em 30% da altura pra não cortar o rosto.
+- Aba NPCs do jogador por região, liberação por localidade, anotação individual e
+  coletiva, banner da guilda e "Ver como jogador" pro mestre.
+- Legado e herança no cartão + filtros; melancolia (M'bo / Kia) no lugar da herança
+  crua do Humani; ícone e cor por classe.
+- Cartão de NPC redesenhado: retrato 3:4 à esquerda ocupando a altura toda.
+- Ocultar NPC específico da visão do jogador sem fechar a localidade.
+- Botões de exportar voltaram a funcionar (Foundry 13 tinha removido `saveDataToFile`).
 
 ---
 
@@ -91,6 +98,15 @@ Primavera) + sem corte. Precisa:
 "Bota pra quebrar": mais eixos de filtro em NPCs e localidades — função/papel, legado,
 herança, nível, região, local, guilda.
 
+## T8b — Ficha de profissão do NPC (imersão)
+
+Cada NPC devia carregar o que a profissão dele implica: o que vende e de onde vem o
+estoque, o que faz baixar o preço, o que ele não vende e pra quem, o boato que repete
+de graça, o segredo que só sai com confiança, quem ele teme, quem lhe deve, tique de
+fala e um detalhe sensorial da banca. Protótipo vivo em `flags.quedaco.oficio` do
+Actor "Vendedor" (macro `criar-vendedor-prototipo.js`) — editar à mão, ver o que falta
+e o que sobra, e só então virar interface. **Brainstorm pendente com o Yuri.**
+
 ## T8 — Casamento de tokens dos NPCs
 
 Agora que os níveis estão adequados, refazer o casamento com o pacote local.
@@ -110,3 +126,6 @@ macro de aplicar.
 | `diagnostico-niveis-npcs.js` | Distribuição de nível + checagem de valor estranho no campo. |
 | `diagnostico-npcs-nivel0.js` | Lacunas reais de ficha (Legado/Classe/Antecedente/Trilha). |
 | `diagnostico-npcs-duplicados.js` | Nomes repetidos, separando cópia acidental de coincidência. |
+| `atribuir-herancas.js` | Sorteia herança válida pra quem tem legado e está sem. Prévia primeiro. |
+| `arrumar-nomes-npcs.js` | Limpa marcações NV2/NV3 (apaga o menor, renomeia o maior) e dá sobrenome a quem só tem um nome. Prévia primeiro. |
+| `criar-vendedor-prototipo.js` | Cria o NPC "Vendedor" com o rascunho de campos de profissão (T8b). |
