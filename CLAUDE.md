@@ -10,6 +10,18 @@ Este repositório contém um módulo comunitário de Foundry VTT para Skyfall RP
 - O módulo antigo `skyfall-yuri-criador` foi substituído por `quedaco`.
 - O código local é a fonte de verdade. Não edite diretamente os arquivos do servidor.
 
+## Onde as coisas moram
+
+Tudo do QUEDAÇO vive dentro de `E:\RPG\QUEDACO` (antes o repositório ficava solto em `E:\CODEX-RPG`):
+
+- `E:\RPG\QUEDACO\modulo` — **este repositório**. Abra esta pasta no Claude Code.
+- `E:\RPG\QUEDACO\quedaco` — clone de publicação (o `.git` que vai para o GitHub). Este repositório não tem `remote`.
+- `E:\RPG\QUEDACO\Versões do módulo` — pacotes já publicados.
+- `E:\RPG\QUEDACO\tokens-*`, `npcs`, `Monstros`, `*.zip` — assets da mesa, fora do git.
+- `modulo\.local` — trabalho local fora do git: macros da mesa, texto extraído do livro, índices de token, `fichas-para-casar.json`.
+
+Os utilitários de `tools/` acham a raiz sozinhos (`tools/raiz.mjs`); não volte a chumbar caminho absoluto neles.
+
 ## Regras de trabalho
 
 1. Não invente regras, campos ou opções. Confira `E:/RPG/Skyfall RPG - Livro Básico DIGITAL 1.25.pdf` e o esquema local em `C:/Users/YURI/AppData/Local/FoundryVTT/Data/systems/skyfall`.

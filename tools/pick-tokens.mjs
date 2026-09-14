@@ -7,10 +7,11 @@
 
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from 'node:fs';
 import { join, extname } from 'node:path';
+import { local } from './raiz.mjs';
 
-const FICHAS = process.argv[2] || 'E:/CODEX-RPG/CLAUDE INSTRUÇÕES/fichas-para-casar.json';
-const INDEX = 'E:/CODEX-RPG/.local/tokens-skyfall-index.json';
-const OUT = 'E:/CODEX-RPG/.local/tokens-escolhidos';
+const FICHAS = process.argv[2] || local('fichas-para-casar.json');
+const INDEX = local('tokens-skyfall-index.json');
+const OUT = local('tokens-escolhidos');
 
 const idx = JSON.parse(readFileSync(INDEX, 'utf8'));
 const PACK = idx.root;

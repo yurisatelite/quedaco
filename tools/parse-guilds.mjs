@@ -10,8 +10,9 @@
 // O texto completo NÃO entra no repositório.
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { local } from './raiz.mjs';
 
-const SRC = process.argv[2] || 'E:/CODEX-RPG/.local/guildas-raw-flow.txt';
+const SRC = process.argv[2] || local('guildas-raw-flow.txt');
 const GLUE = [
   [/deAlberich/g, 'de Alberich'], [/emAlberich/g, 'em Alberich'], [/aAlberich/g, 'a Alberich'],
   [/UniversidadeArcana/g, 'Universidade Arcana'], [/T'chuA'mala/g, "T'chu A'mala"],
@@ -107,8 +108,8 @@ for (const r of records) {
   if (r.kind === 'hansa') { r.description = r.description || r.focus; r.truths = r.truths || r.legend; }
 }
 
-mkdirSync('E:/CODEX-RPG/.local', { recursive: true });
-writeFileSync('E:/CODEX-RPG/.local/guildas.json', JSON.stringify(records, null, 1));
+mkdirSync(local(), { recursive: true });
+writeFileSync(local('guildas.json'), JSON.stringify(records, null, 1));
 
 const esc = s => String(s || '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 const actors = records.map(r => ({
@@ -116,7 +117,7 @@ const actors = records.map(r => ({
   system: { motto: r.dogmas.length ? '<ol>' + r.dogmas.map(d => `<li>${esc(d)}</li>`).join('') + '</ol>' : (r.focus ? `<p>${esc(r.focus)}</p>` : ''), blueprints: '' },
   flags: { quedaco: { appendix: { kind: r.kind, creator: r.creator, symbol: r.symbol, seals: r.seals, patron: r.patron, focus: r.focus, legend: r.legend, description: r.description, truths: r.truths, plot: r.plot } } },
 }));
-writeFileSync('E:/CODEX-RPG/.local/guildas-foundry.json', JSON.stringify(actors, null, 1));
+writeFileSync(local('guildas-foundry.json'), JSON.stringify(actors, null, 1));
 
 const g = records.filter(r => r.kind === 'guilda').length;
 console.log(`${records.length} organizações — ${g} guildas, ${records.length - g} hansas`);

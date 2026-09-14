@@ -10,9 +10,10 @@
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import zlib from 'node:zlib';
+import { local } from './raiz.mjs';
 
 const PDF = process.argv[2] || 'E:/RPG/Skyfall RPG - Livro Básico DIGITAL 1.25.pdf';
-const OUT = 'E:/CODEX-RPG/.local/imagens-mesa';
+const OUT = local('imagens-mesa');
 const DUMP = join(OUT, '_extraidas');
 
 /* ---------- PNG mínimo (8 bits, cinza/RGB/RGBA) ---------- */

@@ -7,9 +7,10 @@
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { skyfallCreatureType } from '../src/monster-convert.mjs';
+import { local } from './raiz.mjs';
 
-const INDEX = 'E:/CODEX-RPG/.local/tokens-skyfall-index.json';
-const OUT = 'E:/CODEX-RPG/.local/tokens-escolhidos';
+const INDEX = local('tokens-skyfall-index.json');
+const OUT = local('tokens-escolhidos');
 
 const idx = JSON.parse(readFileSync(INDEX, 'utf8'));
 const PACK = idx.root;

@@ -299,7 +299,7 @@ redonda.
 
 Agora que os níveis estão adequados, refazer o casamento com o pacote local.
 Fluxo já existente: botão "Exportar fichas para casar tokens" na aba NPCs →
-`node tools/pick-tokens.mjs <fichas-para-casar.json>` → `.local/subir-tokens.js` →
+`node tools/pick-tokens.mjs` (lê `.local/fichas-para-casar.json`) → `.local/subir-tokens.js` →
 macro de aplicar.
 
 ---

@@ -2,7 +2,7 @@
 
 ## Claude Code no computador
 
-Abra a pasta `E:\CODEX-RPG` no Claude Code. O arquivo `CLAUDE.md` fornece o contexto do projeto automaticamente. Peça a alteração, revise o diff e exija que os testes e o empacotamento sejam executados.
+Abra a pasta `E:\RPG\QUEDACO\modulo` no Claude Code. O arquivo `CLAUDE.md` fornece o contexto do projeto automaticamente. Peça a alteração, revise o diff e exija que os testes e o empacotamento sejam executados.
 
 Exemplo de pedido:
 
