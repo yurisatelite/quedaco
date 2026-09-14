@@ -37,6 +37,16 @@ depois dela (monstros na aba Monstros, regulador de miniaturas, cartão/editor d
   o valor já salvo) e a caixa redundante "Jogadores podem ver o token" (o olho do
   cartão já é o controle único e agora funciona de verdade).
 
+- **T17 fase 2 inteira** (ver `docs/T17-VENDINHAS-FASE2.md`): preço nas três moedas
+  em todo lugar (`precoFormatado`), cartão de item com cor por categoria, grade de
+  propriedades e selos de descritor, faces da moeda por região (Tabela 3-2), carrinho
+  de compras com fechamento tudo-ou-nada, "Vender pra ele" em qualquer NPC e seletor
+  de atitude + biografia do mestre dentro da visão do jogador (fecha também a T12).
+  Decisão de mesa: a revenda fica nos 50% do livro; os 20% do pedido não entraram.
+- Corrigido: comprar numa loja liberada **por localidade** era recusado ("Esta loja
+  não está disponível") porque a checagem só olhava a liberação individual do NPC. O
+  cartão da loja aparecia e o botão não funcionava. Compra e carrinho agora usam a
+  mesma checagem (`openShop`).
 - Monstros importados (D&D/homebrew) aparecem na aba Monstros e aceitam tag de
   região/local; entram no dossiê regional e no "Adicionar ameaça".
 - Regulador de tamanho das miniaturas em Monstros, Itens, Guildas e NPCs.
@@ -172,11 +182,11 @@ Hoje a aba Mapas e a aba de jogador não usam `npcCard`/`npcPortrait` — são
 renderizações separadas, cartões de tamanhos diferentes, com menos informação. Editar
 um vira editar três lugares. Precisa unificar antes de continuar polindo visual.
 
-## T12 — Barra de atitude: tamanho e função
+## T12 — Barra de atitude: tamanho e função — ✔ feito com o T17 §6
 
-A barra "Indiferente/Hostil/..." que aparece na visão do jogador está ocupando a
-largura toda e não é clicável — precisa virar um controle de verdade pro mestre mudar
-a atitude ali mesmo (ver T17 §6), do tamanho de um badge, não uma barra inteira.
+A barra "Indiferente/Hostil/..." não estica mais até a borda (passou a `inline-flex`,
+só do tamanho do conteúdo) e o mestre tem um seletor de atitude do tamanho de um badge
+dentro da própria visão do jogador, ao lado da biografia. Ver `docs/T17-VENDINHAS-FASE2.md` §6.
 
 ## T13 — Tag secundária: estado inicial e permissão de clique
 
