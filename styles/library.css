@@ -6,10 +6,10 @@
 .sy-creator .sy-library-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;align-items:start;margin:14px 0}
 .sy-creator .sy-monster-grid,.sy-creator .sy-item-grid,.sy-creator .sy-guild-grid,.sy-creator .sy-npc-grid{grid-template-columns:repeat(auto-fill,minmax(var(--sy-card,270px),1fr))}
 .sy-creator .sy-monster-grid .sy-card-figure-full,.sy-creator .sy-item-grid .sy-card-figure-full,.sy-creator .sy-guild-grid .sy-card-figure-full,.sy-creator .sy-npc-grid .sy-card-figure-full{height:calc(var(--sy-card,270px) * 0.85)}
-.sy-creator .sy-monster-size{display:flex;align-items:center;gap:10px;margin:6px 0 14px}
-.sy-creator .sy-monster-size label{display:flex;align-items:center;gap:8px;flex:1;font-size:13px;color:#b9cbdb}
-.sy-creator .sy-monster-size input[type="range"]{flex:1;max-width:280px;accent-color:#35cee9}
-.sy-creator .sy-monster-size-value{font-size:12px;color:#8fd4ee;min-width:44px;text-align:right}
+/* regulador antigo (.sy-monster-size) substituído por .sy-card-size */
+
+
+
 .sy-creator .sy-library-card{position:relative;border:1px solid #3a495b;border-radius:9px;background:#19212c;padding:0;min-width:0;overflow:hidden;overflow-wrap:anywhere}
 .sy-creator .sy-library-card[hidden],.sy-creator .sy-library-no-results[hidden]{display:none!important}
 .sy-creator .sy-library-card h3{font-size:19px;margin:7px 0}
@@ -454,3 +454,18 @@
 .sy-creator .sy-gm-bio summary{cursor:pointer;color:#c8a06a}
 .sy-creator .sy-gm-bio p{margin:5px 0 0;font-size:11px;line-height:1.5;color:#bfd0dd}
 .sy-creator .sy-gm-bio-empty{color:#7d8ea0;font-size:11px}
+
+/* ── Controles do tamanho do próprio conteúdo, não da largura da tela ──────── */
+/* Uma caixa <details> fechada não precisa de uma faixa inteira só pro título:
+   ela encolhe até o texto e só se abre em largura total quando aberta. */
+.sy-creator .sy-library-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0}
+.sy-creator .sy-library-toolbar>button{width:auto;margin:0}
+.sy-creator .sy-library-toolbar>.sy-library-guide{margin:0;padding:8px 13px;width:auto}
+.sy-creator .sy-library-toolbar>.sy-library-guide>summary{font-size:13px}
+.sy-creator .sy-library-toolbar>.sy-library-guide[open]{flex:1 1 100%;padding:18px}
+/* Regulador de miniatura: à direita, do tamanho de um controle, sem "270px" cru. */
+.sy-creator .sy-card-size{display:flex;justify-content:flex-end;margin:6px 0 12px}
+.sy-creator .sy-card-size label{display:inline-flex;align-items:center;gap:7px;margin:0;font-size:12px;color:#8fa4b5;cursor:pointer}
+.sy-creator .sy-card-size i{color:#5b7a8c}
+.sy-creator .sy-card-size input[type="range"]{width:104px;margin:0;padding:0;accent-color:#35cee9}
+@media(max-width:720px){.sy-creator .sy-card-size-label{display:none}}
