@@ -22,7 +22,6 @@ export const NPC_ROLE_STYLE={
   informant:{label:'Informante',icon:'fa-comment-dots',color:'#8fa4b5'}
 };
 export const NPC_ROLES=Object.fromEntries(Object.entries(NPC_ROLE_STYLE).map(([id,value])=>[id,value.label]));
-export const NPC_ROOTS=['🤖 Criados pela IA','🤖 NPCs por Região'];
 export const NPC_LINK_TYPES={pai:'Pai de',mãe:'Mãe de',filho:'Filho de',irmão:'Irmão de',aliado:'Aliado de',conhecido:'Conhecido de',inimigo:'Inimigo de'};
 const SYMMETRIC=new Set(['aliado','conhecido','inimigo']);
 

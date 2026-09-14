@@ -193,7 +193,6 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   async handleClick(event){
     if(!this.element)return;
     const button=event.target.closest('button[data-op]');
-    console.log(MODULE_ID,'clique',button?.dataset?.op,{found:Boolean(button),disabled:button?.disabled,busy:this.busy});
     if(!button||button.disabled||this.busy)return;
     if(button.dataset.op==='lib-open'){try{await this.library.open(button.dataset.id);}catch(error){ui.notifications.warn(error.message);}return;}
     if(button.dataset.op==='lib-region-carousel'){const strip=this.element?.querySelector('.sy-region-carousel');if(strip)strip.scrollBy({left:(button.dataset.id==='next'?1:-1)*240,behavior:'smooth'});return;}
@@ -211,7 +210,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
         if(op==='lib-region-scene-info'){const ta=this.element.querySelector(`[name="regionSceneInfo"][data-id="${CSS.escape(button.dataset.id)}"]`)||this.element.querySelector('[name="regionSceneInfo"]');data={text:ta?.value??''};}
         if(op==='lib-region-rumor-edit-save'){const ta=this.element.querySelector(`[name="rumorEditText"][data-id="${CSS.escape(button.dataset.id)}"]`)||this.element.querySelector('[name="rumorEditText"]');data={text:ta?.value??''};}
         if(op==='lib-monster-habitat-add'){const wrap=button.closest('.sy-dossier-add');data={monsterId:wrap?.querySelector('[name="habitatMonster"]')?.value??''};}
-        if(op==='lib-monster-import'){const ta=this.element.querySelector('[name="monsterImport"]');data={text:ta?.value??''};console.log(MODULE_ID,'lib-monster-import: textarea encontrada?',Boolean(ta),'tamanho do texto:',data.text.length);}
+        if(op==='lib-monster-import'){const ta=this.element.querySelector('[name="monsterImport"]');data={text:ta?.value??''};}
         if(op==='lib-item-import'){const ta=this.element.querySelector('[name="itemImport"]');data={text:ta?.value??''};}
         if(op==='lib-generate-npc-bulk'){data={count:this.element.querySelector('[name="npcGenCount"]')?.value};}
         if(op==='lib-guild-import'){const ta=this.element.querySelector('[name="guildImport"]');data={text:ta?.value??''};}
@@ -232,9 +231,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
           // carrinho e venda leem a quantidade da própria linha, como a compra direta
           if(op==='lib-cart-add'||op==='lib-npc-sell'){const row=button.closest('article');data={qty:row?.querySelector('input[type="number"]')?.value};}
         }
-        console.log(MODULE_ID,'chamando library.action',op,id,data);
         await this.library.action(op,id,data);
-        console.log(MODULE_ID,'library.action terminou',op);
         if(op==='lib-npc-save'){clearTimeout(this._npcSavedTimer);this._npcSavedTimer=setTimeout(()=>{this.library.state.npcSaved=null;if(this.rendered&&this.area==='npcs')this.rerender(true);},1600);}
       }
       if(op==='step'||op==='previous'||op==='next'){const previous=this.step;if(op==='next'&&this.step===7&&!this.attrErrors().length)this.attributesFinalized=true;this.step=op==='step'?Number(button.dataset.index):this.step+(op==='next'?1:-1);this.visited.add(previous);this.visited.add(this.step);this.attentionStep=op==='step'&&!this.stepDone(this.step)?this.step:op==='next'&&!this.stepDone(previous)?previous:null;this.query='';this.detail=null;}

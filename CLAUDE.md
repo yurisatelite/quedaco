@@ -31,7 +31,13 @@ Este repositório contém um módulo comunitário de Foundry VTT para Skyfall RP
 - `src/equipment.mjs`: equipamento inicial, compras, quantidades e volume.
 - `src/rules.mjs`: regras puras de atributos, vida, dinheiro e capacidade.
 - `src/adapter.mjs`: único ponto que cria ou atualiza documentos do Foundry.
+- `src/library.mjs`: painel da Mestra (NPCs, Guildas, Mapa, Monstros, Itens, Imbuir, Quests). Arquivo grande; toda ação da interface passa por `CampaignLibrary.action(op,id,data)`, e `openOps` lista o que o jogador pode disparar.
+- `src/npcs.mjs`: flag `flags.quedaco.npc`, papéis, visibilidade e vínculos entre NPCs.
+- `src/negotiation.mjs`: atitude, condições de desconto do livro, pechincha e revenda.
+- `src/book-*.mjs`: índices de consulta transcritos do livro (mundo, itens, monstros, sigilos, heranças). Dado de referência, nunca regra nova.
+- `src/images.mjs`: resolve imagem por convenção de pasta + nome, com JSON de exceções.
 - `styles/creator.css`: identidade visual Noka e azul-ciano.
+- `styles/library.css`: estilos do painel da Mestra.
 - `tests/`: testes Node sem dependência do Foundry em execução.
 
 ## Comandos
@@ -46,9 +52,9 @@ O pacote resultante fica em `dist/quedaco-<versão>/quedaco`. `npm run release` 
 
 ## Estado funcional
 
-- QUEDAÇO 0.3.2 está instalado no servidor oficial; atualização de 0.3.1 confirmada pela interface do Foundry em 08/09/2026.
+- Versão do repositório: **0.6.0** (`module.json` e `package.json`). Há trabalho commitado depois dela ainda sem versão publicada — ver `docs/FILA-PROXIMA-ATUALIZACAO.md`.
 - O módulo antigo está desativado no mundo oficial.
-- Jogadores veem Criação de Personagens; a Mestra também vê NPCs, Mapa, Monstros e Quests.
+- Jogadores veem Criação de Personagens e as abas liberadas pela Mestra; ela vê NPCs, Guildas, Mapa, Monstros, Itens, Imbuir e Quests.
 - A progressão 1–12 usa os benefícios registrados nos documentos do sistema. Escolhas descritas apenas em prosa ainda exigem implementação e conferência individual.
 - Canal de atualização publicado em `https://github.com/yurisatelite/quedaco`. Siga `docs/ATUALIZACOES.md`: pacote público inclui Outfit/OFL e exclui Noka. Não substitua arquivos de versões publicadas; aumente a versão e publique nova release.
 

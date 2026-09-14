@@ -2,15 +2,17 @@
 
 Módulo de criação de personagens e controle de campanha para Skyfall RPG. A interface usa azul-ciano, fonte Outfit distribuída com licença OFL e Noka opcional na pasta privada da mesa. Títulos usam Semibold e textos usam Medium.
 
-## Estado da versão 0.3.2
+## Estado da versão 0.6.0
 
-O canal de atualização está publicado no GitHub e a atualização de 0.3.1 para 0.3.2 foi confirmada pela interface do Foundry no servidor oficial. Consulte [`docs/ATUALIZACOES.md`](docs/ATUALIZACOES.md) para instalar, atualizar e publicar novas versões. A validação integrada das regras de criação e progressão continua pendente; os testes automatizados não comprovam todos os comportamentos da ficha nativa.
+O canal de atualização está publicado no GitHub. Consulte [`docs/ATUALIZACOES.md`](docs/ATUALIZACOES.md) para instalar, atualizar e publicar novas versões. A validação integrada das regras de criação e progressão continua pendente; os testes automatizados não comprovam todos os comportamentos da ficha nativa.
+
+Depois da 0.6.0 entraram, sem versão publicada ainda: as correções de miniatura, filtros de Monstros e do "Militar apagado ao salvar", e o T17 fase 2 (preço em três moedas, cartão de item com cor por categoria, carrinho de compras, venda para qualquer NPC e atitude editável ao vivo). A fila em aberto vive em [`docs/FILA-PROXIMA-ATUALIZACAO.md`](docs/FILA-PROXIMA-ATUALIZACAO.md).
 
 O criador usa os compêndios autorizados da própria mesa para preservar descrições, imagens e efeitos do sistema. Ele elimina cópias equivalentes do catálogo, prioriza o compêndio **Criação de Personagem** e não oferece documentos soltos de **Mundo** como opções.
 
 O fluxo permite escolher níveis de 1 a 12. Ele reúne os benefícios fixos registrados na classe até o nível escolhido, separa decisões por nível e grava as origens `class-01` a `class-12` que a ficha nativa usa para mostrar a progressão manual. Trilhas escolhidas também abrem os próprios benefícios. O módulo calcula vida e ênfase e permite usar o valor fixo ou rolar os dados de vida dos níveis adicionais.
 
-Jogadores veem somente **Criação de Personagens**. A Mestra também vê as estruturas iniciais de **NPCs**, **Mapa**, **Monstros**, **Itens** e **Quests**. O painel híbrido ligará esses cartões a documentos nativos do Foundry.
+Jogadores veem **Criação de Personagens** e as abas que a Mestra liberar. A Mestra vê **NPCs**, **Guildas**, **Mapa**, **Monstros**, **Itens**, **Imbuir** e **Quests**, e libera cada aba (e cada região, localidade ou NPC) separadamente.
 
 A interface preserva a rolagem durante escolhas, mantém a navegação inferior fixa, mostra carregamento em operações demoradas e usa cartões compactos com descrições acessíveis pelo botão `?`. A loja só é liberada depois que o equipamento inicial for finalizado, separa os itens por categoria e mantém um carrinho visível.
 

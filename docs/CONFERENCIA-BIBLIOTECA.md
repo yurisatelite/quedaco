@@ -1,6 +1,6 @@
 # Conferência da Biblioteca 0.4.0 — dados × Livro Básico
 
-> Complemento de 09/09/2026: as três pendências de leitura visual foram verificadas no PDF original. P. 457 confirma Braço do Pesadelo ND 9; p. 357 descreve a Trilha dos Onze Berrantes; p. 369 menciona o mar gelado de Güngii. Essas dúvidas de OCR/referência estão encerradas. Para estado atual e fila de trabalho, usar `docs/CONTINUAR-QUEDACO.md`; este documento preserva a auditoria histórica da biblioteca.
+> Complemento de 09/09/2026: as três pendências de leitura visual foram verificadas no PDF original. P. 457 confirma Braço do Pesadelo ND 9; p. 357 descreve a Trilha dos Onze Berrantes; p. 369 menciona o mar gelado de Güngii. Essas dúvidas de OCR/referência estão encerradas. Para estado atual e fila de trabalho, usar `docs/FILA-PROXIMA-ATUALIZACAO.md`; este documento preserva a auditoria histórica da biblioteca.
 
 Passe de verificação linha a linha dos dados de consulta (`src/book-world.mjs`,
 `src/book-monsters.mjs`, `src/book-items.mjs`, `src/book-sigils.mjs`) contra o texto

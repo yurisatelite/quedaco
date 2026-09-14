@@ -5,7 +5,6 @@ const CITY_KINDS=new Set([
   'cidade soterrada','cidades historicas','capital em ruinas','ilha','fazenda','mercado'
 ]);
 
-export const DOSSIER_BLOCKS=Object.freeze(['cover','places','fauna','threats','quests','knownNpcs','territoryNpcs','rumors']);
 
 export function placeLayer(kind){
   const key=normalized(kind);

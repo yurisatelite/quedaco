@@ -1,4 +1,4 @@
-import {REGIONS,PLACES,BEYOND,coinFaces} from './book-world.mjs';
+import {REGIONS,PLACES,BEYOND,COIN_COMMON,coinFaces} from './book-world.mjs';
 import {BASE_ITEMS,MODIFICATION_GUIDES,SIGIL_COSTS,IMBUE_COSTS} from './book-items.mjs';
 import {SIGILS} from './book-sigils.mjs';
 import {MONSTERS} from './book-monsters.mjs';
@@ -892,18 +892,14 @@ export class CampaignLibrary {
     const actor=await Actor.create({name,type:'character',img:this.image('npc',name,'','icons/svg/mystery-man.svg').src,flags:{[MODULE_ID]:{npc:flag}},prototypeToken:{actorLink:true}});if(actor)this.state.npcActor=actor.id;return actor;
   }
   async importMonster(input){
-    console.log(MODULE_ID,'importMonster: chamado, tamanho do input:',String(input??'').length);
     this.assertGM();
     const mobs=normalizeMonsterList(input);
-    console.log(MODULE_ID,'importMonster: normalizados:',mobs.length,mobs.map(m=>m.name));
     if(!mobs.length)throw Error('Não reconheci o bloco. Cole o JSON do 5e.tools / Open5e (um objeto ou a lista [ ... ] inteira) ou o texto do statblock.');
     if(mobs.length===1){
       const mob=mobs[0];
       if(!Object.keys(mob.abilities||{}).length&&!mob.cr&&!mob.ac)throw Error(`Li o nome "${mob.name}" mas não achei atributos, CR nem CA. Confira se o JSON está completo (sem faltar o "]" ou "}" no fim).`);
       const source=toSkyfallNpc(mob),token={actorLink:true,texture:{src:'icons/svg/mystery-man.svg'}};
-      console.log(MODULE_ID,'importMonster: criando Actor...',source.name);
       const actor=await Actor.create({...source,prototypeToken:token});
-      console.log(MODULE_ID,'importMonster: Actor.create retornou',actor?.id,actor?.name);
       if(!actor?.id)throw Error('O Foundry não criou a ficha.');
       globalThis.ui?.notifications?.info?.(`"${actor.name}" criado como ND ${source.system.level.value}. Revise PV, RD e ataques na ficha.`);
       return 1;
@@ -1050,7 +1046,8 @@ export class CampaignLibrary {
     const regionId=flag.regionId||PLACES.find(place=>place.id===flag.placeId)?.regionId||inferRegionId(actor);
     const faces=coinFaces(regionId);if(!faces.length)return '';
     const nome=REGIONS.find(region=>region.id===regionId)?.name||BEYOND.find(entry=>entry.id===regionId)?.name||'';
-    return `<p class="sy-coin-note" title="O valor é o mesmo em toda Opath; só o desenho de uma das faces muda (Tabela 3-2, p. 219)."><i class="fa-solid fa-coins" aria-hidden="true"></i> Moeda ${nome?`de ${e(nome)}`:'daqui'}: ${faces.map(item=>`<span>${e(item.moeda)} ${e(item.face)}</span>`).join(' · ')}</p>`;
+    const verso=`O verso é comum a toda Opath: a Pila traz ${COIN_COMMON.p}; o Kurmac, ${COIN_COMMON.k}.`;
+    return `<p class="sy-coin-note" title="O valor é o mesmo em toda Opath; só o desenho de uma das faces muda (Tabela 3-2, p. 219). ${e(verso)}"><i class="fa-solid fa-coins" aria-hidden="true"></i> Moeda ${nome?`de ${e(nome)}`:'daqui'}: ${faces.map(item=>`<span>${e(item.moeda)} ${e(item.face)}</span>`).join(' · ')}</p>`;
   }
   /** Resumo do carrinho: o que entrou, o total já cotado e se a bolsa cobre. */
   cartBlock(actor,flag){
