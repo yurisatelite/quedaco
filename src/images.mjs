@@ -13,7 +13,10 @@ export function resolveImage(kind,idOrName,{root='',manifest={},documentImg='',f
  // real primeiro. Ela existe, então o navegador nunca chega a pedir os candidatos
  // da pasta (evita centenas de 404 ao abrir o painel). Para forçar um arquivo da
  // pasta, use o quedaco-imagens.json.
- const preferDocument=!exception&&documentImg;
+ // Um NPC sem retrato próprio fica com o placeholder padrão do Foundry no
+ // documento (documentImg===fallback). Isso não conta como "imagem real": sem
+ // essa checagem, o placeholder vence antes de a pasta ter a chance de entrar.
+ const preferDocument=!exception&&documentImg&&documentImg!==fallback;
  const sources=(preferDocument
    ?[documentImg,...folder,fallback]
    :[exception,...folder,documentImg,fallback]).filter(Boolean);

@@ -353,8 +353,8 @@
 
 /* ── Cartão de NPC: retrato 3:4 à esquerda, tudo o mais empurrado pra direita ── */
 .sy-creator .sy-npc-card .sy-library-card-content{padding:0}
-.sy-creator .sy-npc-card-grid{display:grid;grid-template-columns:var(--sy-face,96px) minmax(0,1fr);align-items:stretch;gap:0;min-height:0}
-.sy-creator .sy-npc-portrait-card{display:block;width:100%;height:100%;min-height:calc(var(--sy-face,96px) * 4 / 3);object-fit:cover;object-position:50% 28%;border:0;border-right:1px solid #2c3a49;background:#0f1620}
+.sy-creator .sy-npc-card-grid{display:grid;grid-template-columns:var(--sy-face,calc(var(--sy-card,270px) * .36)) minmax(0,1fr);align-items:stretch;gap:0;min-height:0}
+.sy-creator .sy-npc-portrait-card{display:block;width:100%;height:100%;min-height:calc(var(--sy-face,calc(var(--sy-card,270px) * .36)) * 4 / 3);object-fit:cover;object-position:50% 28%;border:0;border-right:1px solid #2c3a49;background:#0f1620}
 .sy-creator .sy-npc-identity{display:flex;flex-direction:column;gap:6px;min-width:0;padding:10px 11px}
 .sy-creator .sy-npc-identity-top{display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:0;padding-right:26px}
 .sy-creator .sy-npc-identity-top>strong{font-size:15px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1 1 auto}
