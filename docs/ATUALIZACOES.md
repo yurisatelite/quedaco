@@ -10,9 +10,9 @@ Uma instalação manual antiga precisa ser vinculada a esse manifesto uma vez. E
 
 1. Adicione uma entrada no topo de `CHANGELOG`, em `src/changelog.mjs`, usando as mesmas notas da descrição da release.
 2. Aumente a versão em `module.json` e `package.json` e ajuste `download` para a tag correspondente (`vX.Y.Z`). Preserve `manifest`, que deve apontar sempre para `releases/latest/download/module.json`.
-3. Execute `npm test` e revise `git diff --check`.
+3. Execute `npm test` e revise `git diff --check`. **`tests/changelog.test.mjs` fixa a lista de versões esperadas**, então ele falha de propósito a cada release: acrescente a versão nova no início das duas listas de `entriesSince`.
 4. Faça `git add -A`, um único commit da versão e a tag correspondente. Confirme que a tag aponta para o commit e que a árvore está limpa.
-5. Execute `npm run release -- -Public`. O pacote público não inclui arquivos da fonte Noka, documentos privados, PDFs nem conteúdo dos compêndios.
+5. Execute `npm run release -- -Public`, **de dentro de `E:\RPG\QUEDACO\modulo`**. O pacote público não inclui arquivos da fonte Noka, documentos privados, PDFs nem conteúdo dos compêndios. Este passo é o que regera `dist/quedaco.zip` e `dist/module.json`: sem ele, os dois continuam sendo os da versão anterior e você publica a versão velha embaixo da tag nova.
 6. No repositório `yurisatelite/quedaco`, crie uma release dessa tag e anexe `dist/quedaco.zip` e `dist/module.json`.
 7. Publique como a release mais recente. Verifique os dois endereços sem autenticação antes de pedir que usuários atualizem.
 8. Não substitua silenciosamente o ZIP de uma versão publicada. Publique uma nova versão para corrigir problemas.
