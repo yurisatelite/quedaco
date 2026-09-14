@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {REGIONS,PLACES,BEYOND} from '../src/book-world.mjs';
+import {REGIONS,PLACES,BEYOND,COIN_FACES,coinFaces} from '../src/book-world.mjs';
 import {MONSTERS} from '../src/book-monsters.mjs';
-import {BOOK_ITEMS,CampaignLibrary,DEFAULT_GENERATOR_MACRO,findMatches,generatorMacroName,itemFallback,monsterAudit,monsterCategory,monsterMatches} from '../src/library.mjs';
+import {BOOK_ITEMS,CampaignLibrary,DEFAULT_GENERATOR_MACRO,findMatches,generatorMacroName,itemCategoryStyle,itemDescriptors,itemFallback,itemProperties,monsterAudit,monsterCategory,monsterMatches} from '../src/library.mjs';
 import {IMBUE_COSTS} from '../src/book-items.mjs';
 
 test('every region, capital and local breadcrumb resolves within the geographic index',()=>{
@@ -284,4 +284,119 @@ test('NPC de região liberada aparece ao jogador sem ter sido liberado um a um',
  assert.match(library.render('npcs',true),/data-op="lib-npc-player-region" data-id="mirmir"/);
  library.state.npcPlayerRegion='mirmir';
  assert.match(library.render('npcs',true),/Mercador/);
+});
+
+test('cartão de item: cor por categoria, grade só com o que o item tem e selos',()=>{
+  // toda categoria do catálogo tem cor própria; nada cai no cinza de reserva
+  const categorias=[...new Set(BOOK_ITEMS.map(item=>item.category))];
+  for(const categoria of categorias)assert.notEqual(itemCategoryStyle(categoria).color,'#7f8c9b',`categoria sem cor: ${categoria}`);
+  assert.equal(itemCategoryStyle('Categoria inventada').color,'#7f8c9b');
+
+  const espada=BOOK_ITEMS.find(item=>item.name==='Espada longa');
+  const linhas=itemProperties(espada);
+  assert.deepEqual(linhas.filter(row=>row.key==='damage'),[{key:'damage',label:'Dano',value:'1d8'}]);
+  assert.equal(linhas.some(row=>row.key==='reduction'),false,'arma não ganha linha de RD vazia');
+  assert.equal(linhas.find(row=>row.key==='volume').value,'2');
+
+  // volume 0 é um valor de verdade (Funda), não um campo ausente
+  const funda=BOOK_ITEMS.find(item=>item.name==='Funda');
+  assert.equal(itemProperties(funda).find(row=>row.key==='volume').value,'0');
+  assert.equal(itemProperties({}).length,0);
+
+  const malha=itemDescriptors(BOOK_ITEMS.find(item=>item.name==='Cota de malha'));
+  assert.deepEqual(malha.map(item=>item.label),['Pesada','Barulhenta']);
+  assert.ok(malha.every(item=>item.tone==='is-warn'));
+  assert.equal(itemDescriptors({descriptors:'Quebradiço, leve'})[0].tone,'is-danger');
+  assert.deepEqual(itemDescriptors({}),[]);
+});
+
+test('faces da moeda saem da Tabela 3-2 e batem com as regiões do livro',()=>{
+  // valor igual em toda Opath: a tabela é sabor, não uma segunda economia
+  const conhecidas=new Set([...REGIONS,...BEYOND].map(entry=>entry.id));
+  for(const id of Object.keys(COIN_FACES))assert.ok(conhecidas.has(id),`região fora do índice: ${id}`);
+  assert.deepEqual(coinFaces('thurthur'),[{moeda:'T$',face:'Uma luva'},{moeda:'P$',face:'Perfil de águia'},{moeda:'K$',face:'Perfil de um urso'}]);
+  // Kravokia só tem o Trocado na tabela; as faces que faltam não são inventadas
+  assert.deepEqual(coinFaces('mirmir'),[{moeda:'T$',face:'Dois frascos cruzados'}]);
+  assert.deepEqual(coinFaces('regiao-inexistente'),[]);
+  assert.deepEqual(coinFaces(null),[]);
+});
+
+/** Vendinha mínima para exercitar carrinho, atitude e venda pela camada de ações. */
+function vendinha({attitude='indiferente',placeId='alberich'}={}){
+  const stock=[{uuid:'Compendium.x.Item.a',price:100,qty:2}];
+  const merchant={id:'m1',uuid:'Actor.m1',name:'Vendinha',type:'character',system:{},items:[],
+    flags:{quedaco:{npc:{role:'merchant',placeId,regionId:'thurthur',shop:{markup:1,attitude,stock}}}},
+    async update(change){const npc=change['flags.quedaco.npc'];if(npc)this.flags.quedaco.npc=npc;}};
+  const catalog={items:[{uuid:'Compendium.x.Item.a',name:'Espada',type:'weapon',system:{price:100}}],entry(uuid){return this.items.find(item=>item.uuid===uuid);}};
+  return {merchant,stock,catalog};
+}
+const mesaVazia=(user,actors)=>({user,actors,settings:{get:(_m,key)=>key==='sharedContent'?{}:[]}});
+
+test('carrinho junta as linhas da mesma visita e usa a cotação da loja',async()=>{
+  const {merchant,stock,catalog}=vendinha({attitude:'hostil'});
+  const library=new CampaignLibrary(mesaVazia({isGM:true},[merchant]),catalog);
+  await library.action('lib-cart-add','m1|Compendium.x.Item.a',{qty:1});
+  await library.action('lib-cart-add','m1|Compendium.x.Item.a',{qty:1});
+  assert.deepEqual(library.state.cart,{actorId:'m1',lines:[{uuid:'Compendium.x.Item.a',qty:2}]},'a mesma linha soma em vez de duplicar');
+
+  const linha=library.shopLineQuote(merchant,merchant.flags.quedaco.npc,stock[0],2);
+  assert.equal(linha.quote.unit,125,'hostil encarece 25%');
+  assert.equal(linha.quote.total,250,'o total do carrinho já vem cotado');
+
+  // trocar de mercador zera: a cotação (atitude, condição, pechincha) é de uma loja só
+  assert.deepEqual(library.cartFor('outro'),{actorId:'outro',lines:[]});
+  await library.action('lib-cart-remove','m1|Compendium.x.Item.a');
+  assert.equal(library.state.cart.lines.length,0);
+  await library.action('lib-cart-add','m1|Compendium.x.Item.a',{qty:1});
+  await library.action('lib-cart-clear','');
+  assert.deepEqual(library.state.cart,{actorId:'',lines:[]});
+});
+
+test('carrinho recusa item fora do estoque e loja que não está aberta',async()=>{
+  const {merchant,catalog}=vendinha();
+  const library=new CampaignLibrary(mesaVazia({isGM:true},[merchant]),catalog);
+  await assert.rejects(library.action('lib-cart-add','m1|Compendium.x.Item.zzz',{qty:1}),/fora do estoque/);
+  await assert.rejects(library.action('lib-cart-buy','m1'),/vazio/);
+  merchant.flags.quedaco.npc.role='guard';
+  await assert.rejects(library.action('lib-cart-add','m1|Compendium.x.Item.a',{qty:1}),/não está disponível/);
+});
+
+test('loja liberada por localidade também deixa o jogador comprar',async()=>{
+  const {merchant,catalog}=vendinha();
+  const settings={get:(_m,key)=>key==='npcLocalities'?['place:alberich']:key==='sharedContent'?{}:[]};
+  const jogador=new CampaignLibrary({user:{isGM:false},actors:[merchant],settings},catalog);
+  // antes só valia a liberação individual: o cartão da loja aparecia e a compra era recusada
+  await jogador.action('lib-cart-add','m1|Compendium.x.Item.a',{qty:1});
+  assert.equal(jogador.state.cart.lines.length,1);
+
+  const fechada=new CampaignLibrary(mesaVazia({isGM:false},[merchant]),catalog);
+  await assert.rejects(fechada.action('lib-cart-add','m1|Compendium.x.Item.a',{qty:1}),/não está disponível/);
+});
+
+test('atitude muda ao vivo pelo mestre, e só por ele',async()=>{
+  const {merchant,catalog}=vendinha();
+  const mestre=new CampaignLibrary(mesaVazia({isGM:true},[merchant]),catalog);
+  await mestre.action('lib-npc-attitude','m1',{attitude:'aliado'});
+  assert.equal(merchant.flags.quedaco.npc.shop.attitude,'aliado');
+  assert.deepEqual(merchant.flags.quedaco.npc.shop.stock.length,1,'mexer na atitude não apaga o estoque');
+  await mestre.action('lib-npc-attitude','m1',{attitude:'inventada'});
+  assert.equal(merchant.flags.quedaco.npc.shop.attitude,'indiferente','atitude fora da escala volta ao padrão');
+
+  const jogador=new CampaignLibrary(mesaVazia({isGM:false},[merchant]),catalog);
+  await assert.rejects(jogador.action('lib-npc-attitude','m1',{attitude:'aliado'}),/somente/);
+});
+
+test('venda abre para qualquer NPC liberado, e não para NPC fora de alcance',async()=>{
+  const {merchant,catalog}=vendinha();
+  merchant.flags.quedaco.npc.role='guard';// não tem loja, mas compra do grupo
+  const settings={get:(_m,key)=>key==='npcLocalities'?['place:alberich']:key==='sharedContent'?{}:[]};
+  const jogador=new CampaignLibrary({user:{isGM:false},actors:[merchant],settings},catalog);
+  await jogador.action('lib-npc-sell-open','m1');
+  assert.equal(jogador.state.sellActorId,'m1');
+  await jogador.action('lib-npc-sell-open','m1');
+  assert.equal(jogador.state.sellActorId,'','clicar de novo fecha');
+  await assert.rejects(jogador.action('lib-npc-sell','m1|it1',{qty:1}),/personagem/);
+
+  const fechada=new CampaignLibrary(mesaVazia({isGM:false},[merchant]),catalog);
+  await assert.rejects(fechada.action('lib-npc-sell','m1|it1',{qty:1}),/não está disponível/);
 });

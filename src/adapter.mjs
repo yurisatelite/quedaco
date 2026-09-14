@@ -1,5 +1,5 @@
 import { ABILITIES, wallet, walletTotal } from './rules.mjs';
-import { DEFAULT_ATTITUDE, buyerConditions, itemKind, quote } from './negotiation.mjs';
+import { DEFAULT_ATTITUDE, buyerConditions, itemKind, quote, sellQuote } from './negotiation.mjs';
 export const MODULE_ID='quedaco';
 /** Adapter for the inspected Skyfall 1.0.1 schema. Never reimplements its effects. */
 export function assertCompatible(game) {
@@ -90,13 +90,61 @@ export async function purchaseItem(buyer,merchantActor,entry,qty=1,resolveDocume
     if(!atuais.includes('brittle'))source.system={...source.system,descriptors:[...atuais,'brittle']};
   }
   await buyer.update({'system.currency':wallet(current-total)});
-  try{await buyer.createEmbeddedDocuments('Item',[source]);}
+  let created=[];
+  try{created=await buyer.createEmbeddedDocuments('Item',[source])??[];}
   catch(error){await buyer.update({'system.currency':wallet(current)});throw error;}
   if(stockIndex>=0&&Number.isFinite(stockEntry.qty)){
     stock[stockIndex]={...stockEntry,qty:stockEntry.qty-qty};
     await merchantActor.update({[`flags.${MODULE_ID}.npc.shop.stock`]:stock});
   }
-  return {unit,total,remaining:current-total,source,quote:conta};
+  return {unit,total,remaining:current-total,source,created,quote:conta};
+}
+/**
+ * Fecha o carrinho inteiro de uma vez. Cada linha passa pelo mesmo `purchaseItem`,
+ * então a conta de atitude/condições continua sendo uma só. Se qualquer linha falhar
+ * no meio (dinheiro acabou, estoque sumiu), desfaz tudo: devolve a moeda ao saldo de
+ * antes, apaga os itens já entregues e repõe o estoque do mercador como estava.
+ */
+export async function purchaseCart(buyer,merchantActor,lines=[],resolveDocument=globalThis.fromUuid,{haggleWon=false}={}){
+  if(!Array.isArray(lines)||!lines.length)throw Error('O carrinho está vazio.');
+  const saldoInicial=walletTotal(buyer?.system?.currency??{});
+  const estoqueInicial=Array.from(merchantActor?.flags?.[MODULE_ID]?.npc?.shop?.stock??[]);
+  const compras=[],entregues=[];
+  try{
+    for(const line of lines){
+      const compra=await purchaseItem(buyer,merchantActor,line.entry,Math.max(1,Number(line.qty)||1),resolveDocument,{haggleWon});
+      compras.push(compra);
+      for(const document of compra.created??[])if(document?.id)entregues.push(document.id);
+    }
+  }catch(error){
+    try{if(entregues.length)await buyer.deleteEmbeddedDocuments('Item',entregues);}catch(falha){console.error(MODULE_ID,'carrinho: itens não devolvidos',falha);}
+    try{await buyer.update({'system.currency':wallet(saldoInicial)});}catch(falha){console.error(MODULE_ID,'carrinho: moeda não devolvida',falha);}
+    try{await merchantActor?.update?.({[`flags.${MODULE_ID}.npc.shop.stock`]:estoqueInicial});}catch(falha){console.error(MODULE_ID,'carrinho: estoque não reposto',falha);}
+    throw error;
+  }
+  return {lines:compras,total:compras.reduce((soma,compra)=>soma+compra.total,0),remaining:saldoInicial-compras.reduce((soma,compra)=>soma+compra.total,0)};
+}
+/**
+ * O grupo vende um item da própria ficha para um NPC. Vale para qualquer NPC, tenha
+ * ele estoque de venda ou não — quem compra do grupo não precisa ter loja montada.
+ * O preço sai de `sellQuote`: metade do preço do livro, salvo Crime que Compensa.
+ */
+export async function sellItem(seller,merchantActor,item,qty=1,{haggleWon=false}={}){
+  if(!seller?.isOwner)throw Error('Você não tem acesso de edição a essa ficha.');
+  if(!item?.id)throw Error('Escolha um item da ficha para vender.');
+  if(!Number.isInteger(qty)||qty<1)throw Error('A quantidade deve ser um inteiro positivo.');
+  const disponivel=Math.max(1,Math.floor(Number(item.system?.quantity)||1));
+  if(qty>disponivel)throw Error('Você não tem essa quantidade para vender.');
+  const unitBase=Number(item.system?.price);
+  if(!Number.isFinite(unitBase)||unitBase<=0)throw Error('Este item não tem preço de tabela para revender.');
+  const conta=sellQuote({unitBase,conditions:buyerConditions(seller),haggleWon:Boolean(haggleWon),qty});
+  const atual=walletTotal(seller.system?.currency??{});
+  await seller.update({'system.currency':wallet(atual+conta.total)});
+  try{
+    if(qty>=disponivel)await seller.deleteEmbeddedDocuments('Item',[item.id]);
+    else await seller.updateEmbeddedDocuments('Item',[{_id:item.id,'system.quantity':disponivel-qty}]);
+  }catch(error){await seller.update({'system.currency':wallet(atual)});throw error;}
+  return {unit:conta.unit,total:conta.total,remaining:atual+conta.total,quote:conta};
 }
 /** O _preCreate da classe reescreve origin para ['class-01']; refixa a lista completa por update. */
 export async function finalizeClassProgression(actor,targetLevel) {

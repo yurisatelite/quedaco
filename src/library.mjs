@@ -1,13 +1,13 @@
-import {REGIONS,PLACES,BEYOND} from './book-world.mjs';
+import {REGIONS,PLACES,BEYOND,coinFaces} from './book-world.mjs';
 import {BASE_ITEMS,MODIFICATION_GUIDES,SIGIL_COSTS,IMBUE_COSTS} from './book-items.mjs';
 import {SIGILS} from './book-sigils.mjs';
 import {MONSTERS} from './book-monsters.mjs';
-import {MODULE_ID,purchaseItem,baixarArquivo} from './adapter.mjs';
+import {MODULE_ID,purchaseCart,purchaseItem,sellItem,baixarArquivo} from './adapter.mjs';
 import {NPC_LINK_TYPES,NPC_ROLES,NPC_ROLE_STYLE,adoptNpcFlag,inferPlaceId,inferRegionId,isGeneratedNpc,linksFromBio,itemTypeForCategory,npcCardOutline,npcCoverage,normalizeNpcLinks,npcFlag,npcLinkSummary,npcVisibility,stripTags,roleFromText} from './npcs.mjs';
 import {modifiedItemSheet} from './item-mod.mjs';
 import {clampPan,focusRegion,resolveHotspot,zoomToPoint} from './map-view.mjs';
 import {equipmentKind,forgeFragments,forgeQuote,magicNamePreview,purchaseForgedItem,sigilCompatible} from './forge.mjs';
-import {walletTotal} from './rules.mjs';
+import {precoFormatado,walletTotal} from './rules.mjs';
 import {localityStock} from './locality.mjs';
 import {ImageResolver} from './images.mjs';
 import {placeLayer,defaultHiddenPlaces,regionDossier} from './atlas.mjs';
@@ -17,7 +17,7 @@ import {generatorScope} from './generator.mjs';
 import {normalizeMonsterInput,normalizeMonsterList,toSkyfallNpc} from './monster-convert.mjs';
 import {normalizeItemList,toSkyfallItemSource} from './item-convert.mjs';
 import {rollLevel} from './npc-level.mjs';
-import {ATTITUDES,DEFAULT_ATTITUDE,buyerConditions} from './negotiation.mjs';
+import {ATTITUDES,DEFAULT_ATTITUDE,buyerConditions,itemKind,quote as priceQuote,sellQuote} from './negotiation.mjs';
 import {HERITAGES,LEGACIES,MELANCOLIA,CLASS_STYLE,heritagesOf,legacyOfHeritage} from './book-heritages.mjs';
 import {guildKind,guildsForPlace,npcGuildLabel,cleanSeal,guildThemes,GUILD_STANCES,guildMembers,guildLevel} from './guilds.mjs';
 
@@ -98,7 +98,9 @@ function withTimeout(promise,ms,message){
 }
 export const nameKey=value=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9+]+/g,' ').trim().replace(/\s+/g,' ');
 const page=entry=>entry.custom?(entry.sourceLabel||'Monstro personalizado da mesa'):`Livro Básico 1.25 · p. ${entry.page}`;
-const currency=value=>`T$ ${Number(value).toLocaleString('pt-BR')}`;
+// Preço sempre nas três moedas do livro: um item de 5.000 T$ vira "K$ 5" em vez
+// de um número que ninguém lê. A conversão em si mora em rules.mjs.
+const currency=value=>precoFormatado(value);
 const button=(op,id,label,className='')=>`<button${className?` class="${e(className)}"`:''} data-op="lib-${op}" data-id="${e(id)}">${e(label)}</button>`;
 const chips=values=>`<div class="sy-library-chips">${values.filter(v=>v!==null&&v!==undefined&&v!=='').map(v=>`<span>${e(v)}</span>`).join('')}</div>`;
 const thumb=image=>{
@@ -126,6 +128,55 @@ const npcStatBadges=actor=>{const s=actor?.system??{},out=[];const lvl=s.level?.
 const figurePencil=edit=>edit?`<button class="sy-figure-edit" data-op="lib-${e(edit.op)}" data-id="${e(edit.id)}" title="Trocar imagem" aria-label="Trocar imagem"><i class="fa-solid fa-pencil" aria-hidden="true"></i></button>`:'';
 const cardFigure=(src,name,size='wide',fallback='',edit=null)=>{const fallbacks=(Array.isArray(fallback)?fallback:[fallback]).filter(Boolean);return src?`<div class="sy-card-figure sy-card-figure-${e(size)}"><img src="${e(src)}" alt="${e(name)}" loading="lazy"${fallbacks.length?` data-fallback-srcs="${e(fallbacks.join('||'))}"`:''}>${figurePencil(edit)}</div>`:(edit?`<div class="sy-card-figure sy-card-figure-${e(size)} sy-card-figure-empty">${figurePencil(edit)}</div>`:'');};
 const typesFor=entry=>entry.category==='Sigilos'?['sigil']:entry.category?.startsWith('Armas')?['weapon']:entry.category==='Armaduras e escudos'?['armor','weapon']:entry.category==='Vestimentas'?['clothing']:entry.category==='Consumíveis'?['consumable']:['weapon','armor','clothing','equipment','consumable','loot','seal'];
+/** Cor e ícone fixos por categoria do livro, no mesmo espírito do CLASS_STYLE:
+ *  o jogador reconhece o tipo do item de longe, sem precisar ler a etiqueta. */
+export const ITEM_CATEGORY_STYLE={
+  'Armas simples':{color:'#c9705a',icon:'fa-hand-fist'},
+  'Armas marciais':{color:'#d0564a',icon:'fa-khanda'},
+  'Armas regionais':{color:'#c2794f',icon:'fa-gavel'},
+  'Armas de fogo':{color:'#b0553d',icon:'fa-burst'},
+  'Munição':{color:'#a8763f',icon:'fa-location-arrow'},
+  'Armaduras e escudos':{color:'#6d8fbf',icon:'fa-shield-halved'},
+  'Vestimentas':{color:'#8f7ad4',icon:'fa-shirt'},
+  'Consumíveis':{color:'#5fc9a3',icon:'fa-flask'},
+  'Equipamentos':{color:'#c9a24c',icon:'fa-toolbox'},
+  'Materiais especiais':{color:'#4fa3c7',icon:'fa-gem'},
+  'Engenhocas magitec':{color:'#49cce3',icon:'fa-gears'},
+  'Serviços e transporte':{color:'#9aa5b1',icon:'fa-route'},
+  'Sinapses':{color:'#d46ba8',icon:'fa-brain'},
+  'Artefatos do Sangue Macabro':{color:'#a3454f',icon:'fa-droplet'},
+  'Sigilos':{color:'#b78ce0',icon:'fa-wand-sparkles'}
+};
+export const itemCategoryStyle=category=>ITEM_CATEGORY_STYLE[String(category??'')]??{color:'#7f8c9b',icon:'fa-box-archive'};
+// Só as linhas que o item realmente tem; nada de "Dano: —" ocupando espaço.
+const ITEM_PROPERTY_ROWS=[
+  ['damage','Dano',value=>String(value)],
+  ['reduction','RD',value=>String(value)],
+  ['range','Alcance',value=>`${value} m`],
+  ['volume','Volume',value=>`${value}`],
+  ['charges','Cargas',value=>String(value)],
+  ['fragments','Fragmentos',value=>String(value)],
+  ['grade','Grau',value=>`${value}º`],
+  ['slot','Encaixe',value=>String(value)],
+  ['equipment','Equipamento',value=>String(value)],
+  ['rarity','Raridade',value=>String(value)],
+  ['setting','Ambientação',value=>String(value)],
+  ['priceKind','Cobrança',value=>String(value)],
+  ['priceFormula','Fórmula do preço',value=>String(value)]
+];
+export function itemProperties(entry){
+  return ITEM_PROPERTY_ROWS.filter(([key])=>entry?.[key]!=null&&entry[key]!=='').map(([key,label,format])=>({key,label,value:format(entry[key])}));
+}
+/** Descritor que o jogador precisa enxergar antes de comprar (QUEBRADIÇO quebra
+ *  na falha; pesada e barulhenta atrapalham). Só destaque visual — a regra é do sistema. */
+const DESCRIPTOR_TONE=[[/quebradi/i,'is-danger'],[/pesad|barulhent|sobrecarg/i,'is-warn']];
+export function itemDescriptors(entry){
+  const raw=entry?.descriptors;
+  const list=Array.isArray(raw)?raw:String(raw??'').split(',');
+  return list.map(value=>String(value).trim()).filter(Boolean)
+    // o livro escreve "Pesada, barulhenta" numa frase só; como selo solto cada um começa maiúsculo
+    .map(value=>({label:value[0].toLocaleUpperCase('pt-BR')+value.slice(1),tone:DESCRIPTOR_TONE.find(([re])=>re.test(value))?.[1]??''}));
+}
 export function itemFallback(entry){
   const category=String(entry?.category??'');
   if(category==='Munição')return 'icons/weapons/ammunition/arrow-head-war-flight.webp';
@@ -166,7 +217,7 @@ const CUSTOM_TIER_LABEL={simple:'Simples',complex:'Complexo',boss:'Chefão'};
 const CUSTOM_ARCHETYPE_LABEL={flanker:'Flanqueador',sentinel:'Sentinela',defender:'Defensor',brute:'Bruto',leader:'Líder',mount:'Cavalaria',ranged:'Atirador',group:'Coletivo'};
 
 export class CampaignLibrary {
-  constructor(game,catalog){this.game=game;this.catalog=catalog;this.images=new ImageResolver(game,MODULE_ID,ASSET_ROOT_KEY);this.quests=new ForienQuestIntegration(game);this.actors=[];this.failures=[];this.loaded=false;this.state={mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null,layer:'auto',movingPins:false},npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcLevelMin:0,npcLevelMax:12,npcDragonOnly:false,npcMilitarOnly:false,npcActor:null,npcSaved:null,npcEditRole:null,npcEditPlace:null,monsterFacets:{},monsterCardSize:270,itemCardSize:270,guildCardSize:270,npcCardSize:270,npcPlayerRegion:null,npcAsPlayer:false,npcLegacyFilter:'all',npcHeritageFilter:'all',guildFacets:{},guildShowArchived:false,questStatus:'all',regionTakeover:false,regionScene:null,regionTab:'rumores',regionRumorRoll:null,regionRumorEdit:null,regionNpcRoleFilter:'all'};this.modBuilder={baseId:'',materialId:'',sigils:[],tab:'prefixo'};this.forgeBuilder={smithId:'',baseUuid:'',materialId:'',sigils:[],tab:'prefixo'};}
+  constructor(game,catalog){this.game=game;this.catalog=catalog;this.images=new ImageResolver(game,MODULE_ID,ASSET_ROOT_KEY);this.quests=new ForienQuestIntegration(game);this.actors=[];this.failures=[];this.loaded=false;this.state={mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null,layer:'auto',movingPins:false},npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcLevelMin:0,npcLevelMax:12,npcDragonOnly:false,npcMilitarOnly:false,npcActor:null,npcSaved:null,npcEditRole:null,npcEditPlace:null,monsterFacets:{},monsterCardSize:270,itemCardSize:270,guildCardSize:270,npcCardSize:270,npcPlayerRegion:null,npcAsPlayer:false,npcLegacyFilter:'all',npcHeritageFilter:'all',guildFacets:{},guildShowArchived:false,questStatus:'all',regionTakeover:false,regionScene:null,regionTab:'rumores',regionRumorRoll:null,regionRumorEdit:null,regionNpcRoleFilter:'all',cart:{actorId:'',lines:[]},sellActorId:''};this.modBuilder={baseId:'',materialId:'',sigils:[],tab:'prefixo'};this.forgeBuilder={smithId:'',baseUuid:'',materialId:'',sigils:[],tab:'prefixo'};}
   image(kind,id,documentImg='',fallback='icons/svg/mystery-man.svg'){return this.images.resolve(kind,id,documentImg,fallback);}
   assertGM(){if(!this.game.user?.isGM)throw Error('Esta área está disponível somente para o mestre.');}
   get shared(){try{return {...emptyShare(),...(this.game.settings?.get(MODULE_ID,SHARED_KEY)||{})};}catch{return emptyShare();}}
@@ -492,7 +543,9 @@ export class CampaignLibrary {
   async action(op,id,data={}){
     const openOps=['lib-map','lib-region','lib-place','lib-map-focus','lib-map-zoom','lib-map-reset','lib-map-layer','lib-open-scene','lib-npc-buy','lib-npc-open','lib-forge-clear','lib-forge-add','lib-forge-remove','lib-forge-imbue','lib-forge-tab','lib-forge-pay','lib-forge-base','lib-imbue-pay','lib-guild-open','lib-quest-filter','lib-quest-open',
       // aba de NPCs do jogador: navegar, anotar e marcar a tag do grupo são dele
-      'lib-npc-player-region','lib-npc-note-save','lib-npc-role2','lib-npc-haggle'];
+      'lib-npc-player-region','lib-npc-note-save','lib-npc-role2','lib-npc-haggle',
+      // carrinho e venda: quem monta e fecha é o jogador, na ficha dele
+      'lib-cart-add','lib-cart-remove','lib-cart-clear','lib-cart-buy','lib-npc-sell-open','lib-npc-sell'];
     if(!openOps.includes(op))this.assertGM();
     if(op==='lib-map'){this.state.mapView=id;this.state.region=null;this.state.place=null;this.state.regionTakeover=false;if(id==='regions')this.state.map={scale:1,tx:0,ty:0,focus:null};}
     if(op==='lib-region'){if(!REGIONS.some(i=>i.id===id)||(!this.game.user?.isGM&&!this.shared.map.includes(id)))return;this.state.mapView='regions';this.state.region=id;this.state.place=null;}
@@ -631,8 +684,8 @@ export class CampaignLibrary {
     if(op==='lib-quest-create')await this.quests.create();
     if(op==='lib-npc-open'){const actor=this.actorById(id);actor?.sheet?.render(true);}
     if(op==='lib-npc-buy'){
-      const [actorId,...uuidParts]=String(id).split('|'),uuid=uuidParts.join('|'),actor=this.actorById(actorId),flag=npcFlag(actor),shared=this.shared.npcs.includes(actor?.uuid);
-      if(!actor||npcVisibility({...flag,shared,gm:this.game.user?.isGM})!=='shop')throw Error('Esta loja não está disponível.');
+      const [actorId,...uuidParts]=String(id).split('|'),uuid=uuidParts.join('|');
+      const {actor,flag}=this.openShop(actorId);
       const entry=flag.shop?.stock?.find(item=>item.uuid===uuid);if(!entry)throw Error('Item fora do estoque.');
       const buyer=this.game.user?.character;if(!buyer)throw Error('Escolha um personagem para seu usuário antes de comprar.');
       const pechincha=this.state.haggle?.actorId===actor.id?this.state.haggle:null;
@@ -640,6 +693,58 @@ export class CampaignLibrary {
       this.anunciarCompra(compra);
     }
     if(op==='lib-npc-haggle')await this.haggle(id);
+    // ── carrinho: junta várias linhas da MESMA visita antes de pagar ────────────
+    if(op==='lib-cart-add'){
+      const [actorId,...uuidParts]=String(id).split('|'),uuid=uuidParts.join('|');
+      const {actor,flag}=this.openShop(actorId);
+      if(!flag.shop?.stock?.some(item=>item.uuid===uuid))throw Error('Item fora do estoque.');
+      const qty=Math.max(1,Math.floor(Number(data.qty)||1));
+      const cart=this.cartFor(actor.id);
+      const linha=cart.lines.find(item=>item.uuid===uuid);
+      if(linha)linha.qty+=qty;else cart.lines.push({uuid,qty});
+      this.state.cart=cart;
+    }
+    if(op==='lib-cart-remove'){
+      const [actorId,...uuidParts]=String(id).split('|'),uuid=uuidParts.join('|');
+      // só mexe no carrinho que está aberto: um botão de uma tela velha não zera o atual
+      if(this.state.cart?.actorId===actorId)this.state.cart={actorId,lines:this.state.cart.lines.filter(item=>item.uuid!==uuid)};
+    }
+    if(op==='lib-cart-clear')this.state.cart={actorId:'',lines:[]};
+    if(op==='lib-cart-buy'){
+      const {actor,flag}=this.openShop(id);
+      const cart=this.cartFor(actor.id);if(!cart.lines.length)throw Error('O carrinho está vazio.');
+      const buyer=this.game.user?.character;if(!buyer)throw Error('Escolha um personagem para seu usuário antes de comprar.');
+      const pechincha=this.state.haggle?.actorId===actor.id?this.state.haggle:null;
+      const lines=cart.lines.map(linha=>{
+        const entry=flag.shop?.stock?.find(item=>item.uuid===linha.uuid);
+        if(!entry)throw Error('Uma das linhas saiu do estoque. Confira o carrinho.');
+        return {entry,qty:linha.qty};
+      });
+      const compra=await purchaseCart(buyer,actor,lines,undefined,{haggleWon:Boolean(pechincha?.won)});
+      this.state.cart={actorId:'',lines:[]};
+      this.anunciarCarrinho(compra);
+    }
+    // ── venda: qualquer NPC compra do grupo, tenha ou não estoque próprio ───────
+    if(op==='lib-npc-sell-open')this.state.sellActorId=this.state.sellActorId===id?'':id;
+    if(op==='lib-npc-sell'){
+      const [actorId,itemId]=String(id).split('|'),actor=this.actorById(actorId);
+      if(!actor)throw Error('NPC não encontrado.');
+      const flag=npcFlag(actor)??adoptNpcFlag(actor),shared=this.shared.npcs.includes(actor.uuid);
+      if(!this.game.user?.isGM&&!this.npcOpenToPlayers(actor,flag)&&!shared)throw Error('Este NPC não está disponível.');
+      const seller=this.game.user?.character;if(!seller)throw Error('Escolha um personagem para seu usuário antes de vender.');
+      const item=Array.from(seller.items??[]).find(entry=>entry.id===itemId);if(!item)throw Error('Item não encontrado na ficha.');
+      const pechincha=this.state.haggle?.actorId===actor.id?this.state.haggle:null;
+      const venda=await sellItem(seller,actor,item,Math.max(1,Math.floor(Number(data.qty)||1)),{haggleWon:Boolean(pechincha?.won)});
+      this.anunciarVenda(item,venda);
+    }
+    // atitude mudada ao vivo pelo mestre, sem abrir o editor inteiro do NPC
+    if(op==='lib-npc-attitude'){
+      this.assertGM();
+      const actor=this.actorById(id);if(!actor)throw Error('NPC não encontrado.');
+      const atitude=ATTITUDES[data.attitude]?data.attitude:DEFAULT_ATTITUDE;
+      const flag=npcFlag(actor)??adoptNpcFlag(actor);
+      await actor.update({[`flags.${MODULE_ID}.npc`]:{...flag,shop:{...flag.shop,attitude:atitude}}});
+    }
   }
   actorById(id){return Array.from(this.game.actors??[]).find(actor=>actor.id===id||actor.uuid===id);}
   npcActors(){return Array.from(this.game.actors??[]).filter(isGeneratedNpc);}
@@ -693,7 +798,7 @@ export class CampaignLibrary {
     const conta=compra?.quote;if(!conta)return;
     const pct=v=>`${v>0?'+':''}${Math.round(v*100)}%`;
     const partes=conta.linhas.filter(l=>l.percent).map(l=>`${l.label} ${pct(l.percent)}`);
-    const base=conta.unitBase!==conta.unit?`T$ ${conta.unitBase} → T$ ${conta.unit}`:`T$ ${conta.unit}`;
+    const base=conta.unitBase!==conta.unit?`${currency(conta.unitBase)} → ${currency(conta.unit)}`:currency(conta.unit);
     const brittle=conta.brittle?' · o item veio QUEBRADIÇO':'';
     globalThis.ui?.notifications?.info?.(`${base}${partes.length?` (${partes.join(', ')})`:''}${brittle}`);
     if(conta.ignoradas?.length)globalThis.ui?.notifications?.warn?.(`Não entrou: ${conta.ignoradas.map(c=>c.label).join(', ')} — depende de pechinchar antes.`);
@@ -862,7 +967,7 @@ export class CampaignLibrary {
   async executeForge(smithId){
     const smith=this.actorById(smithId),flag=npcFlag(smith)??adoptNpcFlag(smith),buyer=this.forgeBuyer(),base=this.forgeBase();if(!smith||npcVisibility({...flag,shared:this.shared.npcs.includes(smith.uuid),gm:this.game.user?.isGM})!=='forge')throw Error('Esta forja não está disponível.');
     const Dialog=foundry.applications.api.DialogV2,consume=await Dialog.wait({window:{title:'Finalizar item na forja'},content:`<p>O que fazer com o equipamento original <strong>${e(base?.name)}</strong>?</p>`,buttons:[{action:'keep',label:'Manter original',callback:()=>false},{action:'consume',label:'Consumir original',callback:()=>true},{action:'cancel',label:'Cancelar',callback:()=>null}]});if(consume===null||consume===undefined)return;
-    const result=await purchaseForgedItem({buyer,base,material:this.forgeMaterial(),sigils:this.forgeBuilder.sigils,markup:flag.forge?.markup??1,consumeOriginal:consume});this.forgeBuilder={smithId:'',baseUuid:'',materialId:'',sigils:[],tab:'prefixo'};ui.notifications.info(`Item forjado por T$ ${result.quote.total}.`);
+    const result=await purchaseForgedItem({buyer,base,material:this.forgeMaterial(),sigils:this.forgeBuilder.sigils,markup:flag.forge?.markup??1,consumeOriginal:consume});this.forgeBuilder={smithId:'',baseUuid:'',materialId:'',sigils:[],tab:'prefixo'};ui.notifications.info(`Item forjado por ${currency(result.quote.total)}.`);
   }
   renderForge(smith){
     const flag=npcFlag(smith)??adoptNpcFlag(smith),buyer=this.forgeBuyer(),base=this.forgeBase(),kind=equipmentKind(base),material=this.forgeMaterial(),markup=flag.forge?.markup??1,chosen=this.forgeBuilder.sigils,tab=this.forgeBuilder.tab==='sufixo'?'sufixo':'prefixo';
@@ -870,7 +975,7 @@ export class CampaignLibrary {
     let quote=null,error='';try{if(base)quote=forgeQuote(base,material,chosen,markup);}catch(reason){error=reason.message;}const fragments=forgeFragments(chosen,buyer?.system?.fragments?.max??0),balance=walletTotal(buyer?.system?.currency??{}),affordable=Boolean(quote&&!quote.unknown&&balance>=quote.total&&!error),preview=magicNamePreview(base,chosen);
     const slots=['prefixo','sufixo'].map(slot=>{const entries=chosen.filter(sigil=>String(sigil.slot).toLowerCase()===slot);return `<section class="sy-forge-slot-group"><h5>${slot==='prefixo'?'Prefixos':'Sufixos'} ${entries.length}/2</h5><div class="sy-forge-slots">${[0,1].map(position=>{const sigil=entries[position],index=sigil?chosen.indexOf(sigil):-1;return sigil?`<article class="sy-forge-slot is-filled"><strong>${e(sigil.name)}</strong><small>${sigil.grade}º grau · ${sigil.fragments??0} fragmentos</small>${sigil.summary?`<p>${e(sigil.summary)}</p>`:''}<div>${button('forge-imbue',String(index),sigil.infused?'✓ Imbuído':'Imbuir')}${button('forge-remove',String(index),'×')}</div></article>`:`<article class="sy-forge-slot is-empty"><b>+</b><small>${slot}</small></article>`;}).join('')}</div></section>`;}).join('');
     const costs=quote?`<div class="sy-forge-cost ${affordable?'is-affordable':'is-unaffordable'}"><span>Saldo: ${currency(balance)}</span><strong>Total: ${currency(quote.total)}</strong></div><details><summary>Ver quebra do custo</summary><pre class="sy-mod-sheet">${e(quote.lines.map(line=>`${line.label}: ${line.cost==null?'a conferir':currency(line.cost)}`).join('\n'))}\nMargem do ferreiro: × ${quote.markup}</pre></details>`:'';
-    return `<section class="sy-forge" data-forge-smith="${e(smith.id)}"><h4><i class="fa-solid fa-hammer"></i> Forja de ${e(smith.name)}</h4>${buyer?`<div class="sy-forge-bench"><div class="sy-forge-inventory"><span>Seu equipamento</span>${Array.from(buyer.items??[]).filter(item=>['weapon','armor','clothing'].includes(item.type)&&item.name!=='Ataque desarmado'&&item.system?.natural!==true).map(item=>`<button data-op="lib-forge-base" data-id="${e(smith.id)}|${e(item.uuid)}" class="sy-forge-inv-item ${base&&(base.uuid===item.uuid||base.id===item.id)?'is-active':''}">${avatarThumb(item.img)}<span>${e(item.name)}</span></button>`).join('')||'<small>Nenhuma arma, armadura ou vestimenta na ficha.</small>'}</div><div class="sy-forge-base"><span>Item base ${base?button('forge-clear','','× remover'):''}</span><div class="sy-forge-drop" data-forge-drop="${e(smith.id)}">${base?`${avatarThumb(base.img)}<strong>${e(base.name)}</strong><small>${e(kind)} · escolha ou arraste outro</small>`:'<b>+</b><small>Escolha ao lado ou arraste uma arma, armadura ou vestimenta</small>'}</div></div><div class="sy-forge-rack">${slots}</div></div>`:'<p class="sy-alert">Associe um personagem ao seu usuário (ou selecione um token na cena) para usar a forja.</p>'}${base?`<h3 class="sy-magic-name">${e(preview)}</h3><label>Material especial opcional<select name="forgeMaterial"><option value="">Sem material</option>${BOOK_ITEMS.filter(item=>item.category==='Materiais especiais'&&item.price===300).map(item=>`<option value="${item.id}" ${material?.id===item.id?'selected':''}>${e(item.name)} · +T$ 300</option>`).join('')}</select></label><div class="sy-library-tabs sy-forge-tabs">${button('forge-tab','prefixo',`Prefixo ${chosen.filter(item=>String(item.slot).toLowerCase()==='prefixo').length}/2`,tab==='prefixo'?'is-active':'')}${button('forge-tab','sufixo',`Sufixo ${chosen.filter(item=>String(item.slot).toLowerCase()==='sufixo').length}/2`,tab==='sufixo'?'is-active':'')}</div><div class="sy-mod-sigils">${available.map(({sigil})=>`<article><span><strong>${e(sigil.name)}</strong><small>${sigil.grade}º grau · ${sigil.fragments??0} fragmentos</small>${sigil.summary?`<em>${e(sigil.summary)}</em>`:''}</span>${button('forge-add',sigil.id,'Adicionar')}</article>`).join('')||'<small>Nenhum sigilo disponível nesta aba.</small>'}</div>${costs}<p class="sy-fragments ${fragments.overload?'is-overload':''}">Fragmentos Arcanos: usa ${fragments.used} / limite ${fragments.max}${fragments.overload?` · vai sobrecarregar: ${fragments.overload}d6 de dano ao equipar`:''}</p>${error?`<p class="sy-alert">${e(error)}</p>`:''}${quote?.unknown?'<p class="sy-alert">Há um custo de imbuência a conferir com o mestre.</p>':''}<button class="sy-primary sy-forge-submit" data-op="lib-forge-pay" data-id="${e(smith.id)}" ${affordable?'':'disabled'}>Forjar por ${quote?currency(quote.total):'—'}</button>${button('forge-clear','','Limpar bancada')}`:''}</section>`;
+    return `<section class="sy-forge" data-forge-smith="${e(smith.id)}"><h4><i class="fa-solid fa-hammer"></i> Forja de ${e(smith.name)}</h4>${buyer?`<div class="sy-forge-bench"><div class="sy-forge-inventory"><span>Seu equipamento</span>${Array.from(buyer.items??[]).filter(item=>['weapon','armor','clothing'].includes(item.type)&&item.name!=='Ataque desarmado'&&item.system?.natural!==true).map(item=>`<button data-op="lib-forge-base" data-id="${e(smith.id)}|${e(item.uuid)}" class="sy-forge-inv-item ${base&&(base.uuid===item.uuid||base.id===item.id)?'is-active':''}">${avatarThumb(item.img)}<span>${e(item.name)}</span></button>`).join('')||'<small>Nenhuma arma, armadura ou vestimenta na ficha.</small>'}</div><div class="sy-forge-base"><span>Item base ${base?button('forge-clear','','× remover'):''}</span><div class="sy-forge-drop" data-forge-drop="${e(smith.id)}">${base?`${avatarThumb(base.img)}<strong>${e(base.name)}</strong><small>${e(kind)} · escolha ou arraste outro</small>`:'<b>+</b><small>Escolha ao lado ou arraste uma arma, armadura ou vestimenta</small>'}</div></div><div class="sy-forge-rack">${slots}</div></div>`:'<p class="sy-alert">Associe um personagem ao seu usuário (ou selecione um token na cena) para usar a forja.</p>'}${base?`<h3 class="sy-magic-name">${e(preview)}</h3><label>Material especial opcional<select name="forgeMaterial"><option value="">Sem material</option>${BOOK_ITEMS.filter(item=>item.category==='Materiais especiais'&&item.price===300).map(item=>`<option value="${item.id}" ${material?.id===item.id?'selected':''}>${e(item.name)} · +${currency(300)}</option>`).join('')}</select></label><div class="sy-library-tabs sy-forge-tabs">${button('forge-tab','prefixo',`Prefixo ${chosen.filter(item=>String(item.slot).toLowerCase()==='prefixo').length}/2`,tab==='prefixo'?'is-active':'')}${button('forge-tab','sufixo',`Sufixo ${chosen.filter(item=>String(item.slot).toLowerCase()==='sufixo').length}/2`,tab==='sufixo'?'is-active':'')}</div><div class="sy-mod-sigils">${available.map(({sigil})=>`<article><span><strong>${e(sigil.name)}</strong><small>${sigil.grade}º grau · ${sigil.fragments??0} fragmentos</small>${sigil.summary?`<em>${e(sigil.summary)}</em>`:''}</span>${button('forge-add',sigil.id,'Adicionar')}</article>`).join('')||'<small>Nenhum sigilo disponível nesta aba.</small>'}</div>${costs}<p class="sy-fragments ${fragments.overload?'is-overload':''}">Fragmentos Arcanos: usa ${fragments.used} / limite ${fragments.max}${fragments.overload?` · vai sobrecarregar: ${fragments.overload}d6 de dano ao equipar`:''}</p>${error?`<p class="sy-alert">${e(error)}</p>`:''}${quote?.unknown?'<p class="sy-alert">Há um custo de imbuência a conferir com o mestre.</p>':''}<button class="sy-primary sy-forge-submit" data-op="lib-forge-pay" data-id="${e(smith.id)}" ${affordable?'':'disabled'}>Forjar por ${quote?currency(quote.total):'—'}</button>${button('forge-clear','','Limpar bancada')}`:''}</section>`;
   }
   modBases(){return BOOK_ITEMS.filter(item=>item.name!=='Ataque desarmado'&&!item.referenceOnly&&(item.category.startsWith('Armas')||item.category==='Armaduras e escudos'||item.category==='Vestimentas'));}
   modBase(){return this.modBases().find(item=>item.id===this.modBuilder.baseId)??null;}
@@ -901,6 +1006,68 @@ export class CampaignLibrary {
     }).join('');
     return `<p>Quests sincronizadas com o Forien's Quest Log. Cada jogador vê somente o que o Forien permite para seu usuário.</p>${readonly?'':`<div class="sy-library-share-row">${button('quest-create','','Nova quest')}</div>`}<nav class="sy-library-tabs sy-quest-tabs" aria-label="Estados das quests">${tabs}</nav>${this.filters([],'Buscar quest por nome, local ou contratante')}<div class="sy-library-grid sy-quest-grid">${cards||'<p class="sy-library-deferred">Nenhuma quest corresponde a este filtro.</p>'}</div>`;
   }
+  /** A mesma checagem do botão Comprar: a loja só abre se o NPC é mercador e está
+   *  liberado (ou se quem olha é o mestre). */
+  openShop(actorId){
+    const actor=this.actorById(actorId);
+    const flag=actor?(npcFlag(actor)??adoptNpcFlag(actor)):null;
+    // liberado por localidade conta como liberado: é assim que o cartão da loja chega
+    // ao jogador. Checar só `shared.npcs` mostrava a loja e recusava a compra depois.
+    const shared=Boolean(actor&&this.npcOpenToPlayers(actor,flag));
+    if(!actor||npcVisibility({...flag,shared,gm:this.game.user?.isGM})!=='shop')throw Error('Esta loja não está disponível.');
+    return {actor,flag};
+  }
+  /** Carrinho da visita atual. Trocar de mercador zera o que estava montado —
+   *  a cotação (atitude, condição, pechincha) é de uma loja só. */
+  cartFor(actorId){
+    const cart=this.state.cart??{actorId:'',lines:[]};
+    return cart.actorId===actorId?{actorId,lines:[...cart.lines]}:{actorId,lines:[]};
+  }
+  /** Preço de uma linha de estoque com a conta da visita já aplicada. */
+  shopLineQuote(actor,flag,item,qty=1){
+    const entry=this.catalog?.entry?.(item.uuid)??this.catalog?.items?.find(row=>row.uuid===item.uuid);
+    const markup=Number(flag.shop?.markup),tabela=Number(entry?.system?.price??0);
+    const unitBase=item.price==null?Math.round(tabela*(Number.isFinite(markup)&&markup>0?markup:1)):Number(item.price);
+    const buyer=this.game.user?.character;
+    const pechincha=this.state.haggle?.actorId===actor.id?this.state.haggle:null;
+    const conta=priceQuote({unitBase:Math.max(0,Number(unitBase)||0),attitude:flag.shop?.attitude??DEFAULT_ATTITUDE,attitudeOverride:flag.shop?.attitudeOverride,
+      conditions:buyer?buyerConditions(buyer):[],kind:itemKind({type:entry?.type,system:entry?.system??{}}),haggleWon:Boolean(pechincha?.won),qty});
+    return {entry,name:entry?.name??String(item.uuid).split('.').pop(),quote:conta};
+  }
+  anunciarCarrinho(compra){
+    const linhas=compra?.lines??[];if(!linhas.length)return;
+    const brittle=linhas.some(item=>item.quote?.brittle);
+    globalThis.ui?.notifications?.info?.(`${linhas.length} linha(s) fechada(s) por ${currency(compra.total)}. Restam ${currency(compra.remaining)}.${brittle?' Parte do lote veio QUEBRADIÇO.':''}`);
+  }
+  anunciarVenda(item,venda){
+    const conta=venda?.quote;if(!conta)return;
+    const partes=conta.linhas.map(linha=>linha.label).filter(Boolean);
+    globalThis.ui?.notifications?.info?.(`${item.name} vendido por ${currency(venda.total)}${partes.length?` (${partes.join(', ')})`:''}. Bolsa: ${currency(venda.remaining)}.`);
+  }
+  /** Sabor da Tabela 3-2 (p. 219): o valor da moeda é o mesmo em toda Opath, o que
+   *  muda de região para região é só o desenho de uma das faces. Não entra em conta. */
+  coinNote(actor,flag){
+    const regionId=flag.regionId||PLACES.find(place=>place.id===flag.placeId)?.regionId||inferRegionId(actor);
+    const faces=coinFaces(regionId);if(!faces.length)return '';
+    const nome=REGIONS.find(region=>region.id===regionId)?.name||BEYOND.find(entry=>entry.id===regionId)?.name||'';
+    return `<p class="sy-coin-note" title="O valor é o mesmo em toda Opath; só o desenho de uma das faces muda (Tabela 3-2, p. 219)."><i class="fa-solid fa-coins" aria-hidden="true"></i> Moeda ${nome?`de ${e(nome)}`:'daqui'}: ${faces.map(item=>`<span>${e(item.moeda)} ${e(item.face)}</span>`).join(' · ')}</p>`;
+  }
+  /** Resumo do carrinho: o que entrou, o total já cotado e se a bolsa cobre. */
+  cartBlock(actor,flag){
+    const cart=this.state.cart;
+    if(cart?.actorId!==actor.id||!cart.lines.length)return '';
+    let total=0;
+    const linhas=cart.lines.map(linha=>{
+      const item=flag.shop?.stock?.find(entry=>entry.uuid===linha.uuid);
+      if(!item)return `<div class="sy-cart-line is-gone"><span>Saiu do estoque</span>${button('cart-remove',`${actor.id}|${linha.uuid}`,'×')}</div>`;
+      const {name,quote:conta}=this.shopLineQuote(actor,flag,item,linha.qty);
+      total+=conta.total;
+      return `<div class="sy-cart-line"><span>${e(name)} ×${e(linha.qty)}</span><b>${e(currency(conta.total))}</b>${button('cart-remove',`${actor.id}|${linha.uuid}`,'×')}</div>`;
+    }).join('');
+    const buyer=this.game.user?.character,saldo=buyer?walletTotal(buyer.system?.currency??{}):null;
+    const paga=saldo!=null&&saldo>=total;
+    return `<section class="sy-cart"><h5><i class="fa-solid fa-basket-shopping" aria-hidden="true"></i> Carrinho · ${cart.lines.length} linha(s)</h5>${linhas}<div class="sy-cart-total"><span>Total</span><strong>${e(currency(total))}</strong>${saldo==null?'':`<small>bolsa ${e(currency(saldo))}</small>`}</div>${saldo!=null&&!paga?'<p class="sy-alert">Falta moeda para fechar este carrinho.</p>':''}<p class="sy-note">Atitude, condição da ficha e a pechincha desta visita já entram em cada linha.</p><div class="sy-cart-actions"><button class="sy-primary" data-op="lib-cart-buy" data-id="${e(actor.id)}" ${paga?'':'disabled'}>Fechar compra</button>${button('cart-clear','','Esvaziar')}</div></section>`;
+  }
   npcStockCard(actor,flag,player){
     const stock=flag.shop?.stock??[];if(flag.role!=='merchant')return '';
     // pechincha: um teste por cena, e a conta aparece aberta antes de comprar
@@ -910,7 +1077,16 @@ export class CampaignLibrary {
     const podePechinchar=conds.some(cond=>cond.roll)&&!pechincha;
     const atitude=flag.shop?.attitude??DEFAULT_ATTITUDE,estilo=ATTITUDES[atitude]??ATTITUDES[DEFAULT_ATTITUDE];
     const barra=`<div class="sy-shop-bar"><span class="sy-shop-attitude" style="--sy-att:${e(estilo.color)}" title="${e(estilo.hint)}">${e(estilo.label)}</span>${conds.length?`<span class="sy-shop-conds">${conds.map(cond=>`<em title="${e(cond.note)}">${e(cond.label)}</em>`).join('')}</span>`:''}${podePechinchar?button('npc-haggle',actor.id,'🎲 Pechinchar'):''}${pechincha?`<span class="sy-shop-haggle ${pechincha.won?'is-won':'is-lost'}">${pechincha.won?`Pechincha aceita (${e(pechincha.total)} × ${e(pechincha.alvo)})`:`Pechincha recusada (${e(pechincha.total)} × ${e(pechincha.alvo)})`}</span>`:''}</div>`;
-    return `<div class="sy-shop-stock">${barra}${flag.shop?.note?`<p>${e(flag.shop.note)}</p>`:''}${stock.map(item=>{const entry=this.catalog?.entry?.(item.uuid)??this.catalog?.items?.find(i=>i.uuid===item.uuid),name=entry?.name??item.uuid,price=item.price??entry?.system?.price??0,drag=String(item.uuid).startsWith('Compendium.')?` draggable="true" data-drag-item="${e(item.uuid)}" title="Arraste para uma ficha ou diálogo"`:'';return `<article${drag}><span><strong>${e(name)}</strong><small>T$ ${e(price)}${item.qty==null?'':' · '+e(item.qty)+' restantes'}</small></span>${player?`<input type="number" min="1" value="1" aria-label="Quantidade"><button data-op="lib-npc-buy" data-id="${e(actor.id)}|${e(item.uuid)}|1">Comprar</button>`:''}</article>`;}).join('')||'<small>Estoque vazio.</small>'}</div>`;
+    // "Adicionar" em vez de "Comprar": o total da visita inteira aparece antes de pagar
+    const linhas=stock.map(item=>{
+      const {name,quote:conta}=this.shopLineQuote(actor,flag,item,1);
+      const drag=String(item.uuid).startsWith('Compendium.')?` draggable="true" data-drag-item="${e(item.uuid)}" title="Arraste para uma ficha ou diálogo"`:'';
+      const preco=conta.unit!==conta.unitBase?`<s>${e(currency(conta.unitBase))}</s> <b>${e(currency(conta.unit))}</b>`:`<b>${e(currency(conta.unit))}</b>`;
+      const esgotado=item.qty!=null&&Number(item.qty)<=0;
+      const controles=player?`<input type="number" min="1" ${item.qty==null?'':`max="${e(item.qty)}"`} value="1" aria-label="Quantidade"><button data-op="lib-cart-add" data-id="${e(actor.id)}|${e(item.uuid)}" ${esgotado?'disabled':''}>${esgotado?'Esgotado':'Adicionar'}</button>`:'';
+      return `<article${drag}><span><strong>${e(name)}</strong><small>${preco}${item.qty==null?'':` · ${e(item.qty)} restantes`}</small></span>${controles}</article>`;
+    }).join('')||'<small>Estoque vazio.</small>';
+    return `<div class="sy-shop-stock">${barra}${this.coinNote(actor,flag)}${flag.shop?.note?`<p>${e(flag.shop.note)}</p>`:''}${player?this.cartBlock(actor,flag):''}${linhas}</div>`;
   }
   /** Retrato do cartão: coluna à esquerda em 3:4, preenchida por inteiro. */
   npcPortrait(actor){
@@ -955,6 +1131,34 @@ export class CampaignLibrary {
     const opcoes=Object.entries(NPC_ROLES).sort((a,b)=>a[1].localeCompare(b[1],'pt-BR')).map(([id,label])=>`<option value="${id}" ${atual===id?'selected':''}>${e(label)}</option>`).join('');
     return `<div class="sy-npc-role2"><select name="npcRole2" data-id="${e(actor.uuid)}"><option value="">— o que essa pessoa é? —</option>${opcoes}</select>${button('npc-role2',actor.uuid,'Marcar')}</div>`;
   }
+  /** Área de venda: o grupo oferece itens da própria ficha. Vale para QUALQUER NPC —
+   *  quem compra do grupo não precisa ter estoque montado para vender. */
+  npcSellCard(actor){
+    const aberto=this.state.sellActorId===actor.id;
+    const abrir=`<button class="sy-sell-toggle" data-op="lib-npc-sell-open" data-id="${e(actor.id)}" aria-expanded="${aberto?'true':'false'}"><i class="fa-solid fa-hand-holding-dollar" aria-hidden="true"></i> ${aberto?'Fechar venda':'Vender pra ele'}</button>`;
+    if(!aberto)return `<div class="sy-sell-row">${abrir}</div>`;
+    const seller=this.game.user?.character;
+    if(!seller)return `<section class="sy-sell"><div class="sy-sell-row">${abrir}</div><p class="sy-note">Associe um personagem ao seu usuário para oferecer itens da ficha.</p></section>`;
+    const pechincha=this.state.haggle?.actorId===actor.id?this.state.haggle:null;
+    const conds=buyerConditions(seller);
+    const vendavel=new Set(['weapon','armor','clothing','equipment','consumable','loot']);
+    const itens=sortByName(Array.from(seller.items??[]).filter(item=>vendavel.has(item.type)&&item.name!=='Ataque desarmado'&&item.system?.natural!==true&&Number(item.system?.price)>0));
+    const linhas=itens.map(item=>{
+      const disponivel=Math.max(1,Math.floor(Number(item.system?.quantity)||1));
+      const conta=sellQuote({unitBase:Number(item.system.price),conditions:conds,haggleWon:Boolean(pechincha?.won)});
+      return `<article><span><strong>${e(item.name)}</strong><small>tabela ${e(currency(Number(item.system.price)))} → <b>${e(currency(conta.unit))}</b> cada${disponivel>1?` · você tem ${disponivel}`:''}</small></span><input type="number" min="1" max="${e(disponivel)}" value="1" aria-label="Quantidade a vender"><button data-op="lib-npc-sell" data-id="${e(actor.id)}|${e(item.id)}">Vender</button></article>`;
+    }).join('')||'<small>Nada na ficha com preço de tabela para revender.</small>';
+    const regra=sellQuote({unitBase:100,conditions:conds,haggleWon:Boolean(pechincha?.won)}).linhas.map(linha=>linha.label).join(' · ');
+    return `<section class="sy-sell"><div class="sy-sell-row">${abrir}</div><p class="sy-note">${e(regra)}. O livro trata o que sai da mão do grupo como equipamento usado (Cap. 3).</p><div class="sy-shop-stock">${linhas}</div></section>`;
+  }
+  /** Painel só do mestre dentro do cartão do jogador: troca a atitude na hora, vendo a
+   *  mesma tela que o grupo vê, e relembra a bio (o porquê) sem abrir a ficha inteira. */
+  npcGmStrip(actor,flag){
+    const atual=ATTITUDES[flag.shop?.attitude]?flag.shop.attitude:DEFAULT_ATTITUDE;
+    const opcoes=Object.entries(ATTITUDES).map(([id,estilo])=>`<option value="${e(id)}" ${atual===id?'selected':''}>${e(estilo.label)} (${estilo.modifier>0?'+':''}${Math.round(estilo.modifier*100)}%)</option>`).join('');
+    const bio=stripTags(actor?.system?.biography??actor?.system?.details?.description??'').trim();
+    return `<div class="sy-gm-strip"><label class="sy-attitude-pick" style="--sy-att:${e(ATTITUDES[atual].color)}"><span>Atitude</span><select name="npcAttitudeLive" data-id="${e(actor.id)}">${opcoes}</select></label>${bio?`<details class="sy-gm-bio"><summary>Bio · só o mestre</summary><p>${e(bio)}</p></details>`:'<small class="sy-gm-bio-empty">Sem biografia na ficha.</small>'}</div>`;
+  }
   npcNoteBlock(actor){
     const {mine,others}=this.npcNotes(actor.uuid);
     const grupo=others.length?`<div class="sy-npc-note-others">${others.map(note=>`<p><b>${e(note.user)}</b>${note.shared?'':' <em>(privada)</em>'} — ${e(note.text)}</p>`).join('')}</div>`:'';
@@ -966,6 +1170,8 @@ export class CampaignLibrary {
     const place=PLACES.find(p=>p.id===flag.placeId);
     const mode=npcVisibility({...flag,shared:true});
     const loja=mode==='shop'?this.npcStockCard(actor,flag,true):mode==='forge'?this.renderForge(actor):'';
+    // qualquer NPC compra do grupo, tenha ou não loja: só a barra de venda basta
+    const venda=this.npcSellCard(actor);
     const {legacy,heritage,melancolia}=this.npcLegacy(actor);
     const heritageLabel=melancolia||heritage;
     const legacyBadge=legacy?tagChip('fa-dna','#8f7ad4',heritageLabel?`${legacy} · ${heritageLabel}`:legacy):'';
@@ -973,7 +1179,7 @@ export class CampaignLibrary {
     // o mestre pode tirar alguém de cena sem fechar a localidade inteira
     const escondido=this.npcHidden.has(actor.uuid);
     const ocultar=gm?`<button class="sy-npc-live-dot ${escondido?'':'is-live'}" data-op="lib-npc-hide" data-id="${e(actor.uuid)}" title="${escondido?'Escondido dos jogadores — clique para mostrar':'Visível aos jogadores — clique para esconder'}"><i class="fa-solid ${escondido?'fa-eye-slash':'fa-eye'}" aria-hidden="true"></i></button>`:'';
-    return `<article class="sy-library-card sy-npc-card sy-player-npc ${escondido?'is-hidden-npc':''} ${loja?'sy-npc-card-full':''}" style="--sy-region:${e(color)}" data-search="${e(nameKey(`${actor.name} ${NPC_ROLES[flag.roleSecondary]??''} ${legacy} ${heritageLabel} ${place?.name??''}`))}">${ocultar}<div class="sy-library-card-content"><div class="sy-npc-card-grid">${this.npcPortrait(actor)}<div class="sy-npc-identity"><div class="sy-npc-identity-top"><strong>${e(actor.name)}</strong>${place?`<span class="sy-npc-location-badge" style="--sy-region:${e(color)}">${e(place.name)}</span>`:''}</div><div class="sy-npc-tags">${role2?npcRoleChip(role2):''}${legacyBadge}</div>${this.npcRoleSecondaryPicker(actor,role2)}${this.npcNoteBlock(actor)}</div></div>${loja}</div></article>`;
+    return `<article class="sy-library-card sy-npc-card sy-player-npc ${escondido?'is-hidden-npc':''} ${loja||venda?'sy-npc-card-full':''}" style="--sy-region:${e(color)}" data-search="${e(nameKey(`${actor.name} ${NPC_ROLES[flag.roleSecondary]??''} ${legacy} ${heritageLabel} ${place?.name??''}`))}">${ocultar}<div class="sy-library-card-content"><div class="sy-npc-card-grid">${this.npcPortrait(actor)}<div class="sy-npc-identity"><div class="sy-npc-identity-top"><strong>${e(actor.name)}</strong>${place?`<span class="sy-npc-location-badge" style="--sy-region:${e(color)}">${e(place.name)}</span>`:''}</div><div class="sy-npc-tags">${role2?npcRoleChip(role2):''}${legacyBadge}</div>${gm?this.npcGmStrip(actor,flag):''}${this.npcRoleSecondaryPicker(actor,role2)}${this.npcNoteBlock(actor)}</div></div>${loja}${venda}</div></article>`;
   }
   /** Aba NPCs do jogador: entra por região liberada, depois lista quem mora lá. */
   renderNpcsPlayer(preview=false){
@@ -1444,10 +1650,16 @@ export class CampaignLibrary {
     return `<details class="sy-library-guide sy-monster-locality"><summary>Onde aparece${count?` · ${count}`:''}${anywhere?' · 🌐 qualquer lugar':''}</summary><label class="sy-inline-check"><input type="checkbox" name="monsterAnywhere" data-id="${e(entry.id)}" ${anywhere?'checked':''}> Aparece em qualquer lugar (bandidos, animais comuns…)</label>${anywhere?'<p class="sy-note">Marcado como "qualquer lugar": não precisa taguear região/local.</p>':`<div class="sy-locality-chips">${regionChips||'<small>Nenhuma região marcada.</small>'}</div>${regionAdd}<div class="sy-locality-chips">${placeChips||'<small>Nenhum local específico.</small>'}</div>${placeAdd}`}</details>`;
   }
   itemCard(entry,readonly){
-    const tags=[entry.category,entry.equipment,entry.grade?`${entry.grade}º grau`:null,entry.price!=null?currency(entry.price):null,entry.priceKind,entry.priceFormula,entry.rarity,entry.setting,entry.volume!=null?`${entry.volume} vol.`:null,entry.damage?`Dano ${entry.damage}`:null,entry.reduction?`RD ${entry.reduction}`:null,entry.range?`Alcance ${entry.range} m`:null,entry.slot,entry.charges?`${entry.charges} cargas`:null,entry.fragments?`${entry.fragments} fragmentos`:null,entry.imbued];
+    const style=itemCategoryStyle(entry.category);
     const matches=findMatches(entry,this.catalog?.items??[],typesFor(entry));
     const uuid=matches.find(match=>String(match.uuid).startsWith('Compendium.'))?.uuid,drag=uuid?` draggable="true" data-drag-item="${e(uuid)}" title="Arraste para uma ficha ou diálogo"`:'';
-    return `<details class="sy-library-card"${drag} data-search="${e(nameKey(`${entry.name} ${entry.category} ${entry.equipment??''} ${entry.summary} ${(entry.aliases??[]).join(' ')}`))}" data-category="${e(entry.category)}"><summary><div class="sy-card-heading">${thumb(this.image('item',entry.name,matches[0]?.img,itemFallback(entry)))}<span><small>${e(entry.category)}${entry.equipment?` · ${e(entry.equipment)}`:''}</small><strong>${e(entry.name)}</strong></span><span class="sy-library-question" title="Abrir consulta" aria-hidden="true">?</span></div></summary>${readonly?'':this.shareButton('items',entry.id,'✓ Liberado','Liberar')}<div class="sy-library-body">${chips(tags)}<p>${e(entry.summary)}</p>${entry.descriptors?`<p><b>Descritores:</b> ${e(Array.isArray(entry.descriptors)?entry.descriptors.join(', '):entry.descriptors)}</p>`:''}${entry.note?`<p class="sy-alert">${e(entry.note)}</p>`:''}<small>${page(entry)}</small>${entry.referenceOnly?'<p class="sy-note">Entrada de referência; não é uma compra automática.</p>':''}${readonly?'':this.links(matches)}</div></details>`;
+    // grade em vez de fileira de chips: só as propriedades que o item tem, uma por linha
+    const props=itemProperties(entry);
+    const grade=props.length?`<dl class="sy-item-props">${props.map(row=>`<div><dt>${e(row.label)}</dt><dd>${e(row.value)}</dd></div>`).join('')}</dl>`:'';
+    const descritores=itemDescriptors(entry);
+    const selos=descritores.length?`<div class="sy-item-descriptors">${descritores.map(item=>`<span class="sy-item-descriptor ${item.tone}">${e(item.label)}</span>`).join('')}</div>`:'';
+    const preco=entry.price!=null?`<span class="sy-item-price">${e(currency(entry.price))}</span>`:'';
+    return `<details class="sy-library-card sy-item-card" style="--sy-item:${e(style.color)}"${drag} data-search="${e(nameKey(`${entry.name} ${entry.category} ${entry.equipment??''} ${entry.summary} ${(entry.aliases??[]).join(' ')}`))}" data-category="${e(entry.category)}"><summary><div class="sy-card-heading">${thumb(this.image('item',entry.name,matches[0]?.img,itemFallback(entry)))}<span><small><i class="fa-solid ${e(style.icon)}" aria-hidden="true"></i> ${e(entry.category)}${entry.equipment?` · ${e(entry.equipment)}`:''}</small><strong>${e(entry.name)}</strong></span>${preco}<span class="sy-library-question" title="Abrir consulta" aria-hidden="true">?</span></div></summary>${readonly?'':this.shareButton('items',entry.id,'✓ Liberado','Liberar')}<div class="sy-library-body">${selos}${grade}<p>${e(entry.summary)}</p>${entry.imbued?`<p><b>Imbuído:</b> ${e(entry.imbued)}</p>`:''}${entry.note?`<p class="sy-alert">${e(entry.note)}</p>`:''}<small>${page(entry)}</small>${entry.referenceOnly?'<p class="sy-note">Entrada de referência; não é uma compra automática.</p>':''}${readonly?'':this.links(matches)}</div></details>`;
   }
   renderItems(readonly=false){
     if(readonly){
@@ -1466,7 +1678,7 @@ export class CampaignLibrary {
     if(!this.forgeBuilder.sigils.length)throw Error('Adicione ao menos um sigilo.');
     const result=await purchaseForgedItem({buyer,base,material:this.forgeMaterial(),sigils:this.forgeBuilder.sigils,markup:1,consumeOriginal:false});
     this.forgeBuilder={smithId:'',baseUuid:'',materialId:'',sigils:[],tab:'prefixo'};
-    globalThis.ui?.notifications?.info?.(`Item imbuído por T$ ${result.quote.total}.`);
+    globalThis.ui?.notifications?.info?.(`Item imbuído por ${currency(result.quote.total)}.`);
     return result;
   }
   renderImbueBench(){
@@ -1479,7 +1691,7 @@ export class CampaignLibrary {
     const balance=walletTotal(buyer?.system?.currency??{}),affordable=Boolean(quote&&!quote.unknown&&balance>=quote.total&&!error&&chosen.length),preview=magicNamePreview(base,chosen);
     const slots=['prefixo','sufixo'].map(slot=>{const entries=chosen.filter(sigil=>String(sigil.slot).toLowerCase()===slot);return `<section class="sy-forge-slot-group"><h5>${slot==='prefixo'?'Prefixos':'Sufixos'} ${entries.length}/2</h5><div class="sy-forge-slots">${[0,1].map(position=>{const sigil=entries[position],index=sigil?chosen.indexOf(sigil):-1;return sigil?`<article class="sy-forge-slot is-filled"><strong>${e(sigil.name)}</strong><small>${sigil.grade}º grau · ${sigil.fragments??0} fragmentos</small>${sigil.summary?`<p>${e(sigil.summary)}</p>`:''}<div>${button('forge-imbue',String(index),sigil.infused?'✓ Imbuído':'Imbuir')}${button('forge-remove',String(index),'×')}</div></article>`:`<article class="sy-forge-slot is-empty"><b>+</b><small>${slot}</small></article>`;}).join('')}</div></section>`;}).join('');
     const costs=quote?`<div class="sy-forge-cost ${affordable?'is-affordable':'is-unaffordable'}"><span>Saldo: ${currency(balance)}</span><strong>Total: ${currency(quote.total)}</strong></div><details><summary>Ver quebra do custo (por sigilo)</summary><pre class="sy-mod-sheet">${e(quote.lines.map((line,i)=>`${i+1}. ${line.label}: ${line.cost==null?'a conferir':currency(line.cost)}`).join('\n'))}</pre><p class="sy-note">Paga-se por sigilo; cada sigilo a mais no mesmo item custa mais caro (prefixo e sufixo contam juntos). Imbuir cada sigilo tem custo próprio por grau.</p></details>`:'';
-    return `<section class="sy-forge sy-imbue-bench"><h4><i class="fa-solid fa-wand-sparkles"></i> Imbuir na sua ficha — ${e(buyer.name)}</h4><div class="sy-forge-bench"><div class="sy-forge-inventory"><span>Seu equipamento</span>${items.map(item=>`<button data-op="lib-forge-base" data-id="|${e(item.uuid)}" class="sy-forge-inv-item ${base&&(base.uuid===item.uuid||base.id===item.id)?'is-active':''}">${avatarThumb(item.img)}<span>${e(item.name)}</span></button>`).join('')||'<small>Nenhuma arma, armadura ou vestimenta na ficha.</small>'}</div><div class="sy-forge-base"><span>Item base ${base?button('forge-clear','','× remover'):''}</span><div class="sy-forge-drop" data-forge-drop="">${base?`${avatarThumb(base.img)}<strong>${e(base.name)}</strong><small>escolha ou arraste outro</small>`:'<b>+</b><small>Escolha ao lado ou arraste uma arma, armadura ou vestimenta</small>'}</div></div><div class="sy-forge-rack">${slots}</div></div>${base?`<h3 class="sy-magic-name">${e(preview)}</h3><label>Material especial opcional<select name="forgeMaterial"><option value="">Sem material</option>${BOOK_ITEMS.filter(item=>item.category==='Materiais especiais'&&item.price===300).map(item=>`<option value="${item.id}" ${material?.id===item.id?'selected':''}>${e(item.name)} · +T$ 300</option>`).join('')}</select></label><div class="sy-library-tabs sy-forge-tabs">${button('forge-tab','prefixo',`Prefixo ${chosen.filter(item=>String(item.slot).toLowerCase()==='prefixo').length}/2`,tab==='prefixo'?'is-active':'')}${button('forge-tab','sufixo',`Sufixo ${chosen.filter(item=>String(item.slot).toLowerCase()==='sufixo').length}/2`,tab==='sufixo'?'is-active':'')}</div><div class="sy-mod-sigils">${available.map(({sigil})=>`<article><span><strong>${e(sigil.name)}</strong><small>${sigil.grade}º grau · ${sigil.fragments??0} fragmentos</small>${sigil.summary?`<em>${e(sigil.summary)}</em>`:''}</span>${button('forge-add',sigil.id,'Adicionar')}</article>`).join('')||'<small>Nenhum sigilo disponível nesta aba.</small>'}</div>${costs}${error?`<p class="sy-alert">${e(error)}</p>`:''}<button class="sy-primary" data-op="lib-imbue-pay" data-id="" ${affordable?'':'disabled'}>Imbuir por ${quote?currency(quote.total):'—'}</button>${button('forge-clear','','Limpar bancada')}`:''}</section>`;
+    return `<section class="sy-forge sy-imbue-bench"><h4><i class="fa-solid fa-wand-sparkles"></i> Imbuir na sua ficha — ${e(buyer.name)}</h4><div class="sy-forge-bench"><div class="sy-forge-inventory"><span>Seu equipamento</span>${items.map(item=>`<button data-op="lib-forge-base" data-id="|${e(item.uuid)}" class="sy-forge-inv-item ${base&&(base.uuid===item.uuid||base.id===item.id)?'is-active':''}">${avatarThumb(item.img)}<span>${e(item.name)}</span></button>`).join('')||'<small>Nenhuma arma, armadura ou vestimenta na ficha.</small>'}</div><div class="sy-forge-base"><span>Item base ${base?button('forge-clear','','× remover'):''}</span><div class="sy-forge-drop" data-forge-drop="">${base?`${avatarThumb(base.img)}<strong>${e(base.name)}</strong><small>escolha ou arraste outro</small>`:'<b>+</b><small>Escolha ao lado ou arraste uma arma, armadura ou vestimenta</small>'}</div></div><div class="sy-forge-rack">${slots}</div></div>${base?`<h3 class="sy-magic-name">${e(preview)}</h3><label>Material especial opcional<select name="forgeMaterial"><option value="">Sem material</option>${BOOK_ITEMS.filter(item=>item.category==='Materiais especiais'&&item.price===300).map(item=>`<option value="${item.id}" ${material?.id===item.id?'selected':''}>${e(item.name)} · +${currency(300)}</option>`).join('')}</select></label><div class="sy-library-tabs sy-forge-tabs">${button('forge-tab','prefixo',`Prefixo ${chosen.filter(item=>String(item.slot).toLowerCase()==='prefixo').length}/2`,tab==='prefixo'?'is-active':'')}${button('forge-tab','sufixo',`Sufixo ${chosen.filter(item=>String(item.slot).toLowerCase()==='sufixo').length}/2`,tab==='sufixo'?'is-active':'')}</div><div class="sy-mod-sigils">${available.map(({sigil})=>`<article><span><strong>${e(sigil.name)}</strong><small>${sigil.grade}º grau · ${sigil.fragments??0} fragmentos</small>${sigil.summary?`<em>${e(sigil.summary)}</em>`:''}</span>${button('forge-add',sigil.id,'Adicionar')}</article>`).join('')||'<small>Nenhum sigilo disponível nesta aba.</small>'}</div>${costs}${error?`<p class="sy-alert">${e(error)}</p>`:''}<button class="sy-primary" data-op="lib-imbue-pay" data-id="" ${affordable?'':'disabled'}>Imbuir por ${quote?currency(quote.total):'—'}</button>${button('forge-clear','','Limpar bancada')}`:''}</section>`;
   }
   renderImbue(readonly=false){
     const imbueHelp=`<section class="sy-note"><strong>O que é imbuir?</strong><p>Imbuir torna o encantamento do sigilo permanente. Em vez de gastar cargas até acabar, o efeito fica sempre disponível ou recarrega no descanso longo, conforme o sigilo. <strong>Paga-se por sigilo</strong>, não um valor único: 1º grau T$ 250 · 2º T$ 1.000 · 3º T$ 5.000 · 4º grau a conferir. Além disso, cada sigilo colocado no item (prefixo ou sufixo, contam juntos) tem um custo que <strong>aumenta conforme quantos já estão no item</strong> — ver a tabela abaixo. A ordem entre eles não muda o preço.</p></section>`;
@@ -1489,6 +1701,6 @@ export class CampaignLibrary {
     const chosen=this.modBuilder.sigils,preview=magicNamePreview(base,chosen),fragmentUse=chosen.filter(sigil=>!sigil.imbue).reduce((sum,sigil)=>sum+Math.max(0,Number(sigil.fragments)||0),0);
     const slots=['prefixo','sufixo'].map(slot=>{const entries=chosen.filter(sigil=>String(sigil.slot).toLowerCase()===slot);return `<section class="sy-forge-slot-group"><h5>${slot==='prefixo'?'Prefixos':'Sufixos'} ${entries.length}/2</h5><div class="sy-forge-slots">${[0,1].map(position=>{const sigil=entries[position],index=sigil?chosen.indexOf(sigil):-1;return sigil?`<article class="sy-forge-slot is-filled"><strong>${e(sigil.name)}</strong><small>${sigil.grade}º grau · ${sigil.fragments??0} fragmentos</small>${sigil.summary?`<p>${e(sigil.summary)}</p>`:''}<div>${button('mod-imbue',String(index),sigil.imbue?'✓ Imbuído':'Imbuir')}${button('mod-remove',String(index),'×')}</div></article>`:`<article class="sy-forge-slot is-empty"><b>+</b><small>${slot}</small></article>`;}).join('')}</div></section>`;}).join('');
     const worksheet=sheet?`<div class="sy-forge-cost is-affordable"><span>Calculadora do mestre</span><strong>Total: ${currency(sheet.result.total)}${sheet.result.unknown?' + valor a conferir':''}</strong></div><details><summary>Ver quebra do custo</summary><pre class="sy-mod-sheet">${e(sheet.text)}</pre>${sheet.result.warnings.map(warning=>`<p class="sy-alert">${e(warning)}</p>`).join('')}${button('mod-copy','','Copiar folha')}</details>`:'';
-    return `<p>Imbua um equipamento da sua ficha na bancada abaixo, ou use a calculadora para consultar custos sem alterar nada.</p><div class="sy-library-share-row">${this.shareButton('areas','imbue','✓ Aba Imbuir visível aos jogadores','Liberar a aba Imbuir aos jogadores')}</div>${this.renderImbueBench()}<details class="sy-library-guide"><summary>Calculadora (não altera Item da mesa)</summary><p>Esta calculadora não cria nem altera Item no Foundry.</p><div class="sy-mod-controls"><label>Item base<select name="modBase"><option value="">Escolha…</option>${bases.map(item=>`<option value="${item.id}" ${this.modBuilder.baseId===item.id?'selected':''}>${e(item.name)} · ${item.price==null?'sem preço':currency(item.price)}</option>`).join('')}</select></label><label>Material especial opcional<select name="modMaterial"><option value="">Sem material</option>${materials.map(item=>`<option value="${item.id}" ${this.modBuilder.materialId===item.id?'selected':''}>${e(item.name)} · +T$ 300</option>`).join('')}</select></label></div><div class="sy-forge-bench"><div class="sy-forge-base"><span>Item base</span><div class="sy-forge-drop">${base?`${avatarFor(this.image('item',base.name,'',itemFallback(base)))}<strong>${e(base.name)}</strong><small>${e(equipment)}</small>`:'<b>+</b><small>Escolha o item acima</small>'}</div></div><div class="sy-forge-rack">${slots}</div></div>${base?`<h3 class="sy-magic-name">${e(preview)}</h3><div class="sy-library-tabs sy-forge-tabs">${button('mod-tab','prefixo',`Prefixo ${chosen.filter(item=>String(item.slot).toLowerCase()==='prefixo').length}/2`,tab==='prefixo'?'is-active':'')}${button('mod-tab','sufixo',`Sufixo ${chosen.filter(item=>String(item.slot).toLowerCase()==='sufixo').length}/2`,tab==='sufixo'?'is-active':'')}</div><div class="sy-mod-sigils">${available.map(sigil=>`<article><span><strong>${e(sigil.name)}</strong><small>${sigil.grade}º grau · ${sigil.fragments??0} fragmentos</small>${sigil.summary?`<em>${e(sigil.summary)}</em>`:''}</span>${button('mod-add',sigil.id,'Adicionar')}</article>`).join('')||'<small>Nenhum sigilo disponível nesta aba.</small>'}</div><p class="sy-fragments">Fragmentos Arcanos não imbuídos: usa ${fragmentUse} · compare com o limite da ficha.</p>`:''}${error?`<p class="sy-alert">${e(error)}</p>`:worksheet}${imbueHelp}<details><summary>Consultar regras e tabelas usadas</summary>${MODIFICATION_GUIDES.map(i=>`<h4>${e(i.name)} <small>p. ${i.page}</small></h4><p>${e(i.summary)}</p>`).join('')}<table><thead><tr><th>Sigilo no item</th>${[1,2,3,4].map(n=>`<th>${n}º grau</th>`).join('')}</tr></thead><tbody>${SIGIL_COSTS.map((row,i)=>`<tr><th>${i+1}º sigilo</th>${row.map(v=>`<td>${currency(v)}</td>`).join('')}</tr>`).join('')}<tr><th>Imbuir</th>${IMBUE_COSTS.map(v=>`<td>${v==null?'A conferir*':currency(v)}</td>`).join('')}</tr></tbody></table></details></details>`;
+    return `<p>Imbua um equipamento da sua ficha na bancada abaixo, ou use a calculadora para consultar custos sem alterar nada.</p><div class="sy-library-share-row">${this.shareButton('areas','imbue','✓ Aba Imbuir visível aos jogadores','Liberar a aba Imbuir aos jogadores')}</div>${this.renderImbueBench()}<details class="sy-library-guide"><summary>Calculadora (não altera Item da mesa)</summary><p>Esta calculadora não cria nem altera Item no Foundry.</p><div class="sy-mod-controls"><label>Item base<select name="modBase"><option value="">Escolha…</option>${bases.map(item=>`<option value="${item.id}" ${this.modBuilder.baseId===item.id?'selected':''}>${e(item.name)} · ${item.price==null?'sem preço':currency(item.price)}</option>`).join('')}</select></label><label>Material especial opcional<select name="modMaterial"><option value="">Sem material</option>${materials.map(item=>`<option value="${item.id}" ${this.modBuilder.materialId===item.id?'selected':''}>${e(item.name)} · +${currency(300)}</option>`).join('')}</select></label></div><div class="sy-forge-bench"><div class="sy-forge-base"><span>Item base</span><div class="sy-forge-drop">${base?`${avatarFor(this.image('item',base.name,'',itemFallback(base)))}<strong>${e(base.name)}</strong><small>${e(equipment)}</small>`:'<b>+</b><small>Escolha o item acima</small>'}</div></div><div class="sy-forge-rack">${slots}</div></div>${base?`<h3 class="sy-magic-name">${e(preview)}</h3><div class="sy-library-tabs sy-forge-tabs">${button('mod-tab','prefixo',`Prefixo ${chosen.filter(item=>String(item.slot).toLowerCase()==='prefixo').length}/2`,tab==='prefixo'?'is-active':'')}${button('mod-tab','sufixo',`Sufixo ${chosen.filter(item=>String(item.slot).toLowerCase()==='sufixo').length}/2`,tab==='sufixo'?'is-active':'')}</div><div class="sy-mod-sigils">${available.map(sigil=>`<article><span><strong>${e(sigil.name)}</strong><small>${sigil.grade}º grau · ${sigil.fragments??0} fragmentos</small>${sigil.summary?`<em>${e(sigil.summary)}</em>`:''}</span>${button('mod-add',sigil.id,'Adicionar')}</article>`).join('')||'<small>Nenhum sigilo disponível nesta aba.</small>'}</div><p class="sy-fragments">Fragmentos Arcanos não imbuídos: usa ${fragmentUse} · compare com o limite da ficha.</p>`:''}${error?`<p class="sy-alert">${e(error)}</p>`:worksheet}${imbueHelp}<details><summary>Consultar regras e tabelas usadas</summary>${MODIFICATION_GUIDES.map(i=>`<h4>${e(i.name)} <small>p. ${i.page}</small></h4><p>${e(i.summary)}</p>`).join('')}<table><thead><tr><th>Sigilo no item</th>${[1,2,3,4].map(n=>`<th>${n}º grau</th>`).join('')}</tr></thead><tbody>${SIGIL_COSTS.map((row,i)=>`<tr><th>${i+1}º sigilo</th>${row.map(v=>`<td>${currency(v)}</td>`).join('')}</tr>`).join('')}<tr><th>Imbuir</th>${IMBUE_COSTS.map(v=>`<td>${v==null?'A conferir*':currency(v)}</td>`).join('')}</tr></tbody></table></details></details>`;
   }
 }

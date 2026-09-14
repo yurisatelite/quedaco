@@ -401,7 +401,7 @@
 .sy-creator .sy-shop-falta{color:#f0a860}
 
 /* ── Barra de negociação na loja: atitude, condições do livro e pechincha ──── */
-.sy-creator .sy-shop-bar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 10px;padding:7px 9px;border-radius:8px;background:#131c27;border-left:3px solid var(--sy-att,#8a99a8)}
+.sy-creator .sy-shop-bar{display:inline-flex;max-width:100%;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 10px;padding:5px 9px;border-radius:8px;background:#131c27;border-left:3px solid var(--sy-att,#8a99a8)}
 .sy-creator .sy-shop-attitude{padding:2px 9px;border-radius:999px;background:var(--sy-att,#8a99a8);color:#0c1219;font-size:11px;font-weight:700;white-space:nowrap;cursor:help}
 .sy-creator .sy-shop-conds{display:flex;flex-wrap:wrap;gap:5px}
 .sy-creator .sy-shop-conds em{font-style:normal;padding:2px 7px;border-radius:5px;border:1px dashed #6f8fa5;color:#bcd6e6;font-size:11px;cursor:help}
@@ -409,3 +409,48 @@
 .sy-creator .sy-shop-haggle{font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px}
 .sy-creator .sy-shop-haggle.is-won{background:#123a2a;color:#a9f2cf;border:1px solid #4fca8f}
 .sy-creator .sy-shop-haggle.is-lost{background:#341c1c;color:#f0b2b2;border:1px solid #b45757}
+
+/* ── Cartão de item: faixa de cor por categoria, grade de propriedades e selos ── */
+.sy-creator .sy-item-card{border-left:3px solid var(--sy-item,#7f8c9b)}
+.sy-creator .sy-item-card[open]{border-left-color:var(--sy-item,#7f8c9b)}
+.sy-creator .sy-item-card summary small i{color:var(--sy-item,#7f8c9b);width:13px;text-align:center;margin-right:3px}
+.sy-creator .sy-item-price{flex:0 0 auto;font-size:12px;font-weight:700;color:#f0d795;white-space:nowrap}
+.sy-creator .sy-item-props{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:5px;margin:0 0 10px}
+.sy-creator .sy-item-props>div{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:4px 7px;border:1px solid #2f3f4f;border-radius:5px;background:#0f1a24}
+.sy-creator .sy-item-props dt{color:#8fb4c7;font-size:11px;text-transform:uppercase;letter-spacing:.03em;margin:0}
+.sy-creator .sy-item-props dd{margin:0;font-size:12px;font-weight:600;color:#dcecf6;text-align:right;overflow-wrap:anywhere}
+.sy-creator .sy-item-descriptors{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 10px}
+.sy-creator .sy-item-descriptor{padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:#14202b;border:1px solid #41576b;color:#c2e8f5}
+.sy-creator .sy-item-descriptor.is-warn{background:#2a2114;border-color:#a5762f;color:#f2ce93}
+.sy-creator .sy-item-descriptor.is-danger{background:#301818;border-color:#b45757;color:#f4b0b0;text-transform:uppercase;letter-spacing:.04em}
+
+/* ── Carrinho, venda e controle de atitude ao vivo ─────────────────────────── */
+.sy-creator .sy-coin-note{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:0 0 9px;font-size:11px;color:#a9bfd0;cursor:help}
+.sy-creator .sy-coin-note i{color:#d8ad4c}
+.sy-creator .sy-coin-note span{padding:1px 6px;border-radius:4px;background:#0f1a24;border:1px solid #33465a}
+.sy-creator .sy-shop-stock article s{color:#7d8ea0;font-weight:400;margin-right:4px}
+.sy-creator .sy-shop-stock article b{color:#f0d795}
+.sy-creator .sy-cart{margin:0 0 11px;padding:9px 10px;border:1px solid #4da1b4;border-radius:8px;background:#132430}
+.sy-creator .sy-cart h5{margin:0 0 7px;font-size:12px;font-weight:700;color:#9ae8ff;text-transform:uppercase;letter-spacing:.04em}
+.sy-creator .sy-cart-line{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:12px;border-bottom:1px solid #22303d}
+.sy-creator .sy-cart-line span{flex:1;min-width:0;overflow-wrap:anywhere}
+.sy-creator .sy-cart-line b{color:#f0d795;white-space:nowrap}
+.sy-creator .sy-cart-line.is-gone span{color:#f0b2b2}
+.sy-creator .sy-cart-line button{width:auto;min-width:0;margin:0;padding:1px 7px;font-size:11px}
+.sy-creator .sy-cart-total{display:flex;align-items:baseline;gap:8px;margin-top:8px;font-size:12px}
+.sy-creator .sy-cart-total strong{margin-left:auto;font-size:15px;color:#f0d795}
+.sy-creator .sy-cart-total small{color:#9fb3c4}
+.sy-creator .sy-cart-actions{display:flex;gap:7px;margin-top:8px}
+.sy-creator .sy-cart-actions button{width:auto;margin:0;padding:5px 13px;font-size:12px}
+.sy-creator .sy-sell-row{display:flex;margin:8px 0 0}
+.sy-creator .sy-sell-toggle{width:auto;margin:0;padding:4px 11px;font-size:11px}
+.sy-creator .sy-sell{margin-top:8px;padding-top:2px;border-top:1px solid #2c3a49}
+.sy-creator .sy-sell .sy-shop-stock article input{width:56px}
+.sy-creator .sy-gm-strip{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:6px 0;padding:5px 7px;border-radius:7px;background:#101a24;border-left:3px solid #b9762f}
+.sy-creator .sy-attitude-pick{display:inline-flex;align-items:center;gap:6px;margin:0;font-size:11px;white-space:nowrap}
+.sy-creator .sy-attitude-pick>span{color:#c8a06a;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.sy-creator .sy-attitude-pick select{width:auto;min-width:0;margin:0;padding:2px 6px;font-size:11px;border-radius:999px;border:1px solid var(--sy-att,#8a99a8);background:#0f1620;color:#e2eef7}
+.sy-creator .sy-gm-bio{flex:1;min-width:150px;font-size:11px}
+.sy-creator .sy-gm-bio summary{cursor:pointer;color:#c8a06a}
+.sy-creator .sy-gm-bio p{margin:5px 0 0;font-size:11px;line-height:1.5;color:#bfd0dd}
+.sy-creator .sy-gm-bio-empty{color:#7d8ea0;font-size:11px}

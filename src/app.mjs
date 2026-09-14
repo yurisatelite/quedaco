@@ -229,6 +229,8 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
           if(op==='lib-npc-link-suggest'&&editor){const row=button.closest('[data-link-type]');data={type:row?.dataset.linkType,target:row?.querySelector('[name="npcLinkSuggestion"]')?.value,note:'da bio'};}
           if(op==='lib-npc-link-add'&&editor)data={type:editor.querySelector('[name="npcLinkType"]')?.value,target:editor.querySelector('[name="npcLinkTarget"]')?.value,text:editor.querySelector('[name="npcLinkText"]')?.value,note:editor.querySelector('[name="npcLinkNote"]')?.value};
           if(op==='lib-npc-buy'){const row=button.closest('article');data={qty:row?.querySelector('input[type="number"]')?.value};}
+          // carrinho e venda leem a quantidade da própria linha, como a compra direta
+          if(op==='lib-cart-add'||op==='lib-npc-sell'){const row=button.closest('article');data={qty:row?.querySelector('input[type="number"]')?.value};}
         }
         console.log(MODULE_ID,'chamando library.action',op,id,data);
         await this.library.action(op,id,data);
@@ -281,6 +283,8 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     if(event.target.matches?.('[data-guild-facet]')){const facet=event.target.dataset.guildFacet,checked=Array.from(this.element.querySelectorAll(`[data-guild-facet="${facet}"]:checked`)).map(i=>i.value);this.library.state.guildFacets[facet]=checked;const d=event.target.closest('.sy-facet'),c=d?.querySelector('.sy-facet-count');if(c)c.textContent=checked.length?` (${checked.length})`:'';this.library.filter(this.element);return;}
     if(name==='guildStance'){try{await this.library.action('lib-guild-stance',event.target.dataset.id,{stance:value});}catch(error){ui.notifications.warn(error.message);}this.rerender(true);return;}
     if(name==='npcRoleQuick'){try{await this.library.action('lib-npc-role',event.target.dataset.id,{role:value});}catch(error){ui.notifications.warn(error.message);}this.rerender(true);return;}
+    // atitude trocada ao vivo na visão do jogador, sem abrir o editor do NPC
+    if(name==='npcAttitudeLive'){try{await this.library.action('lib-npc-attitude',event.target.dataset.id,{attitude:value});}catch(error){ui.notifications.warn(error.message);}this.rerender(true);return;}
     if(name==='npcSceneQuick'){try{await this.library.action('lib-npc-scene',event.target.dataset.id,{scene:value});}catch(error){ui.notifications.warn(error.message);}this.rerender(true);return;}
     if(name==='regionNpcRole'){try{await this.library.action('lib-region-npc-role',value);}catch(error){ui.notifications.warn(error.message);}this.rerender(true);return;}
     if(name==='monsterHabitatAdd'&&value){try{await this.library.action('lib-monster-habitat',`${event.target.dataset.monster}|${value}|on`);}catch(error){ui.notifications.warn(error.message);}this.rerender(true);return;}

@@ -54,6 +54,15 @@ export function wallet(total) {
   return { k: Math.floor(total / 1000), p: Math.floor(total % 1000 / 10), t: total % 10 };
 }
 export const walletTotal = ({ k = 0, p = 0, t = 0 }) => k*1000+p*10+t;
+/** Preço legível nas três moedas do Cap. 3 (p. 219): 10 Trocado = 1 Pila,
+ *  100 Pila = 1 Kurmac. Mostra só as moedas diferentes de zero, da maior para a
+ *  menor; abaixo de 10 Trocados não vale a pena quebrar o preço de uma vela. */
+export function precoFormatado(total) {
+  const value = Math.max(0, Math.floor(Number(total) || 0));
+  if (value < 10) return `T$ ${value}`;
+  const { k, p, t } = wallet(value);
+  return [k ? `K$ ${k.toLocaleString('pt-BR')}` : null, p ? `P$ ${p}` : null, t ? `T$ ${t}` : null].filter(Boolean).join(' · ');
+}
 export function carryingCapacity(strength){if(!Number.isInteger(strength)||strength< -4||strength>10)throw Error('Força inválida para calcular volume.');if(strength<=-3)return 10;if(strength===-2)return 12;if(strength===-1)return 14;if(strength===0)return 16;return 19+(strength-1)*3;}
 export function moneyResult(rule, diceSum) {
   if (!rule || !Number.isInteger(diceSum) || diceSum < rule.dice || diceSum > rule.dice*(rule.sides??6)) throw Error('Soma dos dados fora do intervalo permitido.');

@@ -81,3 +81,29 @@ export const LOCALITY_GOODS={
  pantano:{label:'Pântano',categories:['Consumíveis','Equipamentos'],keywords:['antídoto','erva','rede','bota']},
  selvagem:{label:'Região selvagem',categories:['Armas simples','Consumíveis','Equipamentos'],keywords:['arco','flecha','ração','armadilha','corda']}
 };
+
+// Tabela 3-2 "Dinheiro de Opath" (p. 219–220). O valor da moeda é o mesmo em toda
+// Opath; o que muda de região para região é só o desenho de uma das faces. Isto é
+// sabor de mesa, não uma segunda economia — nada aqui entra em cálculo de preço.
+// A chave é o id da região (a capital citada no livro está no campo `capital`).
+export const COIN_COMMON={p:'Um “P”',k:'O perfil de Kurmac'};
+export const COIN_FACES={
+ thurthur:{t:'Uma luva',p:'Perfil de águia',k:'Perfil de um urso'},
+ norvak:{t:'Perfil de lobo',p:'Uma gota de sangue',k:'Uma gárgula'},
+ huma:{t:'Um grilhão quebrado',p:'Um navio',k:'Um trovão caindo na água'},
+ mirmir:{t:'Dois frascos cruzados',p:null,k:null},
+ wammawina:{t:'Uma rosa',p:'Um jaguar',k:'Duas mãos se cumprimentando'},
+ blurghta:{t:'Um girino',p:'Uma libélula',k:'Um tronco na água'},
+ limsa:{t:'Varmah e Lápis',p:'Um baú aberto com riquezas',k:'Representação da noite em Opath'},
+ forah:{t:'Uma folha caída no chão',p:'Uma árvore nas quatro estações',k:'A coroa das estações'},
+ tatsumari:{t:'Flor de cerejeira',p:'O perfil do imperador',k:'O leão Kuma Ryu'},
+ tormund:{t:'Pepitas de ouro',p:'Uma picareta',k:'Dois anéis entrelaçados'},
+ walsh:{t:'Uma alpaca',p:'Duas alpacas',k:'Três alpacas'}
+};
+/** Faces da moeda de uma região, já com o verso comum a toda Opath.
+ *  Devolve [] quando a região não está na tabela do livro. */
+export function coinFaces(regionId){
+ const faces=COIN_FACES[String(regionId??'')];
+ if(!faces)return [];
+ return [['T$',faces.t],['P$',faces.p],['K$',faces.k]].filter(([,face])=>face).map(([moeda,face])=>({moeda,face}));
+}
