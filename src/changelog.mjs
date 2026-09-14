@@ -1,5 +1,29 @@
 export const CHANGELOG = [
   {
+    version:'0.7.0',
+    date:'2026-09-14',
+    title:'Preço em três moedas, carrinho de compras, venda pra qualquer NPC e atitude editável na hora',
+    notes:[
+      'Preço agora aparece nas três moedas do livro em vez de um número gigante: uma armadura de placas deixa de ser "T$ 5.000" e vira "K$ 5". Vale no cartão de item, na loja, na forja, na bancada de imbuir e no inventário do NPC.',
+      'O cartão de item ficou legível de longe: cada categoria tem cor e ícone próprios numa faixa lateral, as propriedades (dano, RD, alcance, volume, cargas…) viraram uma gradinha só com o que o item realmente tem, e o preço subiu pro cabeçalho.',
+      'Os descritores viraram selos coloridos — QUEBRADIÇO em vermelho, pesada e barulhenta em âmbar — pra o jogador ver o problema antes de comprar, não depois.',
+      'A loja ganhou carrinho: "Adicionar" no lugar de "Comprar", com o total da visita inteira à vista antes de pagar e a bolsa do personagem do lado. O botão de fechar só acende se o dinheiro cobre.',
+      'O preço de cada linha já aparece cotado, com o valor de tabela riscado ao lado quando a atitude do mercador ou uma condição da ficha mudaram a conta.',
+      'A pechincha continua valendo uma vez por visita e agora cobre o carrinho inteiro — é a mesma conversa, não uma por item.',
+      'Fechar o carrinho é tudo ou nada: se faltar dinheiro ou sumir estoque no meio, a moeda volta, os itens já entregues são recolhidos e o estoque do mercador volta ao que era. Nada de meia compra.',
+      'Qualquer NPC liberado passa a comprar do grupo, tenha ou não loja montada: um botão "Vender pra ele" abre a lista dos seus itens com o que ele paga por cada um. Continua valendo a metade do preço do livro, e o preço cheio com Crime que Compensa.',
+      'A atitude do mercador virou um seletor do tamanho de um selo dentro do "Ver como jogador": você troca de hostil pra aliado vendo a mesma tela que o grupo vê, e o preço muda na hora, sem abrir a ficha.',
+      'Do lado da atitude, só pro mestre, aparece a biografia do NPC — pra lembrar o porquê da hostilidade na hora da cena.',
+      'Cada moeda ganhou a cara da região, como o livro descreve: em Thur Thur o Trocado traz uma luva, a Pila uma águia e o Kurmac um urso. O valor é igual em toda Opath; muda só o desenho.',
+      'Corrigido: comprar numa loja liberada por localidade era recusado com "Esta loja não está disponível" — o cartão aparecia e o botão não funcionava.',
+      'Corrigido: o regulador de tamanho das miniaturas só mexia na primeira grade da tela, então a aba de NPCs agrupada por local ficava pela metade.',
+      'Corrigido: encolher o cartão de NPC só o estreitava, e o texto quebrava letra por letra. O retrato passa a acompanhar o tamanho do cartão.',
+      'Corrigido: os filtros de Monstros usavam nomes inventados de deslocamento (Terrestre/Aquático/Aéreo) em vez dos do sistema — Escalada e Escavação nem apareciam. O filtro chamado "Porte" na verdade mostrava a Hierarquia, e "Gosma" aparecia como "Monstro".',
+      'Corrigido: liberar um NPC pelo olho do cartão não soltava a permissão de leitura da ficha, então o jogador não recebia nada mesmo com o módulo dizendo "liberado".',
+      'Corrigido (importante): como "Militar" não tinha mais campo visível no editor, salvar um NPC apagava a marca de Militar dele, em silêncio, toda vez.'
+    ]
+  },
+  {
     version:'0.6.0',
     date:'2026-09-12',
     title:'Vendinhas com negociação, cartão de NPC repaginado e rumores que usam a sua gente',
