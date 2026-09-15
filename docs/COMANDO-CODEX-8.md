@@ -240,6 +240,12 @@ Escreva no mesmo commit da tarefa. Formato por entrada:
 **Funcionou:** testes de região sem localidade e de cenas ocultas, `npm test`, `npm run package` e `git diff --check`.
 **Não funcionou / deixei de fora:** conferência visual no Foundry segue pendente.
 
+### 15/09/2026 — T1 + T13, papel secundário dos jogadores
+**Fiz:** mantive o papel secundário em flag de usuário para que o jogador o altere sem escrever no Actor. A marcação mais recente prevalece e aparece para todos; valores antigos em texto continuam legíveis. O cartão do mestre continua exibindo apenas o papel principal. A tag secundária e o seletor ficam na visão dos jogadores, e o editor do mestre mostra a escolha feita, com opção de correção rara. O painel aberto atualiza quando uma flag de usuário muda. `src/library.mjs`, `src/main.mjs`, `styles/library.css` e `tests/library.test.mjs`.
+**Funcionou:** teste de escolha por dois jogadores, visualização no editor e ausência no cartão do mestre; `npm test`, `npm run package` e `git diff --check`.
+**Não funcionou / deixei de fora:** falta conferir sincronização entre clientes reais no Foundry. Flags antigas sem horário empatam; nesse caso a escolha antiga do mestre mantém precedência até alguém marcar de novo.
+**Precisa de decisão:** T23 continua pendente: a badge de classe deve ficar visualmente distinta do papel principal ou sair do cartão?
+
 ---
 
 ## 5. Estado herdado — o que o Claude já entregou

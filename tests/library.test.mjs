@@ -312,6 +312,25 @@ test('NPC conhecido permanece na lista depois de fechar o local, sem interação
  assert.doesNotMatch(library.renderNpcsPlayer(),/Conhecido · fora de alcance/);
 });
 
+test('papel secundário mais recente dos jogadores aparece ao mestre só no editor',()=>{
+ const actor={id:'x',uuid:'Actor.x',name:'Abel',type:'character',items:[],system:{level:{value:2}},flags:{quedaco:{npc:{role:'smith',regionId:'mirmir',placeId:''}}}};
+ const users=[
+  {id:'gm',isGM:true,flags:{quedaco:{npcRoles2:{'Actor.x':'healer'}}}},
+  {id:'p1',isGM:false,flags:{quedaco:{npcRoles2:{'Actor.x':{role:'merchant',at:10}}}}},
+  {id:'p2',isGM:false,flags:{quedaco:{npcRoles2:{'Actor.x':{role:'guard',at:20}}}}},
+ ];
+ const game={user:users[0],users,actors:[actor],settings:{get:()=>null}};
+ const library=new CampaignLibrary(game,{items:[]});
+ assert.equal(library.npcRoleSecondary(actor.uuid),'guard');
+ assert.doesNotMatch(library.npcCard(actor),/Guarda/);
+ const editor=library.renderNpcEditor(actor);
+ assert.match(editor,/Papel secundário · jogadores/);
+ assert.match(editor,/option value="guard" selected/);
+ assert.match(library.playerNpcCard(actor,actor.flags.quedaco.npc),/Guarda/);
+ assert.match(library.playerNpcCard(actor,actor.flags.quedaco.npc),/data-op="lib-npc-role2"/);
+ assert.doesNotMatch(library.playerNpcCard(actor,actor.flags.quedaco.npc,true),/data-op="lib-npc-role2"/);
+});
+
 test('cartão de item: cor por categoria, grade só com o que o item tem e selos',()=>{
   // toda categoria do catálogo tem cor própria; nada cai no cinza de reserva
   const categorias=[...new Set(BOOK_ITEMS.map(item=>item.category))];

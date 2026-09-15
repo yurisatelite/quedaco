@@ -387,6 +387,9 @@
 .sy-creator .sy-npc-role2{display:flex;gap:6px;align-items:center;margin-top:7px}
 .sy-creator .sy-npc-role2 select{flex:1;min-width:0;margin:0;padding:4px 6px;font-size:11px}
 .sy-creator .sy-npc-role2 button{width:auto;margin:0;padding:4px 10px;font-size:11px}
+.sy-creator .sy-npc-role2-editor{display:grid;gap:3px}
+.sy-creator .sy-npc-role2-editor>span{font-size:12px;color:#d4e6f3}
+.sy-creator .sy-npc-role2-editor>small{font-size:10px;color:#8ca7b8}
 
 /* Resultado do 1d4 de rumores, com os ganchos gerados destacados */
 .sy-creator .sy-rumor-roll{margin:8px 0 12px;padding:10px;border:1px solid #38bdd7;border-radius:8px;background:#0f1f29}

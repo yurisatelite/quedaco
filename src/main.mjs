@@ -56,6 +56,10 @@ async function refreshOpenPanel(){
 }
 Hooks.on('createActor',()=>{void refreshOpenPanel();});
 Hooks.on('updateActor',()=>{void refreshOpenPanel();});
+Hooks.on('updateUser',(_user,changed)=>{
+  const roleChanged=foundry.utils.hasProperty(changed,'flags.quedaco.npcRoles2')||Object.keys(changed).some(key=>key.startsWith('flags.quedaco.npcRoles2'));
+  if(app?.rendered&&app.area==='npcs'&&roleChanged)app.render(false);
+});
 // Estrutura da guilda: system.level = maior nível entre os membros-jogador (mín. 2).
 async function syncGuildLevels(){
   if(!game.user?.isGM)return;
