@@ -220,7 +220,10 @@ Escreva no mesmo commit da tarefa. Formato por entrada:
 
 <!-- A partir daqui é só do Codex. Não apague entradas antigas; acrescente embaixo. -->
 
-_(vazio — nenhuma tarefa executada ainda)_
+### 15/09/2026 — T19 + T3
+**Fiz:** os cartões de NPC do mestre, do jogador e o resumo do editor agora mostram Legado e Herança em selos separados. Quando a ficha não tem um dos itens, o selo diz “sem legado” ou “sem herança”, para indicar a lacuna sem inventar uma opção. `src/library.mjs`.
+**Funcionou:** `npm test` (170 testes), `npm run package` e `git diff --check` passaram. O mapa `HERITAGES` cobre os 16 legados da lista local de alocação; a macro `.local/atribuir-herancas.js` já usa esse mapa e mantém prévia antes da aplicação.
+**Não funcionou / deixei de fora:** não executei a macro nem alterei Atores do mundo. Ainda falta conferir visualmente no Foundry e comparar os legados efetivos de todos os NPCs da mesa, que não estão exportados no repositório.
 
 ---
 
