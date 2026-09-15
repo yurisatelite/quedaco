@@ -246,6 +246,11 @@ Escreva no mesmo commit da tarefa. Formato por entrada:
 **Não funcionou / deixei de fora:** falta conferir sincronização entre clientes reais no Foundry. Flags antigas sem horário empatam; nesse caso a escolha antiga do mestre mantém precedência até alguém marcar de novo.
 **Precisa de decisão:** T23 continua pendente: a badge de classe deve ficar visualmente distinta do papel principal ou sair do cartão?
 
+### 15/09/2026 — T23, imagem de classe
+**Fiz:** Yuri decidiu manter Combatente, Especialista e Ocultista no cartão do mestre como imagem, não como segunda tag textual. O cartão e o editor agora leem a arte do Item `class` embutido no NPC, a mesma fonte que a ficha nativa usa; quando esse Item tem ícone genérico, recorrem ao índice de classes do compêndio. Sem arte real, não fingem que um símbolo genérico é a imagem oficial. `src/library.mjs`, `styles/library.css` e `tests/library.test.mjs`.
+**Funcionou:** conferi no template local do Skyfall que a progressão usa `data.item.img`; os testes verificam as três classes, a prioridade da imagem embutida e a filtragem de ícones genéricos. `npm test`, `npm run package` e `git diff --check`.
+**Não funcionou / deixei de fora:** os três caminhos concretos de `img` no compêndio `skyfall-core.character-creation` precisam ser conferidos no Foundry da mesa, porque essa cópia do compêndio não está instalada no Foundry local.
+
 ---
 
 ## 5. Estado herdado — o que o Claude já entregou

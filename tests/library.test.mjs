@@ -331,6 +331,24 @@ test('papel secundário mais recente dos jogadores aparece ao mestre só no edit
  assert.doesNotMatch(library.playerNpcCard(actor,actor.flags.quedaco.npc,true),/data-op="lib-npc-role2"/);
 });
 
+test('cartão e editor usam a imagem do Item de cada classe do Skyfall',()=>{
+ const classes=['Combatente','Especialista','Ocultista'];
+ const catalog={items:classes.map(name=>({type:'class',name,img:`modules/skyfall-core/classes/${name.toLowerCase()}.webp`}))};
+ const library=new CampaignLibrary({user:{isGM:true},users:[],actors:[],settings:{get:()=>null}},catalog);
+ for(const name of classes){
+  const actor={id:name,uuid:`Actor.${name}`,name:'Abel',type:'character',items:[{type:'class',name,img:'icons/svg/item-bag.svg'}],flags:{quedaco:{npc:{role:'smith',regionId:'mirmir'}}}};
+  const path=`modules/skyfall-core/classes/${name.toLowerCase()}.webp`;
+  assert.match(library.npcCard(actor),new RegExp(`<img src="${path}" alt=""`));
+  assert.match(library.renderNpcEditor(actor),new RegExp(`<img src="${path}" alt=""`));
+  assert.doesNotMatch(library.npcClassBadge(actor),new RegExp(`>${name}</span>`));
+  actor.items[0].img=`worlds/mesa/classes/${name.toLowerCase()}.webp`;
+  assert.match(library.npcClassBadge(actor),new RegExp(`src="${actor.items[0].img}"`));
+ }
+ library.catalog.items=[];
+ const semArte={items:[{type:'class',name:'Combatente',img:'icons/svg/sword.svg'}]};
+ assert.equal(library.npcClassBadge(semArte),'');
+});
+
 test('cartão de item: cor por categoria, grade só com o que o item tem e selos',()=>{
   // toda categoria do catálogo tem cor própria; nada cai no cinza de reserva
   const categorias=[...new Set(BOOK_ITEMS.map(item=>item.category))];
