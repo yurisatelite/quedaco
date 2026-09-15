@@ -77,7 +77,7 @@ depois dela (monstros na aba Monstros, regulador de miniaturas, cartão/editor d
 > fica na seção 4 daquele arquivo. Esta fila continua sendo a fonte do **pedido**;
 > o COMANDO-CODEX-8 é a fonte do **plano**.
 
-## T1 — Papel principal + papel secundário no NPC
+## T1 — Papel principal + papel secundário no NPC — ✔ feito
 
 Hoje `flags.quedaco.npc.role` guarda um papel só. Precisa virar dois:
 
@@ -102,7 +102,7 @@ O mestre precisa acessar as duas visões. A do jogador:
 - Acesso fácil à ficha da **guilda** deles: clicou, abriu. Logo da guilda no topo.
   (Hoje o grupo está na P.I.P.I.)
 
-## T3 — Heranças: particularidade de cada legado
+## T3 — Heranças: particularidade de cada legado — ✔ feito
 
 Legado tem sub-tipos. Ex.: elfo → Cortes das Estações (Inverno, Verão, Outono,
 Primavera) + sem corte. Precisa:
@@ -114,7 +114,7 @@ Primavera) + sem corte. Precisa:
   no módulo depois de conferir.
 - Onde faltar herança no NPC, macro pra atribuir.
 
-## T4 — Editor de NPC: acabamento
+## T4 — Editor de NPC: acabamento — ✔ feito
 
 - Ícones/logos (os mesmos bonitinhos de região e papel) também dentro do editor.
 - Cor do card muda conforme a região **no editor** também (hoje só na lista).
@@ -152,7 +152,7 @@ fala e um detalhe sensorial da banca. Protótipo vivo em `flags.quedaco.oficio` 
 Actor "Vendedor" (macro `criar-vendedor-prototipo.js`) — editar à mão, ver o que falta
 e o que sobra, e só então virar interface. **Brainstorm pendente com o Yuri.**
 
-## T9 — Visibilidade por localidade é independente de liberar a região
+## T9 — Visibilidade por localidade é independente de liberar a região — ✔ feito
 
 Hoje liberar a região deixa os locais dela aparecerem agrupados na aba do jogador.
 Regra pedida: **liberar a região só deixa os jogadores saberem que a região existe**
@@ -163,7 +163,7 @@ estar aberta, mesmo sem ter sido liberada individualmente). Fluxo de mesa: grupo
 da cidade e entra na Fazenda Lumb → mestre liga a visibilidade da Fazenda Lumb, desliga
 a da cidade se quiser.
 
-## T10 — NPC "descoberto" fica permanente, mesmo fora de alcance
+## T10 — NPC "descoberto" fica permanente, mesmo fora de alcance — ✔ feito
 
 Separar dois estados:
 - **Conhecido** (`npcKnown`, permanente) — uma vez que o grupo teve acesso a um NPC
@@ -194,7 +194,7 @@ A barra "Indiferente/Hostil/..." não estica mais até a borda (passou a `inline
 só do tamanho do conteúdo) e o mestre tem um seletor de atitude do tamanho de um badge
 dentro da própria visão do jogador, ao lado da biografia. Ver `docs/T17-VENDINHAS-FASE2.md` §6.
 
-## T13 — Tag secundária: estado inicial e permissão de clique
+## T13 — Tag secundária: estado inicial e permissão de clique — ✔ feito
 
 A tag secundária (a que o jogador atribui) deve nascer **sem valor definido**
 ("— o que essa pessoa é? —", como já está) e só quem pode mudar são os jogadores (e o
@@ -214,7 +214,7 @@ Depois, guildas passam a ter **nível** próprio agora que os personagens (e NPC
 nível — precisa decidir a fórmula (média dos membros? maior nível? fixo por mão do
 mestre?) antes de implementar.
 
-## T15 — Filtros com selo colorido em vez de foto
+## T15 — Filtros com selo colorido em vez de foto — ✔ feito
 
 As seções de filtro (facções/selos, e outras) ficam mais bonitas com um ícone
 pequeno e colorido por entrada em vez de/além da foto do selo — ex.: Necários =
@@ -248,7 +248,7 @@ Hoje a lista mistura ordem (Skyfall primeiro, depois convertidos). Trocar por
 (Skyfall)" vs "Adaptado/Convertido" — a origem já existe como dado
 (`sourceLabel`/sistema de conversão), só falta virar selo visual.
 
-## T19 — Legado + Herança sempre juntos, em todo NPC
+## T19 — Legado + Herança sempre juntos, em todo NPC — ✔ feito
 
 Hoje alguns cartões mostram só "Humani", outros "Humani · Kia" ou "Humani · M'bo",
 outros só "Elfe" sem dizer a Corte (ou "sem corte"). Regra: **todo NPC mostra os
@@ -283,7 +283,7 @@ Cada NPC deveria ter posse (item e dinheiro) coerente com seu papel principal �
 ex.: Nobres e Mercadores sempre com mais dinheiro que a média. Precisa mapear
 papel → perfil de posses (quanto dinheiro, que tipo de item) antes de virar macro.
 
-## T23 — Confirmar leitura do cartão com 2 badges (Ferreiro + Combatente)
+## T23 — Confirmar leitura do cartão com 2 badges (Ferreiro + Combatente) — ✔ decidido e feito
 
 No print mandado, o cartão mostra "🔨 Ferreiro" (papel) e "🛡 Combatente" (classe,
 `CLASS_STYLE`) lado a lado — mas a mensagem tratou o segundo como se fosse a tag

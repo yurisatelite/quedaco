@@ -251,6 +251,17 @@ Escreva no mesmo commit da tarefa. Formato por entrada:
 **Funcionou:** conferi no template local do Skyfall que a progressão usa `data.item.img`; os testes verificam as três classes, a prioridade da imagem embutida e a filtragem de ícones genéricos. `npm test`, `npm run package` e `git diff --check`.
 **Não funcionou / deixei de fora:** os três caminhos concretos de `img` no compêndio `skyfall-core.character-creation` precisam ser conferidos no Foundry da mesa, porque essa cópia do compêndio não está instalada no Foundry local.
 
+### 15/09/2026 — T4, T15 e as pontas soltas (retomada pelo Claude)
+**Contexto:** o Codex ficou sem tokens no meio do trabalho. Havia três coisas pela metade na árvore, não commitadas.
+**Fiz:**
+1. **T4** — o `regionIcon` do editor estava construído mas nunca inserido no HTML, então o selo da região não aparecia. Liguei no cabeçalho e criei o CSS. Junto vieram, já escritos pelo Codex, o dinheiro da ficha detalhado nas três moedas dentro do inventário e o seletor de cena filtrado por localidade com mapa atribuído.
+2. **T15** — `src/seal-style.mjs` e seu teste existiam e passavam, mas nada importava o módulo; o filtro continuava só texto. Liguei no filtro de Selo de Aprovação, com ícone colorido por família e etiqueta "caseiro" no Dragão Prateado. O helper precisou nascer antes de `facetGroups`, que o consome — onde estava, quebrava com "Cannot access 'sealChip' before initialization".
+3. **`tools/pick-tokens.mjs`** — revertido. Renomeava a pasta de saída para `tokens-escolhidos-uuid` mas deixava o cabeçalho e o texto do relatório apontando para a antiga, e declarava um `--preview` que nada lia. Meia funcionalidade é pior que nenhuma.
+
+**Funcionou:** `npm test` (174), `npm run package`, e render conferido dos dois — editor com selo de região e dinheiro; filtro de guilda com os quatro chips coloridos e a marca de caseiro.
+**Não funcionou / deixei de fora:** T8 continua aberto na seção 3; a edição do `pick-tokens.mjs` era meio caminho e não dava para adivinhar a intenção. Conferência visual no Foundry segue pendente em tudo, como nas entradas anteriores.
+**Precisa de decisão:** nenhuma nova. Mas fica o aviso: o Dragão Prateado só aparece no filtro depois que alguma guilda da mesa for marcada com ele — isso é dado de Ator, não código, então é o Yuri quem faz no Foundry.
+
 ---
 
 ## 5. Estado herdado — o que o Claude já entregou
