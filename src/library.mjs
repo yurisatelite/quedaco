@@ -1468,7 +1468,7 @@ export class CampaignLibrary {
     const viewport=`<div class="sy-map-viewport" data-map-viewport><div class="sy-map-world" style="transform:${e(transform)}">${images}${regionPins}${placePins}</div>${controls}</div>`;
     let detail='';
     if(place&&(!readonly||placeIds.has(place.id))){const scene=this.placeScenes[place.id];detail=`<div class="sy-map-drawer">${this.placeDetail(place,!readonly)}${readonly?(scene?`<div class="sy-library-share-row">${button('open-scene',scene,'Abrir cena vinculada')}</div>`:''):this.scenePicker(place)}</div>`;}
-    else if(focus&&(!readonly||shared.includes(focus.id)))detail=`<div class="sy-map-drawer">${this.regionDetail(focus,!readonly)}<p class="sy-note">Escolha um pino de cidade no mapa para abrir seus detalhes.</p></div>`;
+    else if(focus&&(!readonly||shared.includes(focus.id)))detail=`<div class="sy-map-drawer">${this.regionDetail(focus,!readonly)}${places.length?'<p class="sy-note">Escolha um pino de local no mapa para abrir seus detalhes.</p>':''}</div>`;
     const atlas=readonly?'':this.renderAtlas();
     const solo=!detail&&!atlas;
     return `<div class="sy-map-layout ${solo?'sy-map-layout-solo':''}">${viewport}${solo?'':`<div class="sy-map-side">${atlas}${detail||''}</div>`}</div>`;
@@ -1582,6 +1582,7 @@ export class CampaignLibrary {
   }
   regionDetail(region,gm=false){
     const resolved=this.image('region',region.id,'','icons/svg/mountain.svg'),img=this.regionImages[region.id]||resolved.src,capital=PLACES.find(i=>i.id===region.capital);
+    if(!gm)return `<section class="sy-library-detail">${cardFigure(img,region.name,'wide',resolved.fallbacks)}<h3>${e(region.name)}</h3><p class="sy-note">O grupo conhece esta região. Cidades, locais e pessoas aparecem quando a Mestra os libera.</p></section>`;
     const controls=gm?`<div class="sy-library-share-row">${button('share-locality',`region:${region.id}`,'Liberar região')}${button('region-img',region.id,this.regionImages[region.id]?'Trocar imagem':'Definir imagem')}${this.regionImages[region.id]?button('region-img',`${region.id}:`,'Remover imagem'):''}</div>`:'';
     return `<section class="sy-library-detail">${gm?this.shareButton('map',region.id,'✓ Liberado','Liberar'):''}${cardFigure(img,region.name,'wide',resolved.fallbacks,gm?{op:'region-img',id:region.id}:null)}<small>${page(region)}</small><h3>${e(region.name)}</h3><p>${e(region.summary)}</p><h4>Governo</h4><p>${e(region.government)}</p><h4>Comércio</h4><p>${e(region.trade)}</p><h4>Destaques</h4>${chips(region.highlights)}${capital&&(gm||this.sharedPlaceIds().has(capital.id))?button('place',capital.id,`Ir à capital: ${capital.name}`):''}${gm?button('create-merchant',`region:${region.id}`,'Criar mercador itinerante'):''}${this.renderDossier(region,gm)}${this.regionScenePicker(region,gm)}${gm&&this.mapHotspots.regions?.[region.id]?button('map-hotspot-reset',`regions:${region.id}`,'Voltar ao padrão do livro'):''}${controls}</section>`;
   }

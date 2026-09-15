@@ -249,7 +249,7 @@ test('camadas do mapa revelam cidades no zoom e compartilhamento em massa',async
  await library.action('lib-map-share-all','none');assert.equal(store.sharedContent.map.length,0);
 });
 
-test('região aceita várias cenas vinculadas e mostra os atalhos',async()=>{
+test('região aceita várias cenas vinculadas sem revelar mapas ao jogador',async()=>{
  const store={regionScenes:{},sharedContent:{areas:[],map:[],monsters:[],items:[],npcs:[]}};
  const scenes=[{id:'s1',name:'Duna Norte'},{id:'s2',name:'Oásis'},{id:'s3',name:'Ruína'}];
  const game={user:{isGM:true},actors:[],folders:[],scenes,settings:{get:(_m,key)=>store[key],set:async(_m,key,value)=>store[key]=value}};
@@ -261,7 +261,7 @@ test('região aceita várias cenas vinculadas e mostra os atalhos',async()=>{
  assert.deepEqual(store.regionScenes.mirmir,['s3']);
  const region={id:'mirmir',name:'Deserto de Mirmir',page:1,summary:'',government:'',trade:'',highlights:[]};
  assert.match(library.regionDetail(region,true),/data-op="lib-region-scene" data-id="mirmir:s2"/);
- assert.match(library.regionDetail(region,false),/data-op="lib-open-scene" data-id="s3"/);
+ assert.doesNotMatch(library.regionDetail(region,false),/data-op="lib-open-scene" data-id="s3"/);
  assert.doesNotMatch(library.regionDetail(region,false),/data-op="lib-region-scene"/);
 });
 
@@ -286,6 +286,8 @@ test('abrir região não revela localidade nem NPC; abrir o local libera seu mor
  assert.equal(library.sharedPlaceIds().has(place.id),false);
  assert.equal(library.npcOpenToPlayers(actor,actor.flags.quedaco.npc),false);
  assert.doesNotMatch(library.renderMap(true),new RegExp(`data-id="${place.id}"`));
+ library.state.region='mirmir';
+ assert.doesNotMatch(library.renderMap(true),new RegExp(place.name));
  localities=['region:mirmir',`place:${place.id}`];
  assert.equal(library.npcOpenToPlayers(actor,actor.flags.quedaco.npc),true);
 });

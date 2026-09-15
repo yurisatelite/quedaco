@@ -235,6 +235,11 @@ Escreva no mesmo commit da tarefa. Formato por entrada:
 **Funcionou:** teste de abrir, fechar e reabrir localidade, verificando o cartão sem interações; `npm test`, `npm run package` e `git diff --check`.
 **Não funcionou / deixei de fora:** o histórico começa com esta versão. Liberações anteriores não criaram `npcKnown`; se um NPC antigo já estiver fechado, só uma nova abertura poderá registrá-lo. Ainda falta conferir o visual e as permissões reais no Foundry.
 
+### 15/09/2026 — T9, fechamento do detalhe da região
+**Fiz:** a visão do jogador de uma região liberada mostra apenas imagem e nome. Governo, comércio, dossiê, cenas e nomes de localidades ficam para o mestre ou para liberações específicas. A mensagem do visor só sugere escolher local quando há algum pino liberado. `src/library.mjs` e `tests/library.test.mjs`.
+**Funcionou:** testes de região sem localidade e de cenas ocultas, `npm test`, `npm run package` e `git diff --check`.
+**Não funcionou / deixei de fora:** conferência visual no Foundry segue pendente.
+
 ---
 
 ## 5. Estado herdado — o que o Claude já entregou
