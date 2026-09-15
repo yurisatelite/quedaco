@@ -485,3 +485,12 @@
    livro e o convertido de D&D ficam vizinhos, e precisa dar pra distinguir de relance. */
 .sy-creator .sy-origin-badge{align-self:flex-start;margin-top:3px;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:#14202b;border:1px solid #41576b;color:#9fc4d8;cursor:help}
 .sy-creator .sy-origin-badge.is-custom{background:#2a2114;border-color:#a5762f;color:#f2ce93}
+
+/* T4 — o editor mostra a região: selo com a arte e a cor dela, do lado do nome. */
+.sy-creator .sy-npc-editor-region{display:inline-flex;align-items:center;gap:7px;padding:3px 10px 3px 3px;border-radius:999px;background:#101a24;border:1px solid var(--sy-region,#3a495b);font-size:11px;font-weight:700;color:#cfe2ef;white-space:nowrap}
+.sy-creator .sy-npc-editor-region img{width:22px;height:22px;border-radius:50%;object-fit:cover;border:0}
+/* Dinheiro da ficha dentro do inventário, quebrado nas três moedas. */
+.sy-creator .sy-npc-money{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 9px;margin-top:6px;border:1px dashed #4a6b80;border-radius:7px;background:#101a24}
+.sy-creator .sy-npc-money span{display:flex;align-items:center;gap:7px;color:#f0d795}
+.sy-creator .sy-npc-money i{color:#d8ad4c}
+.sy-creator .sy-npc-money small{color:#cfe2ef;font-weight:700}

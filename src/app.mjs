@@ -288,6 +288,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     if(name==='monsterPlaceAdd'&&value){try{await this.library.action('lib-monster-place',`${event.target.dataset.monster}|${value}|on`);}catch(error){ui.notifications.warn(error.message);}this.rerender(true);return;}
     if(name==='monsterAnywhere'){try{await this.library.action('lib-monster-anywhere',`${event.target.dataset.id}|${event.target.checked?'on':'off'}`);}catch(error){ui.notifications.warn(error.message);}this.rerender(true);return;}
     if(name==='npcRole'&&event.target.closest?.('[data-npc-editor]')){this.library.state.npcEditRole=value;this.rerender(true);return;}
+    if(name==='npcRegion'&&event.target.closest?.('[data-npc-editor]')){this.library.state.npcEditRegion=value;this.library.state.npcEditPlace='';this.rerender(true);return;}
     if(name==='npcPlace'&&event.target.closest?.('[data-npc-editor]')){this.library.state.npcEditPlace=value;this.rerender(true);return;}
     if(name==='npcPlaceFilter'){this.library.state.npcPlaceFilter=value;this.rerender(true);return;}
     // trocar de legado zera a herança: as opções da lista mudam junto
