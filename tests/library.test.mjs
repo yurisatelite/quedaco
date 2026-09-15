@@ -400,3 +400,22 @@ test('venda abre para qualquer NPC liberado, e não para NPC fora de alcance',as
   const fechada=new CampaignLibrary(mesaVazia({isGM:false},[merchant]),catalog);
   await assert.rejects(fechada.action('lib-npc-sell','m1|it1',{qty:1}),/não está disponível/);
 });
+
+test('Monstros saem em ordem alfabética única, com selo de origem no cartão',()=>{
+  const convertido={id:'x1',name:'Aardvark de Aço',type:'npc',
+    system:{level:{value:3},creatureType:'construct',hierarchy:'simple',archetype:[],movement:{walk:true}},
+    getFlag:(_m,k)=>k==='convertedFrom'?'dnd5e':null,uuid:'Actor.x1'};
+  const game={user:{isGM:true},actors:[convertido],users:[],packs:[],folders:[],scenes:[],
+    settings:{get:(_m,k)=>(k==='sharedContent'?{}:[])}};
+  const library=new CampaignLibrary(game,{items:[],entry:()=>null});
+  library.loaded=true;
+  const html=library.renderMonsters(false);
+  const nomes=[...html.matchAll(/<strong>([^<]+)<\/strong><span class="sy-origin-badge/g)].map(m=>m[1]);
+
+  assert.ok(nomes.length>MONSTERS.length,'o convertido entra na mesma lista dos do livro');
+  assert.deepEqual(nomes,[...nomes].sort((a,b)=>a.localeCompare(b,'pt-BR')),'uma ordem alfabética só');
+  // o convertido não fica mais empurrado para o fim: "Aardvark" vem antes de "Alpaca"
+  assert.equal(nomes[0],'Aardvark de Aço');
+  assert.equal((html.match(/sy-origin-badge is-custom/g)??[]).length,1,'só o convertido é "Adaptado"');
+  assert.ok(html.includes('>Oficial<'),'os do livro ficam marcados como oficiais');
+});

@@ -207,7 +207,11 @@
 .sy-creator .sy-guild-facet-chip i{opacity:.8}
 .sy-creator .sy-stance-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:var(--sy-role,#5a6b7d);display:inline-block}
 /* cartão de guilda — colorido/dinâmico */
-.sy-creator .sy-guild-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+/* O regulador de miniatura não funcionava em Guildas por causa desta linha: ela vinha
+   depois da regra que lê --sy-card e recolocava 200px fixo, com a mesma especificidade.
+   A grade de guilda é mais estreita que as outras, então o padrão continua 200px —
+   mas agora pelo valor do controle. */
+.sy-creator .sy-guild-grid{grid-template-columns:repeat(auto-fill,minmax(var(--sy-card,200px),1fr))}
 .sy-creator .sy-guild-grid .sy-library-card-content{padding:9px}
 .sy-creator .sy-guild-grid h3{font-size:14px;margin:3px 0}
 .sy-creator .sy-guild-grid p{font-size:11px;margin:5px 0;line-height:1.35}
@@ -469,3 +473,8 @@
 .sy-creator .sy-card-size i{color:#5b7a8c}
 .sy-creator .sy-card-size input[type="range"]{width:104px;margin:0;padding:0;accent-color:#35cee9}
 @media(max-width:720px){.sy-creator .sy-card-size-label{display:none}}
+
+/* Selo de origem no cartão de monstro: com a lista em ordem alfabética, o bloco do
+   livro e o convertido de D&D ficam vizinhos, e precisa dar pra distinguir de relance. */
+.sy-creator .sy-origin-badge{align-self:flex-start;margin-top:3px;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:#14202b;border:1px solid #41576b;color:#9fc4d8;cursor:help}
+.sy-creator .sy-origin-badge.is-custom{background:#2a2114;border-color:#a5762f;color:#f2ce93}
