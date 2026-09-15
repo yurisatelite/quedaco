@@ -230,6 +230,11 @@ Escreva no mesmo commit da tarefa. Formato por entrada:
 **Funcionou:** teste de região fechada/local aberto, `npm test` (170 testes), `npm run package` e `git diff --check`.
 **Não funcionou / deixei de fora:** compartilhamentos antigos que já gravaram todas as localidades ou NPCs em `sharedContent` precisam ser revisados pela Mestra no Foundry; o módulo não consegue distinguir esses registros de liberações individuais legítimas sem apagar escolhas anteriores.
 
+### 15/09/2026 — T10
+**Fiz:** `npcKnown` guarda permanentemente os NPCs apresentados por localidade ou liberação individual. Fechar a localidade deixa o conhecido no painel do jogador, cinza e sem loja, venda ou seletor de papel; reabrir restaura o cartão completo. A liberação em lote de uma localidade passa a usar o controle da própria localidade, para que ele possa ser fechado depois. `src/library.mjs`, `styles/library.css` e `tests/library.test.mjs`.
+**Funcionou:** teste de abrir, fechar e reabrir localidade, verificando o cartão sem interações; `npm test`, `npm run package` e `git diff --check`.
+**Não funcionou / deixei de fora:** o histórico começa com esta versão. Liberações anteriores não criaram `npcKnown`; se um NPC antigo já estiver fechado, só uma nova abertura poderá registrá-lo. Ainda falta conferir o visual e as permissões reais no Foundry.
+
 ---
 
 ## 5. Estado herdado — o que o Claude já entregou

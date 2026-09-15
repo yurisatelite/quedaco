@@ -278,7 +278,7 @@ test('aba do jogador entra por região e só então mostra a forja do ferreiro',
 
 test('abrir região não revela localidade nem NPC; abrir o local libera seu morador',()=>{
  const place=PLACES.find(p=>p.regionId==='mirmir');
- const actor={id:'x',uuid:'Actor.x',name:'Mercador',type:'character',flags:{quedaco:{npc:{role:'merchant',regionId:'mirmir',placeId:place.id,shop:{stock:[]}}}}};
+ const actor={id:'x',uuid:'Actor.x',name:'Mercador',type:'character',ownership:{default:1},flags:{quedaco:{npc:{role:'merchant',regionId:'mirmir',placeId:place.id,shop:{stock:[]}}}}};
  const shared={areas:['npcs','map'],npcs:[],map:['mirmir'],monsters:[],items:[]};
  let localities=['region:mirmir'];
  const game={user:{isGM:false,character:null},users:[],actors:[actor],settings:{get:(_m,key)=>key==='sharedContent'?shared:key==='npcLocalities'?localities:''}};
@@ -288,6 +288,26 @@ test('abrir região não revela localidade nem NPC; abrir o local libera seu mor
  assert.doesNotMatch(library.renderMap(true),new RegExp(`data-id="${place.id}"`));
  localities=['region:mirmir',`place:${place.id}`];
  assert.equal(library.npcOpenToPlayers(actor,actor.flags.quedaco.npc),true);
+});
+
+test('NPC conhecido permanece na lista depois de fechar o local, sem interação',async()=>{
+ const place=PLACES.find(p=>p.regionId==='mirmir');
+ const actor={id:'x',uuid:'Actor.x',name:'Mercador',type:'character',ownership:{default:1},flags:{quedaco:{npc:{role:'merchant',regionId:'mirmir',placeId:place.id,shop:{stock:[]}}}}};
+ const settings={npcLocalities:[],npcKnown:[],sharedContent:{areas:['npcs'],npcs:[],map:[],monsters:[],items:[]}};
+ const game={user:{isGM:true,character:null},users:[],actors:[actor],settings:{get:(_m,key)=>settings[key],set:async(_m,key,value)=>{settings[key]=value;}}};
+ const library=new CampaignLibrary(game,{items:[]});
+ await library.setNpcLocality('place',place.id,true);
+ assert.deepEqual(settings.npcKnown,['Actor.x']);
+ await library.setNpcLocality('place',place.id,false);
+ game.user.isGM=false;
+ library.state.npcPlayerRegion='mirmir';
+ const html=library.renderNpcsPlayer();
+ assert.match(html,/Mercador/);
+ assert.match(html,/Conhecido · fora de alcance/);
+ assert.doesNotMatch(html,/data-op="lib-npc-sell/);
+ assert.doesNotMatch(html,/data-op="lib-npc-role2/);
+ settings.npcLocalities=[`place:${place.id}`];
+ assert.doesNotMatch(library.renderNpcsPlayer(),/Conhecido · fora de alcance/);
 });
 
 test('cartão de item: cor por categoria, grade só com o que o item tem e selos',()=>{

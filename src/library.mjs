@@ -46,6 +46,8 @@ export const NPC_LINKS_KEY='npcLinks';
 /** Localidades abertas aos jogadores na aba NPCs: ids 'region:<id>' e 'place:<id>'.
  *  Liberar a localidade solta todos os NPCs dela de uma vez, sem marcar um a um. */
 export const NPC_LOCALITIES_KEY='npcLocalities';
+/** NPCs que o grupo já conheceu: histórico permanente, separado do acesso atual. */
+export const NPC_KNOWN_KEY='npcKnown';
 /** NPCs escondidos à mão: vencem a liberação da localidade, pra tirar um de cena
  *  sem precisar fechar a região inteira. */
 export const NPC_HIDDEN_KEY='npcHidden';
@@ -82,6 +84,7 @@ export function registerLibrarySettings(game,onChange){
     name:'Compêndio de itens do QUEDAÇO',hint:'Collection do compêndio onde o mestre cria itens tabelados para lojas. Deixe vazio para desabilitar a criação.',onChange});
   game.settings.register(MODULE_ID,NPC_LINKS_KEY,{scope:'world',config:false,type:Array,default:[],onChange});
   game.settings.register(MODULE_ID,NPC_LOCALITIES_KEY,{scope:'world',config:false,type:Array,default:[],onChange});
+  game.settings.register(MODULE_ID,NPC_KNOWN_KEY,{scope:'world',config:false,type:Array,default:[],onChange});
   game.settings.register(MODULE_ID,NPC_HIDDEN_KEY,{scope:'world',config:false,type:Array,default:[],onChange});
   game.settings.register(MODULE_ID,NPC_GRAPH_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
   game.settings.register(MODULE_ID,GENERATOR_MACRO_KEY,{scope:'world',config:true,type:String,default:DEFAULT_GENERATOR_MACRO,
@@ -305,12 +308,19 @@ export class CampaignLibrary {
   regionColor(id){return regionColor(id,this.game.folders,REGIONS);}
   get npcLinks(){try{return normalizeNpcLinks(this.game.settings?.get(MODULE_ID,NPC_LINKS_KEY)||[]);}catch{return [];}}
   get npcLocalities(){try{return new Set(this.game.settings?.get(MODULE_ID,NPC_LOCALITIES_KEY)||[]);}catch{return new Set();}}
+  get npcKnown(){try{return new Set(this.game.settings?.get(MODULE_ID,NPC_KNOWN_KEY)||[]);}catch{return new Set();}}
+  async rememberNpcs(uuids){
+    this.assertGM();const known=this.npcKnown;let changed=false;
+    for(const uuid of uuids)if(uuid&&!known.has(uuid)){known.add(uuid);changed=true;}
+    if(changed)await this.game.settings.set(MODULE_ID,NPC_KNOWN_KEY,[...known]);
+  }
   async setNpcLocality(kind,id,on){
     this.assertGM();if(!['region','place'].includes(kind)||!id)return;
     const set=this.npcLocalities,key=`${kind}:${id}`;
     const abrir=on===undefined?!set.has(key):Boolean(on);
     if(abrir)set.add(key);else set.delete(key);
     await this.game.settings.set(MODULE_ID,NPC_LOCALITIES_KEY,[...set]);
+    if(abrir&&kind==='place')await this.rememberNpcs(this.npcActors().filter(actor=>(npcFlag(actor)??adoptNpcFlag(actor)).placeId===id).map(actor=>actor.uuid));
     // sem permissão de leitura no Actor o jogador nem recebe o documento, então abrir a
     // localidade também solta o acesso limitado de quem mora nela.
     if(!abrir)return;
@@ -414,6 +424,7 @@ export class CampaignLibrary {
     // Liberar um item de uma aba implica liberar a aba.
     if(bucket!=='areas'&&list.length&&!current.areas.includes(bucket))current.areas=[...current.areas,bucket];
     await this.game.settings.set(MODULE_ID,SHARED_KEY,current);
+    if(bucket==='npcs'&&i<0)await this.rememberNpcs([value]);
     // Sem permissão de leitura no Actor o jogador nem recebe o documento — liberar
     // um NPC individualmente (o olho no cartão) precisa soltar o acesso limitado,
     // igual já acontece ao abrir uma região/localidade inteira.
@@ -506,10 +517,10 @@ export class CampaignLibrary {
     this.assertGM();
     const current={...emptyShare(),...(this.game.settings.get(MODULE_ID,SHARED_KEY)||{})};
     const map=new Set(current.map),npcs=new Set(current.npcs),monsters=new Set(current.monsters),areas=new Set(current.areas);
-    const addNpcs=match=>{for(const actor of this.npcActors()){const flag=npcFlag(actor)??adoptNpcFlag(actor);if(match(flag))npcs.add(actor.uuid);}};
     if(kind==='place'){
       const place=PLACES.find(entry=>entry.id===id);if(!place)return;
-      map.add(place.id);addNpcs(flag=>flag.placeId===place.id);areas.add('map');areas.add('npcs');
+      map.add(place.id);areas.add('map');areas.add('npcs');
+      await this.setNpcLocality('place',place.id,true);
     }else if(kind==='region'){
       const region=REGIONS.find(entry=>entry.id===id);if(!region)return;
       map.add(region.id);
@@ -1168,9 +1179,13 @@ export class CampaignLibrary {
     return `<details class="sy-npc-note"><summary>Anotações${others.length?` · ${others.length} do grupo`:''}${mine.text?' · ✎':''}</summary><textarea name="npcNoteText" data-id="${e(actor.uuid)}" rows="3" placeholder="O que você sabe sobre esta pessoa…">${e(mine.text??'')}</textarea><label class="sy-inline-check"><input type="checkbox" name="npcNoteShared" data-id="${e(actor.uuid)}" ${mine.shared?'checked':''}> Dividir com o grupo</label>${button('npc-note-save',actor.uuid,'Salvar anotação')}${grupo}</details>`;
   }
   /** Cartão de NPC para o jogador: sem nível, sem excluir, sem papel do mestre. */
-  playerNpcCard(actor,flag,gm=false){
+  playerNpcCard(actor,flag,gm=false,knownOnly=false){
     const color=this.regionColor(flag.regionId||PLACES.find(place=>place.id===flag.placeId)?.regionId);
     const place=PLACES.find(p=>p.id===flag.placeId);
+    if(knownOnly){
+      const role2=this.npcRoleSecondary(actor.uuid);
+      return `<article class="sy-library-card sy-npc-card sy-player-npc is-known-npc" style="--sy-region:${e(color)}" data-search="${e(nameKey(actor.name))}"><div class="sy-library-card-content"><div class="sy-npc-card-grid">${this.npcPortrait(actor)}<div class="sy-npc-identity"><div class="sy-npc-identity-top"><strong>${e(actor.name)}</strong></div><div class="sy-npc-tags">${role2?npcRoleChip(role2):''}<span class="sy-npc-known-label">Conhecido · fora de alcance</span></div></div></div></div></article>`;
+    }
     const mode=npcVisibility({...flag,shared:true});
     const loja=mode==='shop'?this.npcStockCard(actor,flag,true):mode==='forge'?this.renderForge(actor):'';
     // qualquer NPC compra do grupo, tenha ou não loja: só a barra de venda basta
@@ -1186,10 +1201,11 @@ export class CampaignLibrary {
   }
   /** Aba NPCs do jogador: entra por região liberada, depois lista quem mora lá. */
   renderNpcsPlayer(preview=false){
-    const localities=this.npcLocalities,shared=this.shared.npcs,hidden=this.npcHidden;
+    const localities=this.npcLocalities,shared=this.shared.npcs,hidden=this.npcHidden,known=this.npcKnown;
     // no modo espiar, o mestre continua vendo quem ele escondeu (marcado), pra poder desfazer
     const visiveis=this.npcActors().map(actor=>({actor,flag:npcFlag(actor)??adoptNpcFlag(actor)}))
-      .filter(({actor,flag})=>flag.role&&(this.npcOpenToPlayers(actor,flag,localities,shared,hidden)||(preview&&hidden.has(actor.uuid)&&this.npcOpenToPlayers(actor,flag,localities,shared,new Set()))));
+      .map(item=>({...item,accessible:this.npcOpenToPlayers(item.actor,item.flag,localities,shared,hidden)}))
+      .filter(({actor,flag,accessible})=>flag.role&&(accessible||known.has(actor.uuid)||(preview&&hidden.has(actor.uuid)&&this.npcOpenToPlayers(actor,flag,localities,shared,new Set()))));
     const aviso=preview?`<p class="sy-note">Você está vendo a aba como um jogador vê. ${button('npc-as-player','','Voltar à visão do mestre')}</p>`:'';
     const banner=this.playerGuildBanner();
     if(!visiveis.length)return `${aviso}${banner}<p class="sy-library-deferred">Nenhuma região foi liberada ainda. Conforme o grupo circular por Opath, o mestre abre as localidades aqui.</p>`;
@@ -1223,7 +1239,7 @@ export class CampaignLibrary {
     const blocos=[...porLocal.entries()].sort((a,b)=>String(a[0]).localeCompare(String(b[0]))).map(([placeId,itens])=>{
       const place=PLACES.find(p=>p.id===placeId);
       const titulo=place?place.name:'Pela região';
-      return `<section class="sy-player-place"><h4>${e(titulo)}</h4><div class="sy-library-grid sy-npc-grid" ${this.gridStyle('npc')}>${itens.map(({actor,flag})=>this.playerNpcCard(actor,flag,preview)).join('')}</div></section>`;
+      return `<section class="sy-player-place"><h4>${e(titulo)}</h4><div class="sy-library-grid sy-npc-grid" ${this.gridStyle('npc')}>${itens.map(({actor,flag,accessible})=>this.playerNpcCard(actor,flag,preview,!accessible&&(!preview||!this.npcHidden.has(actor.uuid)))).join('')}</div></section>`;
     }).join('');
     return `${aviso}${banner}<div class="sy-library-breadcrumb">${button('npc-player-region','','← Todas as regiões')}</div><h3 style="color:${e(this.regionColor(atual))}">${e(region?.name??'Sem região definida')}</h3>${this.filters([],'Buscar pessoa')}${this.sizeControl('npc')}${blocos}`;
   }

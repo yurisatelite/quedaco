@@ -367,6 +367,8 @@
 .sy-creator .sy-npc-location-badge{margin-right:0;max-width:none;flex:0 0 auto}
 /* o card do jogador esconde a foto do NPC bloqueado sem tirar ele da lista do mestre */
 .sy-creator .sy-npc-card.is-hidden-npc{opacity:.5;border-style:dashed}
+.sy-creator .sy-npc-card.is-known-npc{filter:grayscale(1);opacity:.65;border-style:dashed}
+.sy-creator .sy-npc-known-label{font-size:11px;color:#a9bac8}
 
 /* Balão de descrição no chip de Trilha/Antecedente/Legado, sem precisar clicar */
 .sy-creator .sy-npc-chip.has-tip{position:relative;cursor:help}
