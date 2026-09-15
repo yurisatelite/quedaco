@@ -70,6 +70,14 @@ O pacote resultante fica em `dist/quedaco-<versão>/quedaco`. `npm run release` 
 - A progressão 1–12 usa os benefícios registrados nos documentos do sistema. Escolhas descritas apenas em prosa ainda exigem implementação e conferência individual.
 - Canal de atualização publicado em `https://github.com/yurisatelite/quedaco`. Siga `docs/ATUALIZACOES.md`: pacote público inclui Outfit/OFL e exclui Noka. Não substitua arquivos de versões publicadas; aumente a versão e publique nova release.
 
+## Quem está executando
+
+Desde 15/09/2026 a fila é executada pelo **Codex**: o Claude estrutura, o Codex executa,
+o Yuri confirma. O plano de trabalho, a ordem das tarefas, o que exige decisão do Yuri e
+o que é macro (e não código do módulo) estão em `docs/COMANDO-CODEX-8.md`. O diário do
+que foi executado fica na seção 4 daquele arquivo — **leia-o antes de retomar qualquer
+coisa**. `docs/FILA-PROXIMA-ATUALIZACAO.md` continua sendo a fonte do pedido original.
+
 ## Entrega de uma mudança
 
 Informe ao Yuri: comportamento alterado, arquivos principais, testes executados e qualquer parte ainda não confirmada dentro do Foundry. Não envie arquivos ao servidor nem publique releases sem autorização explícita para aquela versão.

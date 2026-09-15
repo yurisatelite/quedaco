@@ -71,6 +71,12 @@ depois dela (monstros na aba Monstros, regulador de miniaturas, cartão/editor d
 
 ---
 
+> **A execução desta fila passou para o Codex em 15/09/2026.**
+> As instruções, a ordem de ataque, o que exige decisão do Yuri e o que é macro (e
+> não módulo) estão em `docs/COMANDO-CODEX-8.md`. O diário do que foi executado
+> fica na seção 4 daquele arquivo. Esta fila continua sendo a fonte do **pedido**;
+> o COMANDO-CODEX-8 é a fonte do **plano**.
+
 ## T1 — Papel principal + papel secundário no NPC
 
 Hoje `flags.quedaco.npc.role` guarda um papel só. Precisa virar dois:
@@ -119,7 +125,7 @@ Primavera) + sem corte. Precisa:
 - Trilha e Antecedente: **descrição no hover**, sem precisar clicar.
 - Legado mostra a herança na frente.
 
-## T5 — Guildas
+## T5 — Guildas — ✔ feito na 0.6.0
 
 - Barra de pesquisa (hoje é inviável achar uma guilda na lista).
 
@@ -217,7 +223,7 @@ com cor diferente pra cada Corte/Dragonesa. Adicionar também o **Dragão Pratea
 (selo exclusivo desta mesa, não existe no livro — deixar claro que é homebrew, não
 confundir com conteúdo oficial).
 
-## T16 — Layout: parar de esticar caixa até a borda
+## T16 — Layout: parar de esticar caixa até a borda — ✔ feito
 
 Padrão geral pra revisar em toda a interface: botões, filtros e controles devem ter
 **só o tamanho do próprio conteúdo**, não esticar até a borda direita da tela. Ex.:
@@ -227,7 +233,7 @@ inteira por botão. Os chips de filtro (Tipo/Papel/Hierarquia/Deslocamento/ND, e
 selos de facção) também estão como caixas grandes com texto pequeno — redesenhar pra
 compactos.
 
-## T17 — Regulador de miniatura: redesenho e correção em Guildas
+## T17 — Regulador de miniatura: redesenho e correção em Guildas — ✔ feito
 
 - Reposicionar à direita, menor, sem o número em px aparecendo cru — pensar em
   "quantos cartões por linha" em vez de tamanho em pixels.
@@ -235,7 +241,7 @@ compactos.
   de fato ligado à grade — pode ser variação do mesmo bug do `querySelector` já
   corrigido, ou a grade de Guildas nem tem a classe/CSS var esperada).
 
-## T18 — Ordenar Monstros por nome, sinalizar origem no cartão
+## T18 — Ordenar Monstros por nome, sinalizar origem no cartão — ✔ feito
 
 Hoje a lista mistura ordem (Skyfall primeiro, depois convertidos). Trocar por
 **ordem alfabética única**, com um selo pequeno no cartão indicando "Oficial
