@@ -10,6 +10,7 @@ import {equipmentKind,forgeFragments,forgeQuote,magicNamePreview,purchaseForgedI
 import {precoFormatado,walletTotal} from './rules.mjs';
 import {localityStock} from './locality.mjs';
 import {ImageResolver} from './images.mjs';
+import {sealStyle} from './seal-style.mjs';
 import {placeLayer,defaultHiddenPlaces,regionDossier} from './atlas.mjs';
 import {regionColor} from './regions.mjs';
 import {ForienQuestIntegration,QUEST_STATUSES,questCounts} from './forien-quests.mjs';
@@ -1338,11 +1339,18 @@ export class CampaignLibrary {
     const resolve=uuid=>this.resolveActor(uuid);
     const facets=guilds.map(g=>this.guildFacets(g));
     const sealSet=new Map();for(const f of facets)for(const s of f.seals)sealSet.set(nameKey(s),s);
+    // T15: no filtro, um ícone colorido lê melhor que a miniatura da arte — dragão para
+    // as Dragonesas (mesma forma, cor por Corte), gema para os Necários, e assim por diante.
+    const sealChip=name=>{
+      const style=sealStyle(name);
+      const marca=style.homebrew?'<span class="sy-seal-homebrew" title="Selo exclusivo desta mesa; não existe no Livro Básico">caseiro</span>':'';
+      return `<span class="sy-seal-chip"><i class="fa-solid ${e(style.icon)}" style="color:${e(style.color)}" aria-hidden="true"></i>${e(name)}${marca}</span>`;
+    };
     const sel=this.state.guildFacets??{};
     const TEMA_ICON={comercio:'fa-scale-balanced',contrabando:'fa-mask',informacao:'fa-eye',militar:'fa-shield-halved',arcano:'fa-wand-sparkles',maritimo:'fa-anchor'};
     const facetGroups=[
       {facet:'tipo',label:'Tipo',items:[['guilda','<i class="fa-solid fa-landmark"></i> Guilda'],['hansa','<i class="fa-solid fa-flag"></i> Hansa']]},
-      ...(sealSet.size?[{facet:'selo',label:'Selo de Aprovação',items:[...sealSet.entries()].sort((a,b)=>a[1].localeCompare(b[1],'pt-BR'))}]:[]),
+      ...(sealSet.size?[{facet:'selo',label:'Selo de Aprovação',items:[...sealSet.entries()].sort((a,b)=>a[1].localeCompare(b[1],'pt-BR')).map(([key,name])=>[key,sealChip(name)])}]:[]),
       {facet:'tema',label:'Campo de atuação',items:[['comercio','Comércio'],['contrabando','Contrabando'],['informacao','Informação'],['militar','Militar'],['arcano','Arcano'],['maritimo','Marítimo']].map(([k,l])=>[k,`<i class="fa-solid ${TEMA_ICON[k]}"></i> ${l}`])},
       {facet:'relacao',label:'Relação com o grupo',items:Object.entries(GUILD_STANCES).map(([k,v])=>[k,`<span class="sy-stance-dot" style="--sy-role:${v.color}"></span>${v.label}`])},
       ...(readonly?[]:[{facet:'liberada',label:'Liberada aos jogadores',items:[['sim','<i class="fa-solid fa-eye"></i> Sim'],['nao','<i class="fa-solid fa-eye-slash"></i> Não']]}])

@@ -494,3 +494,9 @@
 .sy-creator .sy-npc-money span{display:flex;align-items:center;gap:7px;color:#f0d795}
 .sy-creator .sy-npc-money i{color:#d8ad4c}
 .sy-creator .sy-npc-money small{color:#cfe2ef;font-weight:700}
+
+/* T15 — filtro de selo com ícone colorido em vez de só a foto: a mesma forma para a
+   família (dragão, Corte) e a cor separando cada uma. O selo caseiro fica identificado. */
+.sy-creator .sy-seal-chip{display:inline-flex;align-items:center;gap:6px}
+.sy-creator .sy-seal-chip i{width:14px;text-align:center}
+.sy-creator .sy-seal-homebrew{margin-left:4px;padding:0 6px;border-radius:999px;background:#2a2114;border:1px solid #a5762f;color:#f2ce93;font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;cursor:help}
