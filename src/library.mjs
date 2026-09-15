@@ -317,8 +317,7 @@ export class CampaignLibrary {
     const updates=[];
     for(const actor of this.npcActors()){
       const flag=npcFlag(actor)??adoptNpcFlag(actor);
-      const regionId=flag.regionId||PLACES.find(place=>place.id===flag.placeId)?.regionId;
-      const bate=kind==='place'?flag.placeId===id:regionId===id;
+      const bate=kind==='place'&&flag.placeId===id;
       if(!bate||Number(actor.ownership?.default)>=1)continue;
       updates.push({_id:actor.id,ownership:{...(actor.ownership??{}),default:1}});
     }
@@ -330,14 +329,13 @@ export class CampaignLibrary {
     const set=this.npcHidden;if(set.has(uuid))set.delete(uuid);else set.add(uuid);
     await this.game.settings.set(MODULE_ID,NPC_HIDDEN_KEY,[...set]);
   }
-  /** Um NPC é visível ao jogador quando foi liberado sozinho OU quando a região/local dele está aberta.
+  /** Um NPC é visível ao jogador quando foi liberado sozinho ou quando seu local está aberto.
    *  Esconder à mão vence os dois. */
   npcOpenToPlayers(actor,flag,localities=this.npcLocalities,shared=this.shared.npcs,hidden=this.npcHidden){
     if(hidden.has(actor.uuid))return false;
     if(shared.includes(actor.uuid))return true;
     if(flag.placeId&&localities.has(`place:${flag.placeId}`))return true;
-    const regionId=flag.regionId||PLACES.find(place=>place.id===flag.placeId)?.regionId;
-    return Boolean(regionId&&localities.has(`region:${regionId}`));
+    return false;
   }
   /** Anotações de um NPC: a do usuário atual e as que os outros dividiram com o grupo.
    *  O mestre enxerga tudo, inclusive o que não foi dividido. */
@@ -503,7 +501,7 @@ export class CampaignLibrary {
     if(current.map.length&&!current.areas.includes('map'))current.areas=[...current.areas,'map'];
     await this.game.settings.set(MODULE_ID,SHARED_KEY,current);
   }
-  sharedPlaceIds(){const s=this.shared.map;const ids=new Set(s);for(const r of REGIONS)if(s.includes(r.id))for(const p of PLACES)if(p.regionId===r.id)ids.add(p.id);return ids;}
+  sharedPlaceIds(){return new Set(this.shared.map);}
   async shareLocality(kind,id){
     this.assertGM();
     const current={...emptyShare(),...(this.game.settings.get(MODULE_ID,SHARED_KEY)||{})};
@@ -514,10 +512,8 @@ export class CampaignLibrary {
       map.add(place.id);addNpcs(flag=>flag.placeId===place.id);areas.add('map');areas.add('npcs');
     }else if(kind==='region'){
       const region=REGIONS.find(entry=>entry.id===id);if(!region)return;
-      map.add(region.id);for(const place of PLACES)if(place.regionId===region.id)map.add(place.id);
-      addNpcs(flag=>flag.regionId===region.id||PLACES.find(place=>place.id===flag.placeId)?.regionId===region.id);
-      for(const [monsterId,list] of Object.entries(this.monsterHabitats))if(Array.isArray(list)&&list.includes(region.id))monsters.add(monsterId);
-      areas.add('map');areas.add('npcs');if(monsters.size)areas.add('monsters');
+      map.add(region.id);
+      areas.add('map');
     }else return;
     await this.game.settings.set(MODULE_ID,SHARED_KEY,{...current,map:[...map],npcs:[...npcs],monsters:[...monsters],areas:[...areas]});
     globalThis.ui?.notifications?.info?.('Conteúdo do local liberado para os jogadores.');
@@ -1269,11 +1265,11 @@ export class CampaignLibrary {
     // liberar a localidade inteira em vez de marcar NPC por NPC
     const localities=this.npcLocalities;
     const contagem=regionId=>all.filter(actor=>{const f=flagFor(actor);return (f.regionId||PLACES.find(p=>p.id===f.placeId)?.regionId)===regionId;}).length;
-    const liberacao=`<details class="sy-library-guide sy-npc-liberar"><summary>Liberar NPCs por localidade · ${[...localities].filter(k=>k.startsWith('region:')).length} região(ões) aberta(s)</summary><p class="sy-note">Ao abrir uma região, todos os NPCs dela aparecem na aba dos jogadores. Abrir só um local libera apenas quem mora nele. NPCs liberados um a um continuam valendo por cima disso.</p><div class="sy-locality-grid">${sortByName(REGIONS).map(region=>{
+    const liberacao=`<details class="sy-library-guide sy-npc-liberar"><summary>Liberar NPCs por localidade · ${[...localities].filter(k=>k.startsWith('region:')).length} região(ões) aberta(s)</summary><p class="sy-note">Abrir uma região revela só que ela existe. Cada localidade deve ser liberada separadamente para mostrar seus NPCs. NPCs liberados um a um continuam valendo.</p><div class="sy-locality-grid">${sortByName(REGIONS).map(region=>{
       const aberta=localities.has(`region:${region.id}`);
       const locais=PLACES.filter(place=>place.regionId===region.id);
       const locaisHtml=locais.map(place=>`<button class="sy-locality-place ${localities.has(`place:${place.id}`)?'is-on':''}" data-op="lib-npc-locality" data-id="place:${e(place.id)}">${e(place.name)}</button>`).join('');
-      return `<section class="sy-locality-row" style="--sy-region:${e(this.regionColor(region.id))}"><button class="sy-locality-region ${aberta?'is-on':''}" data-op="lib-npc-locality" data-id="region:${e(region.id)}">${aberta?'✓ ':''}${e(region.name)} · ${contagem(region.id)}</button>${aberta?'<small>região inteira aberta</small>':`<div class="sy-locality-places">${locaisHtml}</div>`}</section>`;
+      return `<section class="sy-locality-row" style="--sy-region:${e(this.regionColor(region.id))}"><button class="sy-locality-region ${aberta?'is-on':''}" data-op="lib-npc-locality" data-id="region:${e(region.id)}">${aberta?'✓ ':''}${e(region.name)} · ${contagem(region.id)}</button><div class="sy-locality-places">${locaisHtml}</div></section>`;
     }).join('')}</div></details>`;
     const audit=`<details class="sy-library-guide sy-npc-coverage"><summary>Cobertura regional de NPCs · ${missingCount} lacunas</summary>${batch}${coverage.map(item=>`<section><strong style="color:${e(this.regionColor(item.region.id))}">${e(item.region.name)}</strong>${(item.pendentes.length||item.feitos.length)?`<div class="sy-library-tabs">${item.pendentes.map(a=>archRow(item.region.id,a,false)).join('')}${item.feitos.map(a=>archRow(item.region.id,a,true)).join('')}</div>`:'<small> ✓ cobertura sugerida presente</small>'}</section>`).join('')}<p class="sy-note">O "✓" marca o arquétipo como feito e o "Criar N próximos" pula ele. As sugestões vêm dos temas da região no livro.</p></details>`;
     // se o NPC em edição caiu fora do filtro atual, o editor ainda aparece no fim pra não sumir
@@ -1491,7 +1487,8 @@ export class CampaignLibrary {
       }
       if(region&&sharedRegions.includes(region.id)){
         const capital=PLACES.find(i=>i.id===region.capital);
-        return `${fallback}${visibleRegions.length+loosePlaces.length>1?button('map','regions','← Tudo que foi liberado'):''}${this.regionDetail(region,false)}<h3>Cidades e locais</h3><div class="sy-library-grid">${PLACES.filter(i=>i.regionId===region.id).map(i=>this.card(i,'place')).join('')}</div>`;
+        const locais=PLACES.filter(i=>i.regionId===region.id&&placeIds.has(i.id));
+        return `${fallback}${visibleRegions.length+loosePlaces.length>1?button('map','regions','← Tudo que foi liberado'):''}${this.regionDetail(region,false)}${locais.length?`<h3>Cidades e locais</h3><div class="sy-library-grid">${locais.map(i=>this.card(i,'place')).join('')}</div>`:''}`;
       }
       const cards=[...visibleRegions.map(i=>this.card(i,'region')),...loosePlaces.map(i=>this.card(i,'place'))].join('');
       return `${fallback}${banner}<div class="sy-library-grid">${cards||'<p class="sy-library-deferred">O mestre ainda não liberou nenhuma região.</p>'}</div>`;
@@ -1569,8 +1566,8 @@ export class CampaignLibrary {
   }
   regionDetail(region,gm=false){
     const resolved=this.image('region',region.id,'','icons/svg/mountain.svg'),img=this.regionImages[region.id]||resolved.src,capital=PLACES.find(i=>i.id===region.capital);
-    const controls=gm?`<div class="sy-library-share-row">${button('share-locality',`region:${region.id}`,'Liberar tudo da região')}${button('region-img',region.id,this.regionImages[region.id]?'Trocar imagem':'Definir imagem')}${this.regionImages[region.id]?button('region-img',`${region.id}:`,'Remover imagem'):''}</div>`:'';
-    return `<section class="sy-library-detail">${gm?this.shareButton('map',region.id,'✓ Liberado','Liberar'):''}${cardFigure(img,region.name,'wide',resolved.fallbacks,gm?{op:'region-img',id:region.id}:null)}<small>${page(region)}</small><h3>${e(region.name)}</h3><p>${e(region.summary)}</p><h4>Governo</h4><p>${e(region.government)}</p><h4>Comércio</h4><p>${e(region.trade)}</p><h4>Destaques</h4>${chips(region.highlights)}${capital?button('place',capital.id,`Ir à capital: ${capital.name}`):''}${gm?button('create-merchant',`region:${region.id}`,'Criar mercador itinerante'):''}${this.renderDossier(region,gm)}${this.regionScenePicker(region,gm)}${gm&&this.mapHotspots.regions?.[region.id]?button('map-hotspot-reset',`regions:${region.id}`,'Voltar ao padrão do livro'):''}${controls}</section>`;
+    const controls=gm?`<div class="sy-library-share-row">${button('share-locality',`region:${region.id}`,'Liberar região')}${button('region-img',region.id,this.regionImages[region.id]?'Trocar imagem':'Definir imagem')}${this.regionImages[region.id]?button('region-img',`${region.id}:`,'Remover imagem'):''}</div>`:'';
+    return `<section class="sy-library-detail">${gm?this.shareButton('map',region.id,'✓ Liberado','Liberar'):''}${cardFigure(img,region.name,'wide',resolved.fallbacks,gm?{op:'region-img',id:region.id}:null)}<small>${page(region)}</small><h3>${e(region.name)}</h3><p>${e(region.summary)}</p><h4>Governo</h4><p>${e(region.government)}</p><h4>Comércio</h4><p>${e(region.trade)}</p><h4>Destaques</h4>${chips(region.highlights)}${capital&&(gm||this.sharedPlaceIds().has(capital.id))?button('place',capital.id,`Ir à capital: ${capital.name}`):''}${gm?button('create-merchant',`region:${region.id}`,'Criar mercador itinerante'):''}${this.renderDossier(region,gm)}${this.regionScenePicker(region,gm)}${gm&&this.mapHotspots.regions?.[region.id]?button('map-hotspot-reset',`regions:${region.id}`,'Voltar ao padrão do livro'):''}${controls}</section>`;
   }
   renderDossier(region,gm=false){
     const readonly=!gm,sharedNpcs=this.shared.npcs,sharedMonsters=this.shared.monsters;
@@ -1582,7 +1579,7 @@ export class CampaignLibrary {
     const npcBtn=n=>`<button class="sy-location-npc" data-op="lib-npc-open" data-id="${e(n.id)}" draggable="true" data-drag-actor="${e(n.uuid)}" title="Abrir ficha ou arrastar">${avatarFor(this.image('npc',n.name,n.img,'icons/svg/mystery-man.svg'))}<span><strong>${e(n.name)}</strong>${npcRoleChip(n.role)}</span></button>`;
     const knownNpcs=blocks.knownNpcs.filter(n=>!readonly||n.shared),territoryNpcs=blocks.territoryNpcs.filter(n=>!readonly||n.shared);
     const guilds=guildsForPlace({npcs,guilds:this.guildActors(),regionId:region.id,places:PLACES}).filter(guild=>!readonly||this.shared.guilds.includes(guild.uuid));
-    const placesHtml=[['cidade','Cidades'],['marco','Marcos'],['queda','Quedas']].map(([k,label])=>{const list=blocks.places[k]||[];return list.length?`<div class="sy-dossier-places"><h5>${label}</h5>${list.map(p=>button('place',p.id,p.name)).join('')}</div>`:'';}).join('');
+    const placesHtml=[['cidade','Cidades'],['marco','Marcos'],['queda','Quedas']].map(([k,label])=>{const list=(blocks.places[k]||[]).filter(p=>gm||this.sharedPlaceIds().has(p.id));return list.length?`<div class="sy-dossier-places"><h5>${label}</h5>${list.map(p=>button('place',p.id,p.name)).join('')}</div>`:'';}).join('');
     const anywhere=monsterCatalog.filter(m=>this.monsterAnywhere.has(m.id)&&!blocks.threats.some(t=>t.id===m.id));
     const threats=[...blocks.threats,...anywhere].filter(m=>!readonly||sharedMonsters.includes(m.id));
     const threatCard=m=>{const row=audit.find(a=>a.id===m.id),uuid=row?.matches?.[0]?.uuid,img=this.image('monster',m.name,row?.matches?.[0]?.img,'icons/svg/mystery-man.svg');return `<span class="sy-dossier-threat">${uuid?`<button class="sy-location-npc" data-op="lib-open" data-id="${e(uuid)}" draggable="true" data-drag-actor="${e(uuid)}" title="Abrir ou arrastar">`:'<span class="sy-location-npc">'}${avatarFor(img)}<span><strong>${e(m.name)}</strong><small>ND ${e(m.nd)} · ${e(m.creatureType)}</small></span>${uuid?'</button>':'</span>'}${gm?button('monster-habitat',`${m.id}|${region.id}|off`,'×'):''}</span>`;};

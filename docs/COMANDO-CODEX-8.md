@@ -225,6 +225,11 @@ Escreva no mesmo commit da tarefa. Formato por entrada:
 **Funcionou:** `npm test` (170 testes), `npm run package` e `git diff --check` passaram. O mapa `HERITAGES` cobre os 16 legados da lista local de alocação; a macro `.local/atribuir-herancas.js` já usa esse mapa e mantém prévia antes da aplicação.
 **Não funcionou / deixei de fora:** não executei a macro nem alterei Atores do mundo. Ainda falta conferir visualmente no Foundry e comparar os legados efetivos de todos os NPCs da mesa, que não estão exportados no repositório.
 
+### 15/09/2026 — T9
+**Fiz:** liberar uma região no mapa passa a revelar só a região. As localidades dependem de liberação própria; o dossiê e o atalho da capital respeitam isso. Abrir a região na aba NPCs não libera moradores, nem lhes dá permissão de leitura. `src/library.mjs` e `tests/library.test.mjs`.
+**Funcionou:** teste de região fechada/local aberto, `npm test` (170 testes), `npm run package` e `git diff --check`.
+**Não funcionou / deixei de fora:** compartilhamentos antigos que já gravaram todas as localidades ou NPCs em `sharedContent` precisam ser revisados pela Mestra no Foundry; o módulo não consegue distinguir esses registros de liberações individuais legítimas sem apagar escolhas anteriores.
+
 ---
 
 ## 5. Estado herdado — o que o Claude já entregou

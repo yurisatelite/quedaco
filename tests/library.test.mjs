@@ -276,14 +276,18 @@ test('aba do jogador entra por região e só então mostra a forja do ferreiro',
  assert.match(library.render('npcs',true),/sy-forge/);
 });
 
-test('NPC de região liberada aparece ao jogador sem ter sido liberado um a um',()=>{
- const actor={id:'x',uuid:'Actor.x',name:'Mercador',type:'character',flags:{quedaco:{npc:{role:'merchant',regionId:'mirmir',placeId:'',shop:{stock:[]}}}}};
- const shared={areas:['npcs'],npcs:[],map:[],monsters:[],items:[]};
- const game={user:{isGM:false,character:null},users:[],actors:[actor],settings:{get:(_m,key)=>key==='sharedContent'?shared:key==='npcLocalities'?['region:mirmir']:''}};
+test('abrir região não revela localidade nem NPC; abrir o local libera seu morador',()=>{
+ const place=PLACES.find(p=>p.regionId==='mirmir');
+ const actor={id:'x',uuid:'Actor.x',name:'Mercador',type:'character',flags:{quedaco:{npc:{role:'merchant',regionId:'mirmir',placeId:place.id,shop:{stock:[]}}}}};
+ const shared={areas:['npcs','map'],npcs:[],map:['mirmir'],monsters:[],items:[]};
+ let localities=['region:mirmir'];
+ const game={user:{isGM:false,character:null},users:[],actors:[actor],settings:{get:(_m,key)=>key==='sharedContent'?shared:key==='npcLocalities'?localities:''}};
  const library=new CampaignLibrary(game,{items:[]});
- assert.match(library.render('npcs',true),/data-op="lib-npc-player-region" data-id="mirmir"/);
- library.state.npcPlayerRegion='mirmir';
- assert.match(library.render('npcs',true),/Mercador/);
+ assert.equal(library.sharedPlaceIds().has(place.id),false);
+ assert.equal(library.npcOpenToPlayers(actor,actor.flags.quedaco.npc),false);
+ assert.doesNotMatch(library.renderMap(true),new RegExp(`data-id="${place.id}"`));
+ localities=['region:mirmir',`place:${place.id}`];
+ assert.equal(library.npcOpenToPlayers(actor,actor.flags.quedaco.npc),true);
 });
 
 test('cartão de item: cor por categoria, grade só com o que o item tem e selos',()=>{
