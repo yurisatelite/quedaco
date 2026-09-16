@@ -509,3 +509,23 @@ test('filtro de guilda separa ficha vinculada, nome livre e quem não tem nenhum
   library.state.npcGuildFilter='none';
   assert.deepEqual(nomesEm(library.renderNpcs(false)),['c'],'"Sem guilda" pega só quem não tem nenhuma');
 });
+
+test('região e localidade usam o mesmo cartão de NPC, com filtro de papel e legado',()=>{
+  const npc=(id,nome,role)=>({id,uuid:`Actor.${id}`,name:nome,type:'character',img:'',items:[],
+    system:{level:{value:3}},flags:{quedaco:{npc:{role,regionId:'thurthur',placeId:'alberich'}}}});
+  const game={user:{isGM:true},actors:[npc('a','Brida','merchant'),npc('b','Tore','smith')],
+    users:[],packs:[],folders:[],scenes:[],settings:{get:(_m,k)=>(k==='sharedContent'?{}:[])}};
+  const library=new CampaignLibrary(game,{items:[],entry:()=>null});
+
+  const lista=library.npcsForLocation('thurthur','alberich',false);
+  // T11: é o mesmo cartão das outras abas, não uma terceira renderização mais pobre
+  assert.ok(lista.includes('sy-npc-card'),'usa o cartão compartilhado');
+  assert.ok(lista.includes('sy-npc-portrait-card'),'usa o mesmo retrato');
+  assert.ok(lista.includes('sy-npc-grid'),'entra na grade que o regulador controla');
+  assert.ok(lista.includes('name="localNpcRole"'),'T6: ganhou filtro de papel');
+
+  library.state.localNpcRole='smith';
+  const filtrada=library.npcsForLocation('thurthur','alberich',false);
+  assert.ok(filtrada.includes('Tore')&&!filtrada.includes('Brida'));
+  assert.ok(filtrada.includes('1 de 2'),'o cabeçalho diz quantos sobraram do total');
+});
