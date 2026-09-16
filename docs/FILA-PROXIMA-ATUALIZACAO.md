@@ -323,3 +323,7 @@ macro de aplicar.
 | `atribuir-herancas.js` | Sorteia herança válida pra quem tem legado e está sem. Prévia primeiro. |
 | `arrumar-nomes-npcs.js` | Limpa marcações NV2/NV3 (apaga o menor, renomeia o maior) e dá sobrenome a quem só tem um nome. Prévia primeiro. |
 | `criar-vendedor-prototipo.js` | Cria o NPC "Vendedor" com o rascunho de campos de profissão (T8b). |
+| `distribuir-npcs-guildas.js` | **T14.** 60% guilda, 20% hansa (máx. 4), 20% sem; sincroniza `system.members`, recalcula o nível e arquiva guilda vazia. Prévia primeiro. |
+| `redistribuir-npcs-por-importancia.js` | **T20.** Move NPCs entre localidades da MESMA região, dando peso a capital e cidade. A cota e a garantia de que a capital lidera vêm de `localityQuotas` (`src/locality.mjs`), com teste. Prévia primeiro. |
+| `posses-por-papel.js` | **T22.** Dinheiro e item coerentes com o papel principal. O mapa papel → posses fica no topo do arquivo, para ser conferido e mexido antes de aplicar. Prévia primeiro. |
+| `aplicar-tokens-npcs.js` | **T8.** Último passo do casamento de tokens: casa por prefixo do nome e grava em `actor.img` e no token. Prévia primeiro. |
