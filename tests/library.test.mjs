@@ -482,3 +482,30 @@ test('Monstros saem em ordem alfabética única, com selo de origem no cartão',
   assert.equal((html.match(/sy-origin-badge is-custom/g)??[]).length,1,'só o convertido é "Adaptado"');
   assert.ok(html.includes('>Oficial<'),'os do livro ficam marcados como oficiais');
 });
+
+test('filtro de guilda separa ficha vinculada, nome livre e quem não tem nenhuma',()=>{
+  const pipi={id:'g1',uuid:'Actor.g1',name:'P.I.P.I.',type:'guild',items:[],
+    system:{motto:'',abilities:{}},flags:{quedaco:{appendix:{kind:'guilda',seals:['Dragão prateado']}}}};
+  const npc=(id,npcFlag)=>({id,uuid:`Actor.${id}`,name:`NPC ${id}`,type:'character',img:'',items:[],
+    system:{level:{value:1}},flags:{quedaco:{npc:{role:'extra',...npcFlag}}}});
+  const daPipi=npc('a',{guildUuid:'Actor.g1'});
+  const daHansa=npc('b',{guild:'Hansa do Sal'});
+  const semGuilda=npc('c',{});
+  const game={user:{isGM:true},actors:[pipi,daPipi,daHansa,semGuilda],users:[],packs:[],folders:[],scenes:[],
+    settings:{get:(_m,k)=>(k==='sharedContent'?{}:[])}};
+  const library=new CampaignLibrary(game,{items:[],entry:()=>null});
+  const nomesEm=html=>[...html.matchAll(/data-drag-actor="Actor\.([abc])"/g)].map(m=>m[1]).sort();
+
+  // a lista de opções sai das guildas que os NPCs realmente têm, não do apêndice inteiro
+  const todos=library.renderNpcs(false);
+  assert.ok(todos.includes('name="npcGuildFilter"'));
+  assert.ok(todos.includes('>P.I.P.I.<'),'a ficha vinculada entra pelo nome do Actor');
+  assert.ok(todos.includes('>Hansa do Sal<'),'o nome livre também vira opção');
+  assert.deepEqual(nomesEm(todos),['a','b','c']);
+
+  library.state.npcGuildFilter='Actor.g1';
+  assert.deepEqual(nomesEm(library.renderNpcs(false)),['a']);
+
+  library.state.npcGuildFilter='none';
+  assert.deepEqual(nomesEm(library.renderNpcs(false)),['c'],'"Sem guilda" pega só quem não tem nenhuma');
+});

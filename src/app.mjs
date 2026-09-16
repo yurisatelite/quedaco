@@ -294,6 +294,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     // trocar de legado zera a herança: as opções da lista mudam junto
     if(name==='npcLegacyFilter'){this.library.state.npcLegacyFilter=value;this.library.state.npcHeritageFilter='all';this.rerender(true);return;}
     if(name==='npcHeritageFilter'){this.library.state.npcHeritageFilter=value;this.rerender(true);return;}
+    if(name==='npcGuildFilter'){this.library.state.npcGuildFilter=value;this.rerender(true);return;}
     if(name==='npcLevelMin'||name==='npcLevelMax'){this.library.state[name]=value===''?(name==='npcLevelMin'?0:12):Math.max(0,Math.min(12,Number(value)||0));this.rerender(true);return;}
     if(name==='npcLinkFilter'){this.library.state.npcLink=value;this.rerender(true);return;}
     if(name==='modBase'){this.library.modBuilder={baseId:value,materialId:'',sigils:[],tab:this.library.modBuilder.tab??'prefixo'};this.rerender(true);return;}
