@@ -88,7 +88,7 @@ Hoje `flags.quedaco.npc.role` guarda um papel só. Precisa virar dois:
 Afeta: `npcs.mjs` (schema da flag, `npcRoleChip`), editor de NPC, filtros da aba NPCs,
 cartão, e a aba de jogador (T2).
 
-## T2 — Aba NPCs do jogador separada da do mestre
+## T2 — Aba NPCs do jogador separada da do mestre — ✔ já estava pronto (0.5.0), conferido
 
 O mestre precisa acessar as duas visões. A do jogador:
 
@@ -129,7 +129,7 @@ Primavera) + sem corte. Precisa:
 
 - Barra de pesquisa (hoje é inviável achar uma guilda na lista).
 
-## T6 — Mapa / localidades
+## T6 — Mapa / localidades — ✔ feito
 
 - Imagem da região ou cidade **grande** — hoje sobra muito espaço na tela.
 - Tabela de rumores não está funcionando. Precisa rolar 1d4 mas com pelo menos
@@ -138,7 +138,7 @@ Primavera) + sem corte. Precisa:
 - A aba de localidades precisa das mesmas informações e filtros da aba NPCs (achar por
   função, por legado etc.). Hoje só dá pra filtrar NPCs.
 
-## T7 — Filtros (geral)
+## T7 — Filtros (geral) — ✔ feito
 
 "Bota pra quebrar": mais eixos de filtro em NPCs e localidades — função/papel, legado,
 herança, nível, região, local, guilda.
@@ -175,7 +175,7 @@ Um NPC conhecido mas fora de alcance deveria aparecer pro jogador de forma
 diferenciada (ex.: cinza, sem os botões de interação) em vez de sumir — o controle de
 quando religar continua 100% do mestre.
 
-## T11 — Cartão de NPC: um componente só, em todo lugar
+## T11 — Cartão de NPC: um componente só, em todo lugar — ✔ feito
 
 Cartão do mestre, cartão do jogador e o que aparece na aba Mapas (e o que aparece
 dentro do modal de detalhe de qualquer um desses) têm que ser **a mesma função de

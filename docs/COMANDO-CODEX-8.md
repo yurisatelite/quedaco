@@ -262,6 +262,17 @@ Escreva no mesmo commit da tarefa. Formato por entrada:
 **Não funcionou / deixei de fora:** T8 continua aberto na seção 3; a edição do `pick-tokens.mjs` era meio caminho e não dava para adivinhar a intenção. Conferência visual no Foundry segue pendente em tudo, como nas entradas anteriores.
 **Precisa de decisão:** nenhuma nova. Mas fica o aviso: o Dragão Prateado só aparece no filtro depois que alguma guilda da mesa for marcada com ele — isso é dado de Ator, não código, então é o Yuri quem faz no Foundry.
 
+### 16/09/2026 — T2, T7, T6 e T11 (Claude)
+**Fiz:**
+- **T2** — conferência, sem código. A aba do jogador já entregava tudo que o pedido descrevia desde a 0.5.0: abre por região, respeita liberação por localidade, usa as imagens das regiões, tem anotação individual e coletiva (o mestre vê as privadas) e o banner da guilda com atalho para a ficha.
+- **T7** — filtro por guilda na aba NPCs, casando tanto a ficha vinculada (`guildUuid`) quanto o nome livre digitado no editor, normalizado. Tem opção "Sem guilda", que é como se acha quem ainda não foi distribuído — metade do trabalho da T14.
+- **T6** — imagem da localidade com altura de verdade, como a da região já tinha; filtros de papel e legado na lista de NPCs do local; rumores conferidos (12 moldes com nomes e lugares reais, sorteando 1d4 — já atendia, nada a fazer).
+- **T11** — `npcsForLocation` era a terceira renderização de NPC (botão com avatar pequeno, só nome e papel). Agora chama `npcCard`, o mesmo das outras abas. `regionNpcCard` já delegava, então a aba Mapas fica num renderizador só.
+
+**Funcionou:** `npm test` (176, com três testes novos), `npm run package`, e render conferido de cada um.
+**Não funcionou / deixei de fora:** **`playerNpcCard` continua separada, de propósito.** Ela não é o mesmo cartão com menos seções — é outro conjunto (tag secundária editável, anotações, loja e venda). Unificar as duas numa função com meia dúzia de condicionais deixaria o código pior, não melhor. O que a T11 pedia de fato — a aba Mapas ter o mesmo cartão — está feito.
+**Precisa de decisão:** nada novo.
+
 ---
 
 ## 5. Estado herdado — o que o Claude já entregou
