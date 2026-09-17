@@ -116,6 +116,13 @@ Formato de cada entrada:
 **Checklist da regra 1:** tela ✔ · ações ✔ (somente ações existentes) · app.mjs ✔ (encaminhamento existente) · CSS ✔ · teste ✔
 **Precisa de decisão:** nenhuma.
 
+### 17/09/2026 — Tarefa 12
+**Fiz:** criei `.local/fichas-de-campo.json` com 44 fichas curtas, uma para cada ameaça do bestiário do livro. Cada uma tem aparência, temperamento, comportamento, o que quer e dois ganchos, todos redigidos em palavras próprias e sem texto extenso de livro.
+**Funcionou:** validei o JSON e a presença dos cinco campos em todas as 44 entradas. O arquivo fica em `.local`, portanto não entra no pacote nem no repositório público.
+**Não funcionou / deixei de fora:** o conversor atual ainda não lê o arquivo, então a reconversão não preenche essas fichas automaticamente até essa etapa ser conectada. Não criei conteúdo para os 326 monstros de D&D.
+**Checklist da regra 1:** tela ✖ (conteúdo local) · ações ✖ · app.mjs ✖ · CSS ✖ · teste ✔ (validação estrutural local)
+**Precisa de decisão:** nenhuma.
+
 ### 17/09/2026 — Tarefa 10
 **Fiz:** incluí no catálogo do bestiário o local, região ou além de Opath de cada uma das 44 ameaças do livro, seguindo a tabela da macro de distribuição. A aba Monstros ganhou facetas de Região e Além de Opath, chip de localização no cartão e linha de habitat no detalhe. Uma flag `flags.quedaco.monster` de uma ficha do mundo prevalece sobre o índice do livro; sem qualquer origem, a ameaça entra em “Sem região”.
 **Funcionou:** o teste cobre as três origens da faceta (local do livro, flag do mundo e ausência), além de confirmar as novas facetas e a linha de habitat na tela. A seleção continua usando o filtro já existente e não grava Actor nem setting.

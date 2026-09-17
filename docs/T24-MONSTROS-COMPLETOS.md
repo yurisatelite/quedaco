@@ -187,7 +187,9 @@ tamanho não ficavam guardados em lugar nenhum, nem na biografia.
 5. ~~Itens de hierarquia e arquétipo copiados do compêndio.~~ **Feito 17/09**
    (`adapter.mjs: attachCreatureRoleItems`, 3 testes com compêndio falso) — **mas não
    verificado contra o compêndio de verdade dentro do Foundry.**
-6. **Falta:** biografia em ficha de campo (sem o arquivo de fichas, os blocos saem vazios).
+6. **Conteúdo inicial feito em 17/09:** `.local/fichas-de-campo.json` traz 44 fichas
+   curtas do bestiário do livro. O arquivo é local e ainda precisa ser lido pela etapa de
+   reconversão antes de aparecer automaticamente nas biografias.
 7. ~~Ferramenta SRD + macro de reconversão para os 326 já importados.~~ **Feito 17/09** —
    rodado de verdade contra a API (322 monstros, 0 erros na conversão). Ver seção 4.
 
@@ -198,4 +200,5 @@ Rocha a 18 m. **Confirmado em código, testes (226, `npm test`) e contra os 322 
 reais do SRD — mas nunca visto na tela do Foundry.** O passo 5 (hierarquia/arquétipo)
 depende de compêndio real (`skyfall-core.npc-creation`) e só foi testado com um compêndio
 falso; o passo 7 (reconversão) precisa da versão nova publicada antes de rodar no mundo.
-O passo 6 (biografia em ficha de campo) segue pendente; não bloqueia o uso do conversor.
+O conteúdo do passo 6 está preparado localmente; falta a etapa de reconversão ler o arquivo
+e montar os blocos na biografia. Isso não bloqueia o uso do conversor.
