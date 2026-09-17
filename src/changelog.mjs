@@ -1,5 +1,19 @@
 export const CHANGELOG = [
   {
+    version:'0.9.0',
+    date:'2026-09-17',
+    title:'Mapa Imersivo, monstros de outros jogos chegando completos, e um mestre com menos ruído na tela',
+    notes:[
+      'O antigo "Atlas de cenas" virou o Mapa Imersivo. Quando uma cena está ativa, um painel no topo da aba Mapa junta tudo daquele lugar: os NPCs, as guildas presentes, os mercadores com a atitude de cada um (trocável na hora), um botão pra rolar um rumor da região, e um botão pra liberar a localidade aos jogadores.',
+      'Ao ativar uma cena cuja localidade ainda não foi liberada, o módulo pergunta antes de liberar. Uma opção nas configurações desliga essa pergunta.',
+      'Monstros importados de D&D chegam muito mais completos: tamanho certo, os testes de resistência da própria ficha (não mais um palpite), perícias, idiomas quando existe equivalente, resistências e imunidades, os traços da criatura, a magia inata com limite de uso, o Ataque Múltiplo, e a hierarquia/arquétipo (Chefão, Bruto, Líder...) do jeito que uma ficha nativa do Skyfall mostra. O alcance dos ataques corpo a corpo também estava saindo errado — corrigido.',
+      'Nova aba "Conferência da região" no painel da Mestra: lista quem ainda falta pra uma região servir de modelo — NPC sem legado, herança, local ou guilda, retrato provisório, mercador sem estoque, localidade sem cena, cena fora do Mapa Imersivo, ou localidade sem gancho de rumor. Cada item tem um atalho pra resolver.',
+      'A aba Monstros ganhou filtro por região de Opath (e "Além de Opath"), com a localização marcada no cartão e na ficha de cada ameaça do livro.',
+      'Telas de NPCs, Guildas, Monstros e Itens ficaram mais limpas: pesquisa e filtro agora têm rótulo próprio e ordem clara, e sumiram os avisos que só faziam sentido durante a criação da mesa (cobertura regional de NPCs, importação de guildas já concluída, instrução de onde colocar imagem no mapa).',
+      'Corrigido: o console enchia de erros 404 ao abrir a aba Itens, procurando imagem que não existia. A Mestra agora pode reindexar as imagens da mesa com um botão, e o módulo só oferece o que realmente está lá.'
+    ]
+  },
+  {
     version:'0.8.0',
     date:'2026-09-17',
     title:'Guildas em jogo, NPC conhecido que não some e um cartão de NPC só em todo lugar',
