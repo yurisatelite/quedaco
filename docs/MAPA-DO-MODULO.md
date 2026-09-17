@@ -86,6 +86,15 @@ de progresso, não repita aqui: **[PROGRESSO-MAPA-IMERSIVO.md](PROGRESSO-MAPA-IM
 | Modificação de item (T-ITEM-MODIFICADO) | [item-mod.mjs](../src/item-mod.mjs) |
 | Categoria/estilo do cartão de item | `library.mjs: ITEM_CATEGORY_STYLE, itemProperties, itemDescriptors` |
 
+## Imagens da mesa
+
+| Peça | Onde |
+|---|---|
+| Candidatos, manifesto e fallback | [images.mjs](../src/images.mjs) — `resolveImage, ImageResolver` |
+| Índice contra 404 | `images.mjs: buildImageIndex, indexedImageCandidates`; o setting de mundo `imageIndex` guarda somente os caminhos existentes sob a `assetRoot` atual |
+| Ação da Mestra | `library.mjs: reindexImages`, botão “Reindexar imagens” no topo da biblioteca; lista uma vez as subpastas conhecidas com `FilePicker.browse` |
+| Testes | [images.test.mjs](../tests/images.test.mjs) — índice restringe candidatos existentes; sem índice conserva a tentativa por convenção |
+
 ## Criação de personagem (jogador)
 
 | Peça | Onde |

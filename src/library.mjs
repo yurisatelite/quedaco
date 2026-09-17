@@ -43,6 +43,7 @@ export const MONSTER_ANYWHERE_KEY='monsterAnywhere';
 export const GUILD_ARCHIVED_KEY='guildArchived';
 export const GEN_DONE_KEY='generatedArchetypes';
 export const ASSET_ROOT_KEY='assetRoot';
+export const IMAGE_INDEX_KEY='imageIndex';
 export const ITEM_COMPENDIUM_KEY='itemCompendium';
 export const NPC_LINKS_KEY='npcLinks';
 /** Localidades abertas aos jogadores na aba NPCs: ids 'region:<id>' e 'place:<id>'.
@@ -81,6 +82,7 @@ export function registerLibrarySettings(game,onChange){
   game.settings.register(MODULE_ID,PLACE_IMG_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
   game.settings.register(MODULE_ID,REGION_IMG_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
   game.settings.register(MODULE_ID,ASSET_ROOT_KEY,{scope:'world',config:true,type:String,default:'assets',filePicker:'folder',name:'Pasta de imagens do QUEDAÇO',hint:'Pasta da mesa com regioes, locais, npcs, monstros, itens, quests e o arquivo opcional quedaco-imagens.json. Padrao: assets',onChange});
+  game.settings.register(MODULE_ID,IMAGE_INDEX_KEY,{scope:'world',config:false,type:Object,default:null,onChange});
   game.settings.register(MODULE_ID,MAP_HOTSPOTS_KEY,{scope:'world',config:false,type:Object,default:{regions:{},places:{}},onChange});
   game.settings.register(MODULE_ID,MAP_HIDDEN_KEY,{scope:'world',config:false,type:Array,default:null,onChange});
   game.settings.register(MODULE_ID,MONSTER_HABITATS_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
@@ -243,6 +245,14 @@ const CUSTOM_ARCHETYPE_LABEL={flanker:'Flanqueador',sentinel:'Sentinela',defende
 export class CampaignLibrary {
   constructor(game,catalog){this.game=game;this.catalog=catalog;this.images=new ImageResolver(game,MODULE_ID,ASSET_ROOT_KEY);this.quests=new ForienQuestIntegration(game);this.actors=[];this.failures=[];this.loaded=false;this.state={mapDisplay:'geographic',mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null,layer:'auto',movingPins:false},atlasThumbnails:false,npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcLevelMin:0,npcLevelMax:12,npcDragonOnly:false,npcMilitarOnly:false,npcActor:null,npcSaved:null,npcEditRole:null,npcEditRegion:null,npcEditPlace:null,monsterFacets:{},monsterCardSize:270,itemCardSize:270,guildCardSize:270,npcCardSize:270,npcPlayerRegion:null,npcAsPlayer:false,npcLegacyFilter:'all',npcHeritageFilter:'all',npcGuildFilter:'all',localNpcRole:'all',localNpcLegacy:'all',guildFacets:{},guildTab:'ativas',questStatus:'all',regionTakeover:false,regionScene:null,regionTab:'rumores',regionRumorRoll:null,regionRumorEdit:null,regionNpcRoleFilter:'all',cart:{actorId:'',lines:[]},sellActorId:''};this.modBuilder={baseId:'',materialId:'',sigils:[],tab:'prefixo'};this.forgeBuilder={smithId:'',baseUuid:'',materialId:'',sigils:[],tab:'prefixo'};}
   image(kind,id,documentImg='',fallback='icons/svg/mystery-man.svg'){return this.images.resolve(kind,id,documentImg,fallback);}
+  async reindexImages(){
+    this.assertGM();
+    const picker=globalThis.FilePicker??globalThis.foundry?.applications?.apps?.FilePicker?.implementation;
+    if(typeof picker?.browse!=='function')throw Error('O seletor de arquivos do Foundry não está disponível.');
+    const index=await this.images.reindex(path=>picker.browse('data',path));
+    globalThis.ui?.notifications?.info?.(`${index.files.length} imagem(ns) indexada(s).`);
+    return index;
+  }
   assertGM(){if(!this.game.user?.isGM)throw Error('Esta área está disponível somente para o mestre.');}
   get shared(){try{return {...emptyShare(),...(this.game.settings?.get(MODULE_ID,SHARED_KEY)||{})};}catch{return emptyShare();}}
   get placeScenes(){try{return {...(this.game.settings?.get(MODULE_ID,SCENES_KEY)||{})};}catch{return {};}}
@@ -674,6 +684,7 @@ export class CampaignLibrary {
       // carrinho e venda: quem monta e fecha é o jogador, na ficha dele
       'lib-cart-add','lib-cart-remove','lib-cart-clear','lib-cart-buy','lib-npc-sell-open','lib-npc-sell'];
     if(!openOps.includes(op))this.assertGM();
+    if(op==='lib-images-reindex')await this.reindexImages();
     if(op==='lib-map-display')this.state.mapDisplay=id==='atlas'?'atlas':'geographic';
     if(op==='lib-atlas-thumbnails')this.state.atlasThumbnails=id==='show';
     if(op==='lib-atlas-provider'){const [provider,mode]=String(id).split(':');await this.setSceneAtlasProvider(provider,mode==='on');}
@@ -1139,7 +1150,8 @@ export class CampaignLibrary {
     else if(area!=='quests'&&!this.shared.areas.includes(area))return `<main class="sy-library"><small>CONSULTA DA CAMPANHA</small><h2>${area}</h2><p class="sy-library-deferred">O mestre ainda não liberou este conteúdo.</p></main>`;
     const titles={npcs:'NPCs',guilds:'Guildas e Hansas',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'};
     const body=area==='npcs'?this.renderNpcs(readonly):area==='guilds'?this.renderGuilds(readonly):area==='map'?this.renderMap(readonly):area==='monsters'?this.renderMonsters(readonly):area==='imbue'?this.renderImbue(readonly):area==='quests'?this.renderQuests(readonly):this.renderItems(readonly);
-    return `<main class="sy-library"><small>${area==='quests'?'QUESTS DA CAMPANHA':readonly?'LIBERADO PELO MESTRE':'CONSULTA DA CAMPANHA'}</small><h2>${titles[area]}</h2>${body}</main>`;
+    const maintenance=readonly?'':`<div class="sy-library-maintenance">${button('images-reindex','','Reindexar imagens')}</div>`;
+    return `<main class="sy-library"><small>${area==='quests'?'QUESTS DA CAMPANHA':readonly?'LIBERADO PELO MESTRE':'CONSULTA DA CAMPANHA'}</small><h2>${titles[area]}</h2>${maintenance}${body}</main>`;
   }
   renderQuests(readonly=false){
     if(!this.quests.available)return `<p class="sy-library-deferred"><strong>Forien's Quest Log não está disponível.</strong><br>Ative o módulo nesta mesa e abra novamente o QUEDAÇO.</p>`;

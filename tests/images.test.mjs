@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {imageCandidates,imageSlug,resolveImage} from '../src/images.mjs';
+import {buildImageIndex,imageCandidates,imageSlug,resolveImage} from '../src/images.mjs';
 test('slug de imagem remove acento, pontuação e espaços',()=>{
  assert.equal(imageSlug('Bicho-papão  Azul'),'bicho-papao-azul');
  assert.equal(imageCandidates('worlds/x/quedaco/','place','Praça da Sé')[0],'worlds/x/quedaco/locais/praca-da-se.webp');
@@ -25,4 +25,13 @@ test('sem exceção, monstro/item mostram a imagem do documento antes da pasta (
  // exceção do manifesto continua tendo prioridade máxima
  const ex=resolveImage('npc','Kraken',{root:'worlds/x',manifest:{npcs:{kraken:'custom.png'}},documentImg:'tokens/kraken.webp'});
  assert.equal(ex.src,'custom.png');
+});
+test('índice usa somente imagens existentes e sem índice conserva as tentativas atuais',async()=>{
+ const index=await buildImageIndex('worlds/x',async path=>({files:path.endsWith('/itens')?['worlds/x/itens/espada.png']:[]}));
+ assert.deepEqual(index,{root:'worlds/x',files:['worlds/x/itens/espada.png']});
+ const indexed=resolveImage('item','Espada',{root:'worlds/x',index,fallback:'f.svg'});
+ assert.deepEqual(indexed.sources,['worlds/x/itens/espada.png','f.svg']);
+ const legacy=resolveImage('item','Espada',{root:'worlds/x',fallback:'f.svg'});
+ assert.ok(legacy.sources.includes('worlds/x/itens/espada.webp'));
+ assert.ok(legacy.sources.includes('worlds/x/itens/espada.png'));
 });
