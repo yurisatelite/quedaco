@@ -529,3 +529,36 @@ test('região e localidade usam o mesmo cartão de NPC, com filtro de papel e le
   assert.ok(filtrada.includes('Tore')&&!filtrada.includes('Brida'));
   assert.ok(filtrada.includes('1 de 2'),'o cabeçalho diz quantos sobraram do total');
 });
+
+test('Guildas em abas: em jogo e guardadas, e a guilda da mesa não tem botão de guardar',async()=>{
+  const jogador={id:'pc',uuid:'Actor.pc',name:'Kael',type:'character',hasPlayerOwner:true,items:[],system:{level:{value:3}}};
+  const npc={id:'n1',uuid:'Actor.n1',name:'Tore',type:'character',hasPlayerOwner:false,items:[],system:{level:{value:2}}};
+  const guilda=(id,nome,membros)=>({id,uuid:`Actor.${id}`,name:nome,type:'guild',items:[],
+    system:{motto:'',abilities:{},members:membros.map(uuid=>({uuid}))},flags:{quedaco:{appendix:{kind:'guilda',seals:[]}}}});
+  const pipi=guilda('g1','P.I.P.I.',['Actor.pc']);
+  const ativa=guilda('g2','Ordem Ativa',['Actor.n1']);
+  const guardada=guilda('g3','Ordem Guardada',[]);
+  const store={guildArchived:['Actor.g3']};
+  const game={user:{isGM:true},actors:[jogador,npc,pipi,ativa,guardada],users:[],packs:[],folders:[],scenes:[],
+    settings:{get:(_m,k)=>(k==='sharedContent'?{}:(store[k]??[])),set:async(_m,k,v)=>{store[k]=v;}}};
+  const library=new CampaignLibrary(game,{items:[],entry:()=>null});
+  const nomes=html=>[...html.matchAll(/>(P\.I\.P\.I\.|Ordem Ativa|Ordem Guardada)</g)].map(m=>m[1]);
+
+  // aba padrão: só o que está em jogo, com as duas contagens
+  const emJogo=library.renderGuilds(false);
+  assert.ok(emJogo.includes('Em jogo · 2')&&emJogo.includes('Guardadas · 1'));
+  assert.ok(nomes(emJogo).includes('Ordem Ativa'));
+  assert.ok(!nomes(emJogo).includes('Ordem Guardada'),'guardada não aparece em jogo');
+
+  // a guilda com ficha de jogador é "da mesa" e não oferece guardar
+  assert.equal(library.tableGuildIds().has('Actor.g1'),true);
+  assert.equal(library.tableGuildIds().has('Actor.g2'),false,'NPC não conta como mesa, mesmo o mestre sendo dono de tudo');
+  assert.ok(emJogo.includes('★ da mesa'));
+  assert.ok(!emJogo.includes('lib-guild-archive" data-id="Actor.g1'),'sem botão de guardar na guilda da mesa');
+
+  // aba guardadas: só as guardadas, com o botão de trazer de volta
+  await library.action('lib-guild-tab','guardadas');
+  const guardadas=library.renderGuilds(false);
+  assert.deepEqual([...new Set(nomes(guardadas))],['Ordem Guardada']);
+  assert.ok(guardadas.includes('↩ Pôr em jogo'));
+});

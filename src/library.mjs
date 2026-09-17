@@ -226,7 +226,7 @@ const CUSTOM_TIER_LABEL={simple:'Simples',complex:'Complexo',boss:'Chefão'};
 const CUSTOM_ARCHETYPE_LABEL={flanker:'Flanqueador',sentinel:'Sentinela',defender:'Defensor',brute:'Bruto',leader:'Líder',mount:'Cavalaria',ranged:'Atirador',group:'Coletivo'};
 
 export class CampaignLibrary {
-  constructor(game,catalog){this.game=game;this.catalog=catalog;this.images=new ImageResolver(game,MODULE_ID,ASSET_ROOT_KEY);this.quests=new ForienQuestIntegration(game);this.actors=[];this.failures=[];this.loaded=false;this.state={mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null,layer:'auto',movingPins:false},npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcLevelMin:0,npcLevelMax:12,npcDragonOnly:false,npcMilitarOnly:false,npcActor:null,npcSaved:null,npcEditRole:null,npcEditRegion:null,npcEditPlace:null,monsterFacets:{},monsterCardSize:270,itemCardSize:270,guildCardSize:270,npcCardSize:270,npcPlayerRegion:null,npcAsPlayer:false,npcLegacyFilter:'all',npcHeritageFilter:'all',npcGuildFilter:'all',localNpcRole:'all',localNpcLegacy:'all',guildFacets:{},guildShowArchived:false,questStatus:'all',regionTakeover:false,regionScene:null,regionTab:'rumores',regionRumorRoll:null,regionRumorEdit:null,regionNpcRoleFilter:'all',cart:{actorId:'',lines:[]},sellActorId:''};this.modBuilder={baseId:'',materialId:'',sigils:[],tab:'prefixo'};this.forgeBuilder={smithId:'',baseUuid:'',materialId:'',sigils:[],tab:'prefixo'};}
+  constructor(game,catalog){this.game=game;this.catalog=catalog;this.images=new ImageResolver(game,MODULE_ID,ASSET_ROOT_KEY);this.quests=new ForienQuestIntegration(game);this.actors=[];this.failures=[];this.loaded=false;this.state={mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null,layer:'auto',movingPins:false},npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcLevelMin:0,npcLevelMax:12,npcDragonOnly:false,npcMilitarOnly:false,npcActor:null,npcSaved:null,npcEditRole:null,npcEditRegion:null,npcEditPlace:null,monsterFacets:{},monsterCardSize:270,itemCardSize:270,guildCardSize:270,npcCardSize:270,npcPlayerRegion:null,npcAsPlayer:false,npcLegacyFilter:'all',npcHeritageFilter:'all',npcGuildFilter:'all',localNpcRole:'all',localNpcLegacy:'all',guildFacets:{},guildTab:'ativas',questStatus:'all',regionTakeover:false,regionScene:null,regionTab:'rumores',regionRumorRoll:null,regionRumorEdit:null,regionNpcRoleFilter:'all',cart:{actorId:'',lines:[]},sellActorId:''};this.modBuilder={baseId:'',materialId:'',sigils:[],tab:'prefixo'};this.forgeBuilder={smithId:'',baseUuid:'',materialId:'',sigils:[],tab:'prefixo'};}
   image(kind,id,documentImg='',fallback='icons/svg/mystery-man.svg'){return this.images.resolve(kind,id,documentImg,fallback);}
   assertGM(){if(!this.game.user?.isGM)throw Error('Esta área está disponível somente para o mestre.');}
   get shared(){try{return {...emptyShare(),...(this.game.settings?.get(MODULE_ID,SHARED_KEY)||{})};}catch{return emptyShare();}}
@@ -391,6 +391,17 @@ export class CampaignLibrary {
     await user.setFlag(MODULE_ID,NPC_NOTES_FLAG,all);
   }
   /** Guilda do usuário: a que tem o personagem dele na lista de membros. */
+  /** Guildas da mesa: as que têm pelo menos um membro que é ficha de jogador. Usa
+   *  `hasPlayerOwner` e não `isOwner` — para o mestre, `isOwner` é verdadeiro em TODA
+   *  ficha, e aí qualquer guilda com membro parecia ser a do grupo. */
+  tableGuildIds(){
+    const ids=new Set();
+    for(const guild of this.guildActors()){
+      const membros=Array.isArray(guild.system?.members)?guild.system.members:[];
+      if(membros.some(entry=>this.resolveActor(entry?.uuid)?.hasPlayerOwner))ids.add(guild.uuid);
+    }
+    return ids;
+  }
   playerGuild(){
     const own=new Set();
     for(const actor of this.game.actors??[]){if(actor.type==='character'&&actor.isOwner)own.add(actor.uuid);}
@@ -612,7 +623,7 @@ export class CampaignLibrary {
     if(op==='lib-guild-stance')await this.setGuildStance(id,data.stance);
     if(op==='lib-guild-archive'){const cut=String(id).lastIndexOf('|');await this.setGuildArchived(String(id).slice(0,cut),String(id).slice(cut+1)!=='off');}
     if(op==='lib-guild-archive-empty')await this.archiveEmptyGuilds();
-    if(op==='lib-guild-show-archived')this.state.guildShowArchived=!this.state.guildShowArchived;
+    if(op==='lib-guild-tab')this.state.guildTab=id==='guardadas'?'guardadas':'ativas';
     if(op==='lib-guild-open'){const guild=this.guildActors().find(entry=>entry.uuid===id||entry.id===id);if(!guild)throw Error('Guilda não encontrada.');const propria=this.playerGuild()?.uuid===guild.uuid;if(!this.game.user?.isGM&&!propria&&!this.shared.guilds.includes(guild.uuid))throw Error('Esta guilda não foi liberada.');guild.sheet?.render(true);}
     if(op==='lib-region-rumor-add')await this.addRegionRumor(id,data.text);
     if(op==='lib-region-rumor'){const [regionId,rumorId,change]=String(id).split('|');await this.updateRegionRumor(regionId,rumorId,change);}
@@ -1352,8 +1363,8 @@ export class CampaignLibrary {
   renderGuilds(readonly=false){
     const shared=this.shared.guilds,archived=this.archivedGuilds;
     const allGuilds=this.guildActors().filter(guild=>!readonly||shared.includes(guild.uuid));
-    const showArchived=readonly||this.state.guildShowArchived;
-    const guilds=sortByName(showArchived?allGuilds:allGuilds.filter(guild=>!archived.has(guild.uuid)));
+    const aba=this.state.guildTab==='guardadas'?'guardadas':'ativas',mesa=this.tableGuildIds();
+    const guilds=sortByName(readonly?allGuilds:allGuilds.filter(guild=>aba==='guardadas'?archived.has(guild.uuid):!archived.has(guild.uuid)));
     const archivedCount=allGuilds.filter(guild=>archived.has(guild.uuid)).length;
     const abilityLabels={cunning:'Astúcia',knowledge:'Conhecimento',crafting:'Ofício',reputation:'Reputação'};
     const resolve=uuid=>this.resolveActor(uuid);
@@ -1381,7 +1392,8 @@ export class CampaignLibrary {
       const img=this.image('seal',name,compendio||'','icons/svg/dice-target.svg');
       return `<img class="sy-guild-seal" src="${e(img.src)}" alt="" title="${e(name)}" loading="lazy"${img.fallbacks.length?` data-fallback-srcs="${e(img.fallbacks.join('||'))}"`:''}>`;
     };
-    const archiveBar=readonly?'':`<div class="sy-library-share-row">${button('guild-archive-empty','','📦 Guardar as sem membro')}${button('guild-show-archived','',showArchived?`✓ Mostrando ${archivedCount} arquivada(s)`:`Mostrar ${archivedCount} arquivada(s)`)}</div>`;
+    const emJogoCount=allGuilds.length-archivedCount;
+    const archiveBar=readonly?'':`<nav class="sy-library-tabs sy-guild-tabs" aria-label="Guildas em jogo ou guardadas"><button data-op="lib-guild-tab" data-id="ativas" aria-current="${aba==='ativas'?'page':'false'}">Em jogo · ${emJogoCount}</button><button data-op="lib-guild-tab" data-id="guardadas" aria-current="${aba==='guardadas'?'page':'false'}">Guardadas · ${archivedCount}</button></nav><div class="sy-library-share-row">${button('guild-archive-empty','','📦 Guardar as sem membro')}</div>${aba==='guardadas'?'<p class="sy-note">Guardadas ficam fora do caminho, com membros e ficha intactos. "↩ Pôr em jogo" traz de volta.</p>':''}`;
     const cards=guilds.map((guild,idx)=>{
       const system=guild.system??{},f=facets[idx],motto=stripTags(system.motto??'');
       const membros=guildMembers(guild,resolve).length,nivel=guildLevel(guild,resolve);
@@ -1393,7 +1405,9 @@ export class CampaignLibrary {
       const stancePick=readonly?'':`<select class="sy-guild-stance" name="guildStance" data-id="${e(guild.uuid)}" style="--sy-stance:${e(st.color)}" title="Relação com o grupo">${Object.entries(GUILD_STANCES).map(([k,v])=>`<option value="${k}" ${f.stance===k?'selected':''}>${v.label}</option>`).join('')}</select>`;
       const abilChips=`<div class="sy-guild-abils">${Object.entries(abilityLabels).map(([key,label])=>`<span class="sy-guild-abil sy-abil-${key}"><b>${e(label)}</b>${e(system.abilities?.[key]?.value??'—')}</span>`).join('')}</div>`;
       const isArchived=archived.has(guild.uuid);
-      const archiveBtn=readonly?'':button('guild-archive',`${guild.uuid}|${isArchived?'off':'on'}`,isArchived?'↩ Reativar':'📦 Guardar');
+      const daMesa=mesa.has(guild.uuid);
+      // a guilda do grupo não se guarda por engano: nem aparece o botão
+      const archiveBtn=readonly?'':(daMesa?'<span class="sy-guild-mesa" title="Tem ficha de jogador entre os membros">★ da mesa</span>':button('guild-archive',`${guild.uuid}|${isArchived?'off':'on'}`,isArchived?'↩ Pôr em jogo':'📦 Guardar'));
       return `<article class="sy-library-card sy-guild-card sy-guild-${f.kind} ${isArchived?'is-archived':''}" style="--sy-stance:${e(st.color)};--sy-kind:${e(kindColor)}" data-search="${e(nameKey(`${guild.name} ${motto} ${f.ap.creator??''} ${f.ap.description??''}`))}" data-category="${e(tokens)}"><div class="sy-library-card-content"><div class="sy-guild-head"><i class="fa-solid ${f.kind==='hansa'?'fa-flag':'fa-landmark'} sy-guild-icon" title="${f.kind==='hansa'?'Hansa (independente)':'Guilda (oficial)'}" aria-hidden="true"></i><div class="sy-guild-head-txt"><small><span class="sy-guild-kind">${f.kind==='hansa'?'Hansa':'Guilda'}</span> · Nível ${e(nivel)} · ${membros} membro(s) · <span class="sy-guild-rel" style="--sy-stance:${e(st.color)}">${e(st.label)}</span>${isArchived?' · <span class="sy-guild-archived-tag">arquivada</span>':''}</small><h3>${e(guild.name)}</h3></div>${selosCard.length?`<div class="sy-guild-seals">${selosCard.map(sealImg).join('')}</div>`:''}</div>${f.ap.symbol?`<p class="sy-guild-symbol"><i class="fa-solid fa-stamp"></i> ${e(f.ap.symbol)}</p>`:''}${motto?`<p>${e(motto)}</p>`:''}${f.tema.length?`<div class="sy-guild-temas">${f.tema.map(t=>`<span class="sy-guild-tema sy-tema-${t}">${e(({comercio:'Comércio',contrabando:'Contrabando',informacao:'Informação',militar:'Militar',arcano:'Arcano',maritimo:'Marítimo'})[t]||t)}</span>`).join('')}</div>`:''}${abilChips}<div class="sy-library-tabs">${stancePick}${button('guild-open',guild.uuid,'Abrir ficha')}${archiveBtn}${readonly?'':this.shareButton('guilds',guild.uuid,'✓ Liberada','Liberar aos jogadores')}</div></div></article>`;
     }).join('');
     const importer=readonly?'':`<details class="sy-library-guide"><summary>Importar guildas do apêndice</summary><p class="sy-note">Cole aqui o conteúdo de <code>.local/guildas-foundry.json</code> (gerado por <code>tools/parse-guilds.mjs</code>) ou deixe o arquivo em <code>Data/modules/quedaco/.local/</code> e clique sem colar nada. Cria os Actors <code>guild</code> numa pasta "Guildas · Apêndice B"; pula as que já existem.</p><textarea name="guildImport" rows="4" placeholder='[ { "type": "guild", "name": "...", ... } ]'></textarea><div class="sy-library-tabs">${button('guild-import','','Importar')}</div></details>`;
