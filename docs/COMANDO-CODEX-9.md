@@ -229,3 +229,10 @@ Mesmo formato da 8ª, no mesmo commit da tarefa:
 **Não funcionou / deixei de fora:** o teste confirma a ligação entre HTML e roteador; não substitui cliques reais no Foundry.
 **Checklist da regra 1:** tela ✔ (todas as áreas renderizadas) · ações ✔ · app.mjs ✔ (formulários condicionais presentes no HTML coberto) · CSS ✔ (nenhuma classe nova) · teste ✔
 **Precisa de decisão:** nenhuma.
+
+### 17/09/2026 — Tarefa 2
+**Fiz:** incorporei em `.local/Skyfall-Criador-de-Conteudo.js` a suspensão temporária do `BenefitsDialog.prompt` somente durante a inclusão de legado, herança, antecedente, classe e trilha. A macro sempre restaura o método original no `finally`, inclusive quando a criação falha. Arquivei o trecho solto em `.local/_arquivadas/desligar-dialogo-beneficios.js` e atualizei os dois índices privados de macros.
+**Funcionou:** `node --check .local/Skyfall-Criador-de-Conteudo.js` passou; a chamada de criação dos itens relevantes está dentro do helper, a criação de habilidades de monstro permaneceu fora dele, e o arquivo antigo deixou a raiz de `.local/`.
+**Não funcionou / deixei de fora:** a abertura efetiva do diálogo só pode ser conferida dentro do Foundry. A pasta `.local/` é privada e ignorada pelo Git; por isso este commit público contém apenas este registro, sem expor a macro.
+**Checklist da regra 1:** tela — (macro, sem tela nova) · ações — · app.mjs — · CSS — · teste ✔ (sintaxe; conferência funcional pendente no Foundry)
+**Precisa de decisão:** nenhuma.
