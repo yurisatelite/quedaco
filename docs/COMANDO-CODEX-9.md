@@ -338,3 +338,10 @@ Mesmo formato da 8ª, no mesmo commit da tarefa:
 **Não funcionou / deixei de fora:** **nada disto foi visto no Foundry.** `game.scenes.active`, o `Hooks.on('canvasReady')` e o `DialogV2.confirm` só existem em tempo de execução real — os testes usam cenas e `game` falsos. Ver `docs/PROGRESSO-MAPA-IMERSIVO.md`, etapas D e E.
 **Checklist da regra 1:** tela ✔ (painel no topo da aba Mapa) · ações ✔ (reaproveita ops que já existiam, nenhuma nova) · app.mjs — (não precisou de campo de formulário novo) · CSS ✔ (`.sy-active-scene*`) · teste ✔
 **Precisa de decisão:** nenhuma — só falta a conferência do Yuri no Foundry (etapas C, D e E do `PROGRESSO-MAPA-IMERSIVO.md`).
+
+### 17/09/2026 — Tarefa 4 (Codex) — commitada só agora
+**Fiz:** este trabalho é do Codex, feito antes desta entrada — ficou pronto no disco sem commit nem diário (violando a regra 2 desta rodada). Registro agora porque commitei junto do Mapa Imersivo (Tarefas 6/7): `planGuildRedistribution` em `src/guilds.mjs`, os cenários do simulador portados para `tests/guilds.test.mjs`, o botão "Redistribuir membros" na aba Em jogo com `DialogV2.confirm` resumindo o plano, e a gravação em `library.mjs: redistributeGuildMembers`.
+**Funcionou:** os testes já existiam e passavam antes de eu tocar em qualquer arquivo desta sessão — inclusive os casos de proteção da P.I.P.I. (nome, ficha de jogador, selo).
+**Não funcionou / deixei de fora:** não é meu trabalho pra avaliar em detalhe; não verificado no Foundry (nenhuma tarefa desta rodada foi).
+**Checklist da regra 1:** não conferido por mim — quem retomar isto deve conferir antes de considerar fechado de vez.
+**Precisa de decisão:** nenhuma nova; só a conferência no Foundry, como tudo o mais nesta rodada.
