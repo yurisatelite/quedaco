@@ -39,9 +39,9 @@ ativa, pergunta ao ativar cena) ainda não tiveram nenhum retorno de uso — só
 ## A — Atlas de cenas · 60% — visto no Foundry, precisa de rework visual
 
 > **Atualização 17/09/2026:** visto de verdade pela primeira vez. Retorno completo em
-> [T25-MAPA-IMERSIVO-VISUAL.md](T25-MAPA-IMERSIVO-VISUAL.md) — 6 ajustes de uso pequenos
-> e o pedido principal (um diagrama visual, não a árvore de listas de hoje) ainda em
-> aberto, esperando decisão de design do Yuri antes de codar.
+> [T25-MAPA-IMERSIVO-VISUAL.md](T25-MAPA-IMERSIVO-VISUAL.md) — 7 ajustes de uso pequenos
+> e o pedido principal (um quebra-cabeça arrastável por região, não a árvore de listas
+> de hoje) **já com decisão de design tomada** — mandado pro Codex como Tarefa 13.
 
 Árvore que liga região → localidade → cena, editável pela aba **Mapa Imersivo** do
 Mestre. Dá pra criar uma cena dentro de uma região ou localidade.

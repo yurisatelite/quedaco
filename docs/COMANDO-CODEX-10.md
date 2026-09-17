@@ -72,12 +72,29 @@ documento já prevê. Não é código, é conteúdo — pode ser feito aos pouco
 
 ### Tarefa 13 — Mapa Imersivo: ajustes de uso e o mapa conceitual de verdade  · *grande — especificada em `docs/T25-MAPA-IMERSIVO-VISUAL.md`*
 
-**Primeiro retorno de uso real** — o Yuri testou a v0.9.0 no Foundry e mandou prints.
-Leia o documento inteiro antes de começar: tem 6 ajustes pequenos (seção 1, façam
-primeiro, nesta ordem) e o pedido principal, que **não foi atendido na v0.9.0** — um
-diagrama visual de verdade (caixas e linhas), não a árvore de `<details>` de hoje (seção
-2). A seção 2 tem uma pergunta pro Yuri que precisa de resposta **antes** de codar o
-diagrama — não adivinhe.
+**Primeiro retorno de uso real** — o Yuri testou a v0.9.0 no Foundry, mandou prints, e
+depois teve uma conversa de design com o Claude sobre a peça maior. **Todas as decisões
+já estão tomadas — leia o documento inteiro, não pergunte de novo o que ele já resolve.**
+Resumo: 7 ajustes pequenos (seção 1) e o quebra-cabeça arrastável por região (seção 2,
+decisão confirmada — arrastar, não calcular sozinho; não junta com o mapa de Opath por
+enquanto). A seção 1.7 move o painel da cena ativa (Tarefa 6 da rodada anterior) pra uma
+aba nova "Cena Atual", com os NPCs organizados por localidade dentro da região, não a
+região inteira misturada.
+
+### Tarefa 14 — Imbuir sai da barra de abas, vai pra dentro da ficha do NPC  · *precisa de conversa de design antes de especificar*
+
+Decidido nesta rodada de conversa (`docs/T25-MAPA-IMERSIVO-VISUAL.md`, seção 4.1), mas
+**ainda sem desenho de como fica dentro da ficha do NPC.** Não codifique — isto é só um
+lembrete registrado pra não se perder, do mesmo jeito que T21 e T8b esperam decisão.
+
+### Tarefa 15 — Ponte com o módulo World Explorer  · *pequena — especificada em `docs/T25-MAPA-IMERSIVO-VISUAL.md`, seção 4.2*
+
+O Yuri já usa esse módulo no mundo oficial pra revelar hexágonos de exploração. O
+QUEDAÇO só precisa de um botão que abre a cena de exploração quando o módulo está
+ativo — **sem ler nem escrever nada da estrutura interna dele** além de checar se está
+ativo. A leitura opcional de quantos hexágonos já foram revelados (item 2 da seção 4.2)
+é fora do escopo principal e precisa vir **blindada contra formato inesperado** — nunca
+pode quebrar a tela.
 
 ---
 
