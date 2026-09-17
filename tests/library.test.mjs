@@ -591,11 +591,67 @@ test('atlas de cenas: aba no Mapa, cada botão com ação, e as ações da liga�
     assert.ok(edgeId,'a ligação foi gravada');
     await assert.rejects(library.action('lib-atlas-build',edgeId),/Ligue o Stairways ou as Regiões/);
     await assert.rejects(library.action('lib-atlas-build-all'),/posicionadas/);
-
-    // todo botão que a tela desenha tem tratamento em action()
-    const html=library.renderMap(false);
-    const fonte=(await import('node:fs')).readFileSync(new URL('../src/library.mjs',import.meta.url),'utf8');
-    const semAcao=[...new Set([...html.matchAll(/data-op="(lib-[a-z-]+)"/g)].map(m=>m[1]))].filter(op=>!fonte.includes(`op==='${op}'`));
-    assert.deepEqual(semAcao,[],'nenhum botão do atlas sem ação');
   }finally{delete globalThis.Scene;}
+});
+/** Mundo pequeno, mas com conteúdo suficiente para abrir os controles condicionais das
+ * abas: loja com estoque, guilda da personagem, duas cenas ligadas e uma quest. */
+function mundoDasAcoes(isGM){
+  const equipamento={id:'espada',uuid:'Actor.pc.Item.espada',name:'Espada longa',type:'weapon',img:'espada.webp',system:{natural:false,price:100}};
+  const personagem={id:'pc',uuid:'Actor.pc',name:'Iara',type:'character',isOwner:true,hasPlayerOwner:true,img:'iara.webp',items:[equipamento],flags:{},system:{level:{value:3},currency:{t:2000,p:0,k:0},fragments:{max:5}},sheet:{render(){}}};
+  const mercador={id:'mercador',uuid:'Actor.mercador',name:'Brida',type:'character',isOwner:false,hasPlayerOwner:false,img:'brida.webp',items:[],ownership:{default:1},system:{level:{value:2}},sheet:{render(){}},
+    flags:{quedaco:{npc:{role:'merchant',regionId:'thurthur',placeId:'alberich',tokenVisible:true,note:'',shop:{markup:1,attitude:'indiferente',stock:[{uuid:'Compendium.teste.Item.espada',price:100,qty:2,qtyMax:2}]}}}}};
+  const guilda={id:'guilda',uuid:'Actor.guilda',name:'Companhia do Porto',type:'guild',img:'guilda.webp',items:[],system:{motto:'Sempre adiante',abilities:{},members:[{uuid:'Actor.pc'}]},flags:{quedaco:{appendix:{kind:'guilda',seals:[]}}},sheet:{render(){}}};
+  const listaCenas=[
+    {id:'praca',name:'Alberich — Praça',img:'praca.webp',background:{src:'praca.webp'},view(){}},
+    {id:'taverna',name:'Taverna do Porto',img:'taverna.webp',background:{src:'taverna.webp'},view(){}}
+  ];
+  const scenes=Object.assign(listaCenas,{get:id=>listaCenas.find(scene=>scene.id===id)});
+  const sharedContent={
+    areas:['npcs','guilds','map','monsters','items','imbue'],
+    map:['thurthur','alberich'],monsters:MONSTERS.map(entry=>entry.id),items:BOOK_ITEMS.map(entry=>entry.id),
+    npcs:['Actor.mercador'],guilds:['Actor.guilda']
+  };
+  const store={
+    sharedContent,npcLocalities:['place:alberich'],npcKnown:['Actor.mercador'],npcHidden:[],npcLinks:[],npcGraph:{},
+    placeScenes:{alberich:'praca'},regionScenes:{thurthur:['praca']},regionImages:{},placeImages:{},opathMapImage:'opath.webp',
+    mapHotspots:{regions:{},places:{}},mapHidden:[],monsterHabitats:{},monsterPlaces:{},monsterAnywhere:[],
+    regionRumors:{thurthur:[{id:'rumor-1',text:'Navios somem ao anoitecer.',shared:true}]},regionMainScene:{thurthur:'praca'},regionSceneInfo:{},guildArchived:[],generatedArchetypes:{},
+    sceneAtlas:{schema:1,providers:{stairways:true,native:true},scenes:{praca:{parentId:'place:alberich'},taverna:{parentId:'scene:praca'}},edges:{porta:{id:'porta',label:'Porta da taverna',bidirectional:true,from:{sceneId:'praca',x:100,y:120},to:{sceneId:'taverna',x:80,y:90},runtimeProvider:'stairways',implementations:{stairways:{status:'ready'},native:{status:'ready'}}}}}
+  };
+  const questAPI={DB:{getAllQuests:()=>[{id:'q1',name:'Entrega no porto',status:'active',location:'Alberich',giverData:{name:'Brida'},tasks:[{uuidv4:'t1',name:'Levar o pacote'}],rewards:[],subquests:[]}],hooks:{}},open(){}};
+  const modules=new Map([
+    ['forien-quest-log',{active:true,public:{QuestAPI:questAPI}}],
+    ['stairways',{active:true,version:'0.11.1'}]
+  ]);
+  const user={id:isGM?'gm':'jogador',name:isGM?'Mestra':'Jogadora',isGM,character:personagem,flags:{quedaco:{}},setFlag:async()=>{}};
+  return {
+    user,users:[user],actors:[personagem,mercador,guilda],folders:[],packs:[],scenes,modules,version:'13.351',canvas:{tokens:{controlled:[]}},
+    settings:{get:(module,key)=>module==='forien-quest-log'?false:store[key],set:async(_module,key,value)=>{store[key]=value;}}
+  };
+}
+
+test('todo data-op das abas do mestre e da visão do jogador tem ação',async()=>{
+  const catalog={items:[{uuid:'Compendium.teste.Item.espada',name:'Espada longa',type:'weapon',img:'espada.webp',system:{price:100}}],entry(uuid){return this.items.find(item=>item.uuid===uuid);}};
+  const mestre=new CampaignLibrary(mundoDasAcoes(true),catalog);
+  const jogador=new CampaignLibrary(mundoDasAcoes(false),catalog);
+  mestre.state.npcActor='mercador';
+  jogador.state.npcPlayerRegion='thurthur';
+  const areas=['npcs','guilds','map','monsters','items','imbue','quests'];
+  const telas=areas.map(area=>[`mestre/${area}`,mestre.render(area)]);
+  mestre.state.mapDisplay='atlas';
+  telas.push(['mestre/map-atlas',mestre.render('map')]);
+  for(const area of areas)telas.push([`jogador/${area}`,jogador.render(area,true)]);
+
+  const aparicoes=new Map();
+  for(const [tela,html] of telas){
+    for(const match of html.matchAll(/\bdata-op=(["'])(lib-[a-z0-9-]+)\1/g)){
+      const op=match[2],lista=aparicoes.get(op)??[];
+      if(!lista.includes(tela))lista.push(tela);
+      aparicoes.set(op,lista);
+    }
+  }
+  const fonte=(await import('node:fs')).readFileSync(new URL('../src/library.mjs',import.meta.url),'utf8');
+  const tratadas=new Set([...fonte.matchAll(/\bop\s*===\s*(["'])(lib-[a-z0-9-]+)\1/g)].map(match=>match[2]));
+  const ausentes=[...aparicoes].filter(([op])=>!tratadas.has(op)).sort(([a],[b])=>a.localeCompare(b));
+  assert.equal(ausentes.length,0,`Ações ausentes em CampaignLibrary.action():\n${ausentes.map(([op,vistas])=>`- ${op} (${vistas.join(', ')})`).join('\n')}`);
 });

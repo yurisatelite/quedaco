@@ -223,4 +223,9 @@ Mesmo formato da 8ª, no mesmo commit da tarefa:
 
 <!-- A partir daqui é do Codex. Acrescente embaixo, não apague. -->
 
-_(vazio — nenhuma tarefa executada ainda)_
+### 17/09/2026 — Tarefa 1
+**Fiz:** generalizei o teste de ações da interface em `tests/library.test.mjs`. Ele agora renderiza NPCs, Guildas, Mapa geográfico, Atlas de cenas, Monstros, Itens, Imbuir e Quests para a Mestra, além das sete áreas na visão do jogador, com um mundo falso que inclui mercador com estoque, personagem, guilda, cenas e quest. Cada `data-op="lib-…"` encontrado precisa ter tratamento explícito em `CampaignLibrary.action()`, e a falha lista a ação e as telas onde apareceu.
+**Funcionou:** teste direcionado 1/1, `tests/library.test.mjs` 42/42, `npm test` 190/190 e `git diff --check` passaram. Nenhuma ação ausente foi encontrada no código atual.
+**Não funcionou / deixei de fora:** o teste confirma a ligação entre HTML e roteador; não substitui cliques reais no Foundry.
+**Checklist da regra 1:** tela ✔ (todas as áreas renderizadas) · ações ✔ · app.mjs ✔ (formulários condicionais presentes no HTML coberto) · CSS ✔ (nenhuma classe nova) · teste ✔
+**Precisa de decisão:** nenhuma.
