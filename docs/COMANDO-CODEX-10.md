@@ -3,9 +3,10 @@
 Documento de passagem. **Claude estrutura, Codex executa, Yuri confirma.** Leia este
 arquivo e o `CLAUDE.md` da raiz; não precisa reler conversa nenhuma nem a 9ª rodada.
 
-**HEAD de referência:** `49ebfbb`. `npm test` = **226 passando**. Árvore limpa.
-**Versão no repositório:** 0.8.0. Muita coisa foi commitada depois dela (Mapa Imersivo,
-T24 completa) e **ainda não foi publicada** — ver seção 3.
+**HEAD de referência:** `50b8928`. `npm test` = **230 passando**. Árvore limpa.
+**Versão no repositório:** 0.9.0, **já publicada** (v0.9.0, 17/09/2026). Tudo commitado
+depois dela (Tarefas 5, 8, 9, 10, 12 desta rodada, e a especificação das Tarefas 13–15)
+ainda não foi publicado — vira a próxima versão quando essa leva de tarefas fechar.
 
 ---
 
@@ -37,38 +38,39 @@ mesmo escreveu.
 ## 1. Tarefas — nesta ordem
 
 As tarefas 1–7 e 11 (T24) da 9ª rodada estão **concluídas** (ver diário na seção 4 de
-`docs/COMANDO-CODEX-9.md`, que fica fechada). Seguem, na mesma ordem de antes:
+`docs/COMANDO-CODEX-9.md`, que fica fechada). **As tarefas 5, 8, 9, 10 e 12 abaixo também
+já foram concluídas pelo Codex — ver o diário na seção 4 deste documento.** Ficam
+descritas aqui só como referência do que foi pedido; não refaça nenhuma delas. O que
+resta em aberto nesta rodada são as tarefas **13, 14 e 15**, abaixo.
 
-### Tarefa 5 — Conferência da região-espelho  · *média*
+### ~~Tarefa 5~~ — Conferência da região-espelho  · **concluída (diário: 17/09/2026)**
 
-Sem mudança desde a 9ª rodada — ver `docs/COMANDO-CODEX-9.md`, Tarefa 5, pela
-especificação completa (bloco só de leitura em `renderRegionView`: NPC sem legado, sem
-herança, sem local, sem guilda; sem retrato; mercador com estoque vazio).
+Especificação original em `docs/COMANDO-CODEX-9.md`, Tarefa 5 (bloco só de leitura em
+`renderRegionView`: NPC sem legado, sem herança, sem local, sem guilda; sem retrato;
+mercador com estoque vazio). **Não verificada no Foundry** — o diário registra isso.
 
-### Tarefa 8 — Limpar o topo das abas  · *média*
+### ~~Tarefa 8~~ — Limpar o topo das abas  · **concluída (diário: 17/09/2026)**
 
-Sem mudança — ver `docs/COMANDO-CODEX-9.md`, Tarefa 8. **Atenção:** o painel da cena
-ativa (Mapa Imersivo, `renderActiveScenePanel`) agora também fica no topo da aba Mapa,
-acima da barra de abas Mapa de Opath/Mapa Imersivo. Ao limpar essa área, não remova nem
-duplique esse painel — ele já segue a regra de "não crie bloco novo, reaproveite".
+Especificação original em `docs/COMANDO-CODEX-9.md`, Tarefa 8. O cabeçalho compartilhado
+criado aqui (NPCs/Guildas/Monstros/Itens) é o suspeito principal do bug "topo descolado"
+da Tarefa 13 — comece a investigação por ele.
 
-### Tarefa 9 — Os 404 de imagem no console  · *pequena*
+### ~~Tarefa 9~~ — Os 404 de imagem no console  · **concluída (diário: 17/09/2026)**
 
-Sem mudança — ver `docs/COMANDO-CODEX-9.md`, Tarefa 9.
+Especificação original em `docs/COMANDO-CODEX-9.md`, Tarefa 9. **Não verificada no
+Foundry** — o ambiente de teste não navega armazenamento de mundo de verdade.
 
-### Tarefa 10 — Monstros por região no painel  · *média*
+### ~~Tarefa 10~~ — Monstros por região no painel  · **concluída (diário: 17/09/2026)**
 
-Sem mudança — ver `docs/COMANDO-CODEX-9.md`, Tarefa 10. A macro que grava a região já
-existe e já rodou contra os monstros do livro; falta só a faceta na tela.
+Especificação original em `docs/COMANDO-CODEX-9.md`, Tarefa 10.
 
-### Tarefa 12 — Biografia em ficha de campo (T24, passo 6)  · *média*
+### ~~Tarefa 12~~ — Biografia em ficha de campo (T24, passo 6)  · **parcial (diário: 17/09/2026)**
 
-Especificada em `docs/T24-MONSTROS-COMPLETOS.md`, seção 3 ("A biografia — ficha de
-campo"). Precisa de um arquivo `.local/fichas-de-campo.json` com aparência, temperamento,
-comportamento, o-que-quer e ganchos por monstro — **esse arquivo ainda não existe** e não
-é pra inventar de uma vez para os 370 monstros; comece pelos mais usados (os do bestiário
-do livro) e deixe os blocos vazios (título + "—") pros que não tiverem entrada, como o
-documento já prevê. Não é código, é conteúdo — pode ser feito aos poucos.
+Especificação em `docs/T24-MONSTROS-COMPLETOS.md`, seção 3. **Feito:**
+`.local/fichas-de-campo.json` com as 44 ameaças do bestiário do livro. **Falta:** o
+conversor ainda não lê esse arquivo (a reconversão não preenche essas fichas sozinha), e
+não existe conteúdo para os 326 monstros de D&D — comece pelos mais usados se for
+continuar isso.
 
 ### Tarefa 13 — Mapa Imersivo: ajustes de uso e o mapa conceitual de verdade  · *grande — especificada em `docs/T25-MAPA-IMERSIVO-VISUAL.md`*
 
@@ -112,15 +114,13 @@ pode quebrar a tela.
 |---|---|
 | ~~Publicar a versão nova~~ | **Feito** — v0.9.0 publicada em 17/09/2026 (`gh release`), com `quedaco.zip` e `module.json`. |
 | ~~`gh auth login`~~ | **Feito.** O Claude publica release sozinho a partir de agora, com autorização do Yuri pra cada versão. |
-| **Decisão de design — Tarefa 13, seção 2.1** | Diagrama do Mapa Imersivo: Opção A (calculado, sem arrastar — mais rápido) ou Opção B (arrastável, posição de cada caixa lembrada — o que o print sugere, mas bem mais trabalho)? Ver `docs/T25-MAPA-IMERSIVO-VISUAL.md`. |
-| **Decisão de design — Tarefa 13, seção 2.3** | O diagrama novo substitui a lista de hoje, ou os dois convivem (abas "Diagrama"/"Lista")? O Yuri disse que gostou da ideia de lista, só não do jeito que ficou. |
-| Mundo de teste | Ainda vale a pena, pra conferir as próximas rodadas sem risco ao mundo oficial. |
-| **Conferir o resto do Mapa Imersivo no Foundry** | O painel da cena ativa e a pergunta ao ativar cena (`docs/PROGRESSO-MAPA-IMERSIVO.md`, etapas D e E) ainda não tiveram retorno — só o atlas (etapa A/C) foi testado, e virou a Tarefa 13. |
-| **Reconverter os 326 monstros de D&D** | Depois de publicar: `node tools/buscar-srd.mjs` no seu computador, depois `.local/reconverter-monstros-dnd.js` no Foundry (prévia primeiro). Backup do mundo antes — ela apaga e recria os Itens de cada monstro convertido. |
-| **T21** — trocar legado no editor | Ainda precisa de conversa de design. |
+| Mundo de teste | Ainda vale a pena, pra conferir a Tarefa 13 e o resto sem risco ao mundo oficial. |
+| **Conferir o Mapa Imersivo no Foundry, de novo, depois da Tarefa 13** | O painel da cena ativa virou a aba "Cena Atual" e o atlas virou o quebra-cabeça arrastável — nenhum dos dois foi visto ainda nesse formato novo. A pergunta ao ativar cena (`docs/PROGRESSO-MAPA-IMERSIVO.md`, etapa E) também segue sem retorno. |
+| **T14 e T21** — Imbuir dentro da ficha do NPC / trocar legado no editor | Ambas ainda precisam de conversa de design com o Yuri antes de virar tarefa especificada. |
 | **T8b** — ficha de profissão do NPC | Protótipo em `.local/criar-vendedor-prototipo.js`; falta o brainstorm. |
 | Imagens das moedas | 33 prompts prontos em `docs/T17-PROMPTS-MOEDAS.md`. |
-| Fichas de campo dos monstros (Tarefa 12) | Conteúdo, não código — pode ser escrito por qualquer um, inclusive o Yuri, seguindo o formato de `docs/T24-MONSTROS-COMPLETOS.md` seção 3. |
+| **Reconverter os 326 monstros de D&D** | `node tools/buscar-srd.mjs` no seu computador, depois `.local/reconverter-monstros-dnd.js` no Foundry (prévia primeiro). Backup do mundo antes — ela apaga e recria os Itens de cada monstro convertido. |
+| Fichas de campo dos 326 monstros de D&D (Tarefa 12, o que falta) | Conteúdo, não código — as 44 do livro já estão feitas; os de D&D podem ser escritos por qualquer um, inclusive o Yuri, seguindo o mesmo formato. |
 
 ---
 
