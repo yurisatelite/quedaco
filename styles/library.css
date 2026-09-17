@@ -515,3 +515,50 @@
    E o selo da guilda do grupo, que não tem botão de guardar. */
 .sy-creator .sy-guild-tabs{margin:10px 0 6px}
 .sy-creator .sy-guild-mesa{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;background:#2a2114;border:1px solid #d8ad4c;color:#f0d795;font-size:11px;font-weight:700;white-space:nowrap;cursor:help}
+
+/* ── Atlas de cenas: região → local → mapas internos, e as ligações entre eles ── */
+.sy-creator .sy-map-display{margin:4px 0 12px}
+.sy-creator .sy-scene-atlas{display:grid;gap:12px}
+.sy-creator .sy-scene-atlas-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:10px}
+.sy-creator .sy-scene-atlas-head h2{margin:2px 0}
+.sy-creator .sy-scene-atlas-head p{margin:4px 0;max-width:70ch;color:#b9cbdb}
+.sy-creator .sy-scene-atlas-metrics,.sy-creator .sy-scene-atlas-provider-row,.sy-creator .sy-scene-atlas-automation{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.sy-creator .sy-scene-atlas-metrics span{padding:2px 9px;border-radius:999px;background:#101a24;border:1px solid #33465a;font-size:12px;color:#cfe2ef}
+.sy-creator .sy-scene-atlas-toggle{width:auto;margin:0;padding:5px 11px;font-size:12px;opacity:.75}
+.sy-creator .sy-scene-atlas-toggle.is-on{opacity:1;border-color:#4fca8f;background:#123a2a;color:#a9f2cf}
+.sy-creator .sy-scene-atlas-layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(260px,1fr);gap:14px;align-items:start}
+@media(max-width:900px){.sy-creator .sy-scene-atlas-layout{grid-template-columns:1fr}}
+.sy-creator .sy-scene-atlas-regions{display:grid;gap:8px}
+.sy-creator .sy-scene-atlas-region,.sy-creator .sy-scene-atlas-place{border:1px solid #33465a;border-left:3px solid var(--sy-region,#3a495b);border-radius:8px;background:#141c26}
+.sy-creator .sy-scene-atlas-region>summary,.sy-creator .sy-scene-atlas-place>summary{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;list-style:none}
+.sy-creator .sy-scene-atlas-region>summary button,.sy-creator .sy-scene-atlas-place>summary button{width:auto;margin:0;padding:2px 8px;font-size:13px}
+.sy-creator .sy-scene-atlas-count{margin-left:auto;font-size:11px;color:#8fa4b5}
+.sy-creator .sy-scene-atlas-region-body,.sy-creator .sy-scene-atlas-place-body,.sy-creator .sy-scene-atlas-children{display:grid;gap:6px;padding:4px 10px 10px}
+.sy-creator .sy-scene-atlas-place{margin-left:6px;border-left-width:2px}
+.sy-creator .sy-scene-atlas-scene{display:flex;gap:8px;padding:6px 8px;margin-left:calc(var(--sy-atlas-depth,0) * 12px);border:1px solid #2c3a49;border-radius:7px;background:#0f1620}
+.sy-creator .sy-scene-atlas-scene.is-missing{border-style:dashed;opacity:.7}
+.sy-creator .sy-scene-atlas-scene img{width:56px;height:40px;object-fit:cover;border-radius:4px;border:0}
+.sy-creator .sy-scene-atlas-scene-body{display:grid;gap:5px;flex:1;min-width:0}
+.sy-creator .sy-scene-atlas-scene-title{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.sy-creator .sy-scene-atlas-scene-title button{width:auto;margin:0;padding:1px 7px;font-size:13px}
+.sy-creator .sy-scene-atlas-scene-title span{font-size:11px;color:#8fa4b5}
+.sy-creator .sy-scene-atlas-scene-tools,.sy-creator .sy-scene-atlas-add{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.sy-creator .sy-scene-atlas-scene-tools select,.sy-creator .sy-scene-atlas-add input{flex:1 1 160px;min-width:0;margin:0;padding:3px 6px;font-size:12px}
+.sy-creator .sy-scene-atlas-scene-tools button,.sy-creator .sy-scene-atlas-add button{width:auto;margin:0;padding:3px 9px;font-size:12px}
+.sy-creator .sy-scene-atlas-unassigned{padding:8px 10px;border:1px dashed #4a6b80;border-radius:8px}
+.sy-creator .sy-scene-atlas-editor,.sy-creator .sy-scene-atlas-links{display:grid;gap:8px;padding:10px;border:1px solid #4da1b4;border-radius:9px;background:#132430}
+.sy-creator .sy-scene-atlas-editor h3,.sy-creator .sy-scene-atlas-links h3{margin:0;font-size:15px}
+.sy-creator .sy-scene-atlas-edge-form{display:grid;gap:6px}
+.sy-creator .sy-scene-atlas-edge-form label{margin:0;font-size:12px}
+.sy-creator .sy-scene-atlas-edge-form select,.sy-creator .sy-scene-atlas-edge-form input:not([type=checkbox]){margin:0;padding:4px 7px;font-size:12px}
+.sy-creator .sy-scene-atlas-edge-form button{width:auto;justify-self:start;margin:0;padding:5px 12px;font-size:12px}
+.sy-creator .sy-scene-atlas-edge{display:grid;gap:6px;padding:8px;border:1px solid #2c3a49;border-radius:8px;background:#0f1620}
+.sy-creator .sy-scene-atlas-edge header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.sy-creator .sy-scene-atlas-edge header small{display:block;color:#8fa4b5}
+.sy-creator .sy-scene-atlas-edge header button{width:auto;margin:0;padding:2px 8px;font-size:12px}
+.sy-creator .sy-scene-atlas-endpoints,.sy-creator .sy-scene-atlas-edge-actions{display:flex;flex-wrap:wrap;gap:6px}
+.sy-creator .sy-scene-atlas-endpoints button,.sy-creator .sy-scene-atlas-edge-actions button{width:auto;margin:0;padding:3px 9px;font-size:12px}
+.sy-creator .sy-scene-atlas-endpoints button.is-ready{border-color:#4fca8f;color:#a9f2cf}
+.sy-creator .sy-scene-atlas-provider{padding:1px 8px;border-radius:999px;border:1px solid #41576b;font-size:11px;color:#9fb3c4}
+.sy-creator .sy-scene-atlas-provider.is-built{color:#cfe2ef}
+.sy-creator .sy-scene-atlas-provider.is-runtime{border-color:#4fca8f;background:#123a2a;color:#a9f2cf}

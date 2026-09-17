@@ -562,3 +562,40 @@ test('Guildas em abas: em jogo e guardadas, e a guilda da mesa não tem botão d
   assert.deepEqual([...new Set(nomes(guardadas))],['Ordem Guardada']);
   assert.ok(guardadas.includes('↩ Pôr em jogo'));
 });
+
+test('atlas de cenas: aba no Mapa, cada botão com ação, e as ações da ligação gravam no atlas',async()=>{
+  const scenes=[{id:'s1',name:'Alberich — Praça',img:''},{id:'s2',name:'Taverna do Porto',img:''}];
+  const store={sceneAtlas:{schema:1,providers:{stairways:false,native:false},scenes:{},edges:{}}};
+  const criadas=[];
+  globalThis.Scene={create:async data=>{const scene={id:`novo${criadas.length}`,name:data.name,img:''};criadas.push(scene);scenes.push(scene);return scene;}};
+  const game={user:{isGM:true},actors:[],users:[],packs:[],folders:[],version:'13.351',
+    scenes:Object.assign(scenes,{get:id=>scenes.find(s=>s.id===id)}),modules:{get:()=>null},
+    settings:{get:(_m,k)=>(k==='sharedContent'?{}:(store[k]??(k==='placeScenes'||k==='regionScenes'?{}:[]))),set:async(_m,k,v)=>{store[k]=v;}}};
+  const library=new CampaignLibrary(game,{items:[],entry:()=>null});
+  try{
+    // o mestre alterna entre as duas vistas; o jogador nunca vê o atlas
+    assert.ok(library.renderMap(false).includes('Atlas de cenas'));
+    assert.ok(!library.renderMap(true).includes('sy-scene-atlas'));
+    await library.action('lib-map-display','atlas');
+    assert.ok(library.renderMap(false).includes('sy-scene-atlas'));
+
+    // criar cena já pendurada num local
+    await library.action('lib-atlas-scene-create','place:alberich',{name:'Porão da Guilda'});
+    assert.equal(criadas.length,1);
+    assert.equal(store.sceneAtlas.scenes[criadas[0].id]?.parentId,'place:alberich');
+    await assert.rejects(library.action('lib-atlas-scene-create','place:alberich',{name:'  '}),/nome/);
+
+    // ligação: nasce, e construir exige um mecanismo ligado
+    await library.action('lib-atlas-edge-add','',{fromSceneId:'s1',toSceneId:'s2',label:'Porta',bidirectional:true});
+    const edgeId=Object.keys(store.sceneAtlas.edges)[0];
+    assert.ok(edgeId,'a ligação foi gravada');
+    await assert.rejects(library.action('lib-atlas-build',edgeId),/Ligue o Stairways ou as Regiões/);
+    await assert.rejects(library.action('lib-atlas-build-all'),/posicionadas/);
+
+    // todo botão que a tela desenha tem tratamento em action()
+    const html=library.renderMap(false);
+    const fonte=(await import('node:fs')).readFileSync(new URL('../src/library.mjs',import.meta.url),'utf8');
+    const semAcao=[...new Set([...html.matchAll(/data-op="(lib-[a-z-]+)"/g)].map(m=>m[1]))].filter(op=>!fonte.includes(`op==='${op}'`));
+    assert.deepEqual(semAcao,[],'nenhum botão do atlas sem ação');
+  }finally{delete globalThis.Scene;}
+});

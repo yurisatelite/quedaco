@@ -214,6 +214,10 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
         if(op==='lib-item-import'){const ta=this.element.querySelector('[name="itemImport"]');data={text:ta?.value??''};}
         if(op==='lib-generate-npc-bulk'){data={count:this.element.querySelector('[name="npcGenCount"]')?.value};}
         if(op==='lib-guild-import'){const ta=this.element.querySelector('[name="guildImport"]');data={text:ta?.value??''};}
+        // atlas de cenas: os campos moram no bloco do próprio botão
+        if(op==='lib-atlas-edge-add'){const box=button.closest('.sy-scene-atlas-edge-form'),v=n=>box?.querySelector(`[name="${n}"]`);data={fromSceneId:v('atlasEdgeFrom')?.value??'',toSceneId:v('atlasEdgeTo')?.value??'',label:v('atlasEdgeLabel')?.value??'',bidirectional:Boolean(v('atlasEdgeBidirectional')?.checked)};}
+        if(op==='lib-atlas-assign'){const box=button.closest('.sy-scene-atlas-scene-tools');data={parentId:box?.querySelector('[name="atlasSceneParent"]')?.value??'unassigned'};}
+        if(op==='lib-atlas-scene-create'){const box=button.closest('.sy-scene-atlas-add');data={name:box?.querySelector('[name="atlasSceneName"]')?.value??''};}
         if(op==='lib-npc-roll-levels'){data={min:this.element.querySelector('[name="npcLevelMin"]')?.value,max:this.element.querySelector('[name="npcLevelMax"]')?.value};}
         if(op.startsWith('lib-npc-')){
           const editor=button.closest('[data-npc-editor]');
@@ -269,7 +273,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     if(['monsterImport','itemImport','guildImport','rumorText','regionSceneInfo','rumorEditText'].includes(name)||/^(monster|item|guild|npc)CardSize$/.test(name))return;
     // mesma armadilha no editor de NPC: nome, nota, margens e caixas de item só são lidos
     // quando o botão é clicado, então re-renderizar no blur devolvia o valor antigo.
-    if(['npcName','npcNote','npcGuild','npcShopNote','npcMarkup','npcForgeMarkup','npcTokenVisible','npcDragon','npcForgeEnabled','npcStockPrice','npcStockQty','npcItemName','npcItemPrice','npcItemVolume','npcLinkText','npcLinkNote','npcGenCount','npcNoteText','npcNoteShared','npcRole2','shopPrice','shopQty','shopQtyMax','npcAttitudeOverride'].includes(name))return;
+    if(['npcName','npcNote','npcGuild','npcShopNote','npcMarkup','npcForgeMarkup','npcTokenVisible','npcDragon','npcForgeEnabled','npcStockPrice','npcStockQty','npcItemName','npcItemPrice','npcItemVolume','npcLinkText','npcLinkNote','npcGenCount','npcNoteText','npcNoteShared','npcRole2','shopPrice','shopQty','shopQtyMax','npcAttitudeOverride','atlasSceneName','atlasSceneParent','atlasEdgeFrom','atlasEdgeTo','atlasEdgeLabel','atlasEdgeBidirectional'].includes(name))return;
     if(name==='libraryQuery'||name==='libraryCategory'){this.library.filter(this.element);return;}
     if(event.target.matches?.('[data-monster-facet]')){
       const facet=event.target.dataset.monsterFacet,checked=Array.from(this.element.querySelectorAll(`[data-monster-facet="${facet}"]:checked`)).map(input=>input.value);

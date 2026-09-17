@@ -2,7 +2,7 @@ import {REGIONS,PLACES,BEYOND,COIN_COMMON,coinFaces} from './book-world.mjs';
 import {BASE_ITEMS,MODIFICATION_GUIDES,SIGIL_COSTS,IMBUE_COSTS} from './book-items.mjs';
 import {SIGILS} from './book-sigils.mjs';
 import {MONSTERS} from './book-monsters.mjs';
-import {MODULE_ID,purchaseCart,purchaseItem,sellItem,baixarArquivo,safeImage} from './adapter.mjs';
+import {MODULE_ID,purchaseCart,purchaseItem,sellItem,baixarArquivo,safeImage,ensureStairways,ensureNativeRegions,setRuntimeProvider} from './adapter.mjs';
 import {NPC_LINK_TYPES,NPC_ROLES,NPC_ROLE_STYLE,adoptNpcFlag,inferPlaceId,inferRegionId,isGeneratedNpc,linksFromBio,itemTypeForCategory,npcCardOutline,npcCoverage,normalizeNpcLinks,npcFlag,npcLinkSummary,npcVisibility,stripTags,roleFromText} from './npcs.mjs';
 import {modifiedItemSheet} from './item-mod.mjs';
 import {clampPan,focusRegion,resolveHotspot,zoomToPoint} from './map-view.mjs';
@@ -12,6 +12,7 @@ import {localityStock} from './locality.mjs';
 import {ImageResolver} from './images.mjs';
 import {sealStyle} from './seal-style.mjs';
 import {placeLayer,defaultHiddenPlaces,regionDossier} from './atlas.mjs';
+import {assignAtlasScene,buildSceneAtlasTree,createAtlasEdge,normalizeSceneAtlas,removeAtlasEdge,setAtlasEndpoint,setAtlasProvider,syncAtlasScenes,updateAtlasEdge} from './scene-atlas.mjs';
 import {regionColor} from './regions.mjs';
 import {ForienQuestIntegration,QUEST_STATUSES,questCounts} from './forien-quests.mjs';
 import {generatorScope} from './generator.mjs';
@@ -58,6 +59,8 @@ export const NPC_NOTES_FLAG='npcNotes';
 /** Papel secundário do NPC — a tag que os jogadores atribuem quando conhecem alguém. */
 export const NPC_ROLES2_FLAG='npcRoles2';
 export const NPC_GRAPH_KEY='npcGraph';
+/** Grafo conceitual das Scenes. Regiões e localidades continuam vindo do índice do livro. */
+export const SCENE_ATLAS_KEY='sceneAtlas';
 export const GENERATOR_MACRO_KEY='generatorMacro';
 export const DEFAULT_GENERATOR_MACRO='Skyfall — Criador de Conteúdo';
 export const emptyShare=()=>({areas:[],map:[],monsters:[],items:[],npcs:[],guilds:[]});
@@ -88,6 +91,7 @@ export function registerLibrarySettings(game,onChange){
   game.settings.register(MODULE_ID,NPC_KNOWN_KEY,{scope:'world',config:false,type:Array,default:[],onChange});
   game.settings.register(MODULE_ID,NPC_HIDDEN_KEY,{scope:'world',config:false,type:Array,default:[],onChange});
   game.settings.register(MODULE_ID,NPC_GRAPH_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
+  game.settings.register(MODULE_ID,SCENE_ATLAS_KEY,{scope:'world',config:false,type:Object,default:normalizeSceneAtlas(),onChange});
   game.settings.register(MODULE_ID,GENERATOR_MACRO_KEY,{scope:'world',config:true,type:String,default:DEFAULT_GENERATOR_MACRO,
     name:'Macro geradora de conteúdo',hint:'Nome da macro do mestre que o QUEDAÇO abre quando uma ameaça não existe na biblioteca.',onChange});
 }
@@ -226,11 +230,97 @@ const CUSTOM_TIER_LABEL={simple:'Simples',complex:'Complexo',boss:'Chefão'};
 const CUSTOM_ARCHETYPE_LABEL={flanker:'Flanqueador',sentinel:'Sentinela',defender:'Defensor',brute:'Bruto',leader:'Líder',mount:'Cavalaria',ranged:'Atirador',group:'Coletivo'};
 
 export class CampaignLibrary {
-  constructor(game,catalog){this.game=game;this.catalog=catalog;this.images=new ImageResolver(game,MODULE_ID,ASSET_ROOT_KEY);this.quests=new ForienQuestIntegration(game);this.actors=[];this.failures=[];this.loaded=false;this.state={mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null,layer:'auto',movingPins:false},npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcLevelMin:0,npcLevelMax:12,npcDragonOnly:false,npcMilitarOnly:false,npcActor:null,npcSaved:null,npcEditRole:null,npcEditRegion:null,npcEditPlace:null,monsterFacets:{},monsterCardSize:270,itemCardSize:270,guildCardSize:270,npcCardSize:270,npcPlayerRegion:null,npcAsPlayer:false,npcLegacyFilter:'all',npcHeritageFilter:'all',npcGuildFilter:'all',localNpcRole:'all',localNpcLegacy:'all',guildFacets:{},guildTab:'ativas',questStatus:'all',regionTakeover:false,regionScene:null,regionTab:'rumores',regionRumorRoll:null,regionRumorEdit:null,regionNpcRoleFilter:'all',cart:{actorId:'',lines:[]},sellActorId:''};this.modBuilder={baseId:'',materialId:'',sigils:[],tab:'prefixo'};this.forgeBuilder={smithId:'',baseUuid:'',materialId:'',sigils:[],tab:'prefixo'};}
+  constructor(game,catalog){this.game=game;this.catalog=catalog;this.images=new ImageResolver(game,MODULE_ID,ASSET_ROOT_KEY);this.quests=new ForienQuestIntegration(game);this.actors=[];this.failures=[];this.loaded=false;this.state={mapDisplay:'geographic',mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null,layer:'auto',movingPins:false},atlasThumbnails:false,npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcLevelMin:0,npcLevelMax:12,npcDragonOnly:false,npcMilitarOnly:false,npcActor:null,npcSaved:null,npcEditRole:null,npcEditRegion:null,npcEditPlace:null,monsterFacets:{},monsterCardSize:270,itemCardSize:270,guildCardSize:270,npcCardSize:270,npcPlayerRegion:null,npcAsPlayer:false,npcLegacyFilter:'all',npcHeritageFilter:'all',npcGuildFilter:'all',localNpcRole:'all',localNpcLegacy:'all',guildFacets:{},guildTab:'ativas',questStatus:'all',regionTakeover:false,regionScene:null,regionTab:'rumores',regionRumorRoll:null,regionRumorEdit:null,regionNpcRoleFilter:'all',cart:{actorId:'',lines:[]},sellActorId:''};this.modBuilder={baseId:'',materialId:'',sigils:[],tab:'prefixo'};this.forgeBuilder={smithId:'',baseUuid:'',materialId:'',sigils:[],tab:'prefixo'};}
   image(kind,id,documentImg='',fallback='icons/svg/mystery-man.svg'){return this.images.resolve(kind,id,documentImg,fallback);}
   assertGM(){if(!this.game.user?.isGM)throw Error('Esta área está disponível somente para o mestre.');}
   get shared(){try{return {...emptyShare(),...(this.game.settings?.get(MODULE_ID,SHARED_KEY)||{})};}catch{return emptyShare();}}
   get placeScenes(){try{return {...(this.game.settings?.get(MODULE_ID,SCENES_KEY)||{})};}catch{return {};}}
+  get sceneAtlas(){
+    try{return syncAtlasScenes(normalizeSceneAtlas(this.game.settings?.get(MODULE_ID,SCENE_ATLAS_KEY)),Array.from(this.game.scenes??[]));}
+    catch{return syncAtlasScenes(normalizeSceneAtlas(),Array.from(this.game.scenes??[]));}
+  }
+  async saveSceneAtlas(atlas){this.assertGM();await this.game.settings.set(MODULE_ID,SCENE_ATLAS_KEY,normalizeSceneAtlas(atlas));}
+  async setSceneAtlasProvider(provider,enabled){this.assertGM();await this.saveSceneAtlas(setAtlasProvider(this.sceneAtlas,provider,enabled));}
+  async assignSceneAtlas(sceneId,parentId){this.assertGM();await this.saveSceneAtlas(assignAtlasScene(this.sceneAtlas,sceneId,parentId));}
+  async addSceneAtlasEdge({fromSceneId,toSceneId,label='',bidirectional=true}={}){
+    this.assertGM();if(!fromSceneId||!toSceneId)throw Error('Escolha a cena de origem e a cena de destino.');
+    const atlas=this.sceneAtlas;let id=`ligacao-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`;
+    while(atlas.edges[id])id=`ligacao-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,9)}`;
+    const from=this.game.scenes?.get?.(fromSceneId)??Array.from(this.game.scenes??[]).find(scene=>scene.id===fromSceneId);
+    const to=this.game.scenes?.get?.(toSceneId)??Array.from(this.game.scenes??[]).find(scene=>scene.id===toSceneId);
+    const edge={id,label:String(label??'').trim()||`${from?.name??fromSceneId} ↔ ${to?.name??toSceneId}`,bidirectional:Boolean(bidirectional),from:{sceneId:fromSceneId},to:{sceneId:toSceneId},runtimeProvider:'none',implementations:{}};
+    await this.saveSceneAtlas(createAtlasEdge(atlas,edge));return id;
+  }
+  async removeSceneAtlasEdge(edgeId){
+    this.assertGM();const edge=this.sceneAtlas.edges[edgeId];if(!edge)return;
+    if(Object.keys(edge.implementations??{}).length)throw Error('Esta ligação já tem construções. Desative e remova as construções antes de apagar a ligação.');
+    await this.saveSceneAtlas(removeAtlasEdge(this.sceneAtlas,edgeId));
+  }
+  /** Constrói a ligação em cada mecanismo ligado no atlas (Stairways, Regiões nativas) e
+   *  grava de volta o que o adaptador confirmou. Se só um mecanismo está ligado e a
+   *  ligação ainda não tem nenhum ativo, já ativa esse — senão construir não teria efeito. */
+  async buildSceneAtlasEdge(edgeId){
+    this.assertGM();
+    let edge=this.sceneAtlas.edges[edgeId];if(!edge)throw Error('Ligação não encontrada.');
+    const ligados=Object.entries(this.sceneAtlas.providers??{}).filter(([,on])=>on).map(([provider])=>provider);
+    if(!ligados.length)throw Error('Ligue o Stairways ou as Regiões nativas no topo do atlas antes de construir.');
+    for(const provider of ligados){
+      edge=provider==='stairways'?await ensureStairways(this.game,edge):await ensureNativeRegions(this.game,edge);
+      await this.saveSceneAtlas(updateAtlasEdge(this.sceneAtlas,edgeId,edge));
+    }
+    if(ligados.length===1&&(!edge.runtimeProvider||edge.runtimeProvider==='none'))await this.setSceneAtlasRuntime(edgeId,ligados[0]);
+    return this.sceneAtlas.edges[edgeId];
+  }
+  async buildAllSceneAtlasEdges(){
+    this.assertGM();
+    const pronto=point=>Number.isFinite(point?.x)&&Number.isFinite(point?.y);
+    const edges=Object.values(this.sceneAtlas.edges).filter(edge=>pronto(edge.from)&&pronto(edge.to));
+    if(!edges.length)throw Error('Nenhuma ligação com as duas pontas posicionadas.');
+    const falhas=[];
+    for(const edge of edges){try{await this.buildSceneAtlasEdge(edge.id);}catch(error){falhas.push(`${edge.label}: ${error.message}`);}}
+    if(falhas.length){console.warn(MODULE_ID,'atlas: ligações não construídas',falhas);globalThis.ui?.notifications?.warn?.(`${edges.length-falhas.length} de ${edges.length} ligação(ões) construída(s). Detalhes no console.`);}
+    else globalThis.ui?.notifications?.info?.(`${edges.length} ligação(ões) construída(s).`);
+    return {total:edges.length,falhas};
+  }
+  async setSceneAtlasRuntime(edgeId,provider){
+    this.assertGM();
+    const edge=this.sceneAtlas.edges[edgeId];if(!edge)throw Error('Ligação não encontrada.');
+    const result=await setRuntimeProvider(this.game,edge,provider);
+    await this.saveSceneAtlas(updateAtlasEdge(this.sceneAtlas,edgeId,result));
+    return result;
+  }
+  /** Abre a cena da ponta e espera um clique no mapa para marcar onde fica a passagem. */
+  async pickSceneAtlasEndpoint(edgeId,side){
+    this.assertGM();
+    if(!['from','to'].includes(side))throw Error('Ponta inválida.');
+    const edge=this.sceneAtlas.edges[edgeId];if(!edge)throw Error('Ligação não encontrada.');
+    const sceneId=edge[side].sceneId,scene=this.game.scenes?.get?.(sceneId);
+    if(!scene)throw Error('A cena desta ponta não existe mais.');
+    if(globalThis.canvas?.scene?.id!==sceneId)await scene.view();
+    globalThis.ui?.notifications?.info?.(`Clique no mapa "${scene.name}" onde fica a ${side==='from'?'saída':'chegada'}. Esc cancela.`);
+    const point=await new Promise((resolve,reject)=>{
+      const stage=globalThis.canvas?.stage;if(!stage)return reject(Error('O mapa não carregou.'));
+      let timer;
+      const fim=(fn,value)=>{stage.off?.('pointerdown',onDown);globalThis.document?.removeEventListener?.('keydown',onKey);clearTimeout(timer);fn(value);};
+      const onDown=event=>fim(resolve,event.getLocalPosition?event.getLocalPosition(stage):event.data?.getLocalPosition?.(stage));
+      const onKey=event=>{if(event.key==='Escape')fim(reject,Error('Posicionamento cancelado.'));};
+      timer=setTimeout(()=>fim(reject,Error('Tempo esgotado: nenhum clique no mapa.')),120000);
+      stage.on('pointerdown',onDown);globalThis.document?.addEventListener?.('keydown',onKey);
+    });
+    return this.setSceneAtlasEndpoint(edgeId,side,point);
+  }
+  async createSceneAtlasScene(parentId,name){
+    this.assertGM();
+    const nome=String(name??'').trim();if(!nome)throw Error('Dê um nome ao novo mapa.');
+    const SceneClass=globalThis.Scene;if(!SceneClass?.create)throw Error('Não foi possível criar cenas aqui.');
+    const scene=await SceneClass.create({name:nome});if(!scene?.id)throw Error('O Foundry não criou a cena.');
+    if(parentId&&parentId!=='unassigned')await this.assignSceneAtlas(scene.id,parentId);
+    return scene;
+  }
+  async setSceneAtlasEndpoint(edgeId,side,point){
+    this.assertGM();const atlas=setAtlasEndpoint(this.sceneAtlas,edgeId,side,{x:Math.round(Number(point?.x)),y:Math.round(Number(point?.y))});
+    await this.saveSceneAtlas(atlas);return atlas.edges[edgeId];
+  }
   get placeImages(){try{return {...(this.game.settings?.get(MODULE_ID,PLACE_IMG_KEY)||{})};}catch{return {};}}
   get regionScenes(){try{return {...(this.game.settings?.get(MODULE_ID,REGION_SCENES_KEY)||{})};}catch{return {};}}
   async toggleRegionScene(regionId,sceneId){
@@ -572,6 +662,17 @@ export class CampaignLibrary {
       // carrinho e venda: quem monta e fecha é o jogador, na ficha dele
       'lib-cart-add','lib-cart-remove','lib-cart-clear','lib-cart-buy','lib-npc-sell-open','lib-npc-sell'];
     if(!openOps.includes(op))this.assertGM();
+    if(op==='lib-map-display')this.state.mapDisplay=id==='atlas'?'atlas':'geographic';
+    if(op==='lib-atlas-thumbnails')this.state.atlasThumbnails=id==='show';
+    if(op==='lib-atlas-provider'){const [provider,mode]=String(id).split(':');await this.setSceneAtlasProvider(provider,mode==='on');}
+    if(op==='lib-atlas-assign')await this.assignSceneAtlas(id,data.parentId);
+    if(op==='lib-atlas-edge-add')await this.addSceneAtlasEdge(data);
+    if(op==='lib-atlas-edge-remove')await this.removeSceneAtlasEdge(id);
+    if(op==='lib-atlas-scene-create')await this.createSceneAtlasScene(id,data.name);
+    if(op==='lib-atlas-place'){const [edgeId,side]=String(id).split('|');await this.pickSceneAtlasEndpoint(edgeId,side);}
+    if(op==='lib-atlas-build')await this.buildSceneAtlasEdge(id);
+    if(op==='lib-atlas-build-all')await this.buildAllSceneAtlasEdges();
+    if(op==='lib-atlas-runtime'){const [edgeId,provider]=String(id).split('|');await this.setSceneAtlasRuntime(edgeId,provider);}
     if(op==='lib-map'){this.state.mapView=id;this.state.region=null;this.state.place=null;this.state.regionTakeover=false;if(id==='regions')this.state.map={scale:1,tx:0,ty:0,focus:null};}
     if(op==='lib-region'){if(!REGIONS.some(i=>i.id===id)||(!this.game.user?.isGM&&!this.shared.map.includes(id)))return;this.state.mapView='regions';this.state.region=id;this.state.place=null;}
     if(op==='lib-map-focus'){
@@ -1560,7 +1661,70 @@ export class CampaignLibrary {
     }).join('');
     return `<aside class="sy-atlas"><div class="sy-atlas-mass">${button('map-share-all','regions','Liberar regiões')}${button('map-share-all','all','Liberar tudo')}${button('map-share-all','none','Recolher')}</div>${tree}</aside>`;
   }
+  sceneAtlasParentOptions(selected='',currentSceneId=''){
+    const option=(value,label)=>`<option value="${e(value)}" ${selected===value?'selected':''}>${e(label)}</option>`;
+    const regions=sortByName(REGIONS).map(region=>option(`region:${region.id}`,`Região · ${region.name}`)).join('');
+    const places=sortByName(PLACES).map(place=>option(`place:${place.id}`,`${REGIONS.find(region=>region.id===place.regionId)?.name??'Opath'} · ${place.name}`)).join('');
+    const scenes=sortByName(Array.from(this.game.scenes??[]).filter(scene=>scene.id!==currentSceneId)).map(scene=>option(`scene:${scene.id}`,`Dentro do mapa · ${scene.name}`)).join('');
+    return `${option('unassigned','Sem região/local definido')}<optgroup label="Regiões">${regions}</optgroup><optgroup label="Cidades e locais">${places}</optgroup>${scenes?`<optgroup label="Dentro de outro mapa">${scenes}</optgroup>`:''}`;
+  }
+  sceneAtlasAddForm(parentId){
+    return `<div class="sy-scene-atlas-add"><input name="atlasSceneName" placeholder="Nome do novo mapa"><button data-op="lib-atlas-scene-create" data-id="${e(parentId)}"><i class="fa-solid fa-plus" aria-hidden="true"></i> Criar cena aqui</button></div>`;
+  }
+  sceneAtlasFirstScene(node){
+    if(node?.type==='scene'&&!node.missing)return node;
+    for(const child of node?.children??[]){const found=this.sceneAtlasFirstScene(child);if(found)return found;}
+    return null;
+  }
+  renderSceneAtlasScene(node,atlas,depth=0){
+    const stored=atlas.scenes[node.key]?.parentId??node.parentId??'unassigned';
+    const positioned=node.edgeIds?.length??0;
+    const children=(node.children??[]).map(child=>this.renderSceneAtlasScene(child,atlas,depth+1)).join('');
+    const image=this.state.atlasThumbnails&&node.img?`<img src="${e(node.img)}" alt="" loading="lazy">`:'';
+    const title=node.missing?`<strong>${e(node.label)}</strong>`:`<button data-op="lib-open-scene" data-id="${e(node.key)}">${e(node.label)}</button>`;
+    return `<article class="sy-scene-atlas-scene ${node.missing?'is-missing':''}" style="--sy-atlas-depth:${Math.min(6,depth)}">${image}<div class="sy-scene-atlas-scene-body"><div class="sy-scene-atlas-scene-title"><i class="fa-solid ${node.missing?'fa-triangle-exclamation':'fa-map'}" aria-hidden="true"></i>${title}<span>${node.missing?'cena ausente':`${positioned} ligação${positioned===1?'':'ões'}`}</span></div><div class="sy-scene-atlas-scene-tools"><select name="atlasSceneParent" data-scene="${e(node.key)}" aria-label="Onde este mapa fica">${this.sceneAtlasParentOptions(stored,node.key)}</select><button data-op="lib-atlas-assign" data-id="${e(node.key)}">Mover</button></div>${node.missing?'':this.sceneAtlasAddForm(`scene:${node.key}`)}${children?`<div class="sy-scene-atlas-children">${children}</div>`:''}</div></article>`;
+  }
+  renderSceneAtlasPlace(node,atlas){
+    const directScenes=(node.children??[]).filter(child=>child.type==='scene');
+    const subPlaces=(node.children??[]).filter(child=>child.type==='place');
+    const first=this.sceneAtlasFirstScene(node);
+    const count=node.counts?.scenes??0;
+    const label=first?`<button data-op="lib-open-scene" data-id="${e(first.key)}" title="Abrir ${e(first.label)}">${e(node.label)}</button>`:`<strong>${e(node.label)}</strong>`;
+    const contents=`${this.sceneAtlasAddForm(node.id)}${directScenes.map(scene=>this.renderSceneAtlasScene(scene,atlas)).join('')}${subPlaces.map(place=>this.renderSceneAtlasPlace(place,atlas)).join('')}`;
+    return `<details class="sy-scene-atlas-place" ${count?'open':''}><summary><i class="fa-solid ${placeLayer(node.data?.kind)==='cidade'?'fa-city':'fa-location-dot'}" aria-hidden="true"></i>${label}<span class="sy-scene-atlas-count ${count?'has-maps':''}">${count} mapa${count===1?'':'s'}</span></summary><div class="sy-scene-atlas-place-body">${contents}</div></details>`;
+  }
+  renderSceneAtlasEdge(edge,sceneMap){
+    const from=sceneMap.get(edge.from.sceneId),to=sceneMap.get(edge.to.sceneId);
+    const pos=endpoint=>Number.isFinite(endpoint?.x)&&Number.isFinite(endpoint?.y);
+    const stair=edge.implementations?.stairways,native=edge.implementations?.native;
+    const badge=(id,label,impl)=>`<span class="sy-scene-atlas-provider ${edge.runtimeProvider===id?'is-runtime':''} ${impl?'is-built':''}">${edge.runtimeProvider===id?'●':'○'} ${e(label)} · ${e(impl?.status??(impl?'preparado':'não construído'))}</span>`;
+    return `<article class="sy-scene-atlas-edge"><header><div><strong>${e(edge.label)}</strong><small>${e(from?.name??edge.from.sceneId)} ${edge.bidirectional?'↔':'→'} ${e(to?.name??edge.to.sceneId)}</small></div><button data-op="lib-atlas-edge-remove" data-id="${e(edge.id)}" title="Remover ligação" ${stair||native?'disabled':''}><i class="fa-solid fa-trash" aria-hidden="true"></i></button></header><div class="sy-scene-atlas-endpoints"><button data-op="lib-atlas-place" data-id="${e(edge.id)}|from" class="${pos(edge.from)?'is-ready':''}">${pos(edge.from)?'✓':'⌖'} Entrada · ${e(from?.name??edge.from.sceneId)}</button><button data-op="lib-atlas-place" data-id="${e(edge.id)}|to" class="${pos(edge.to)?'is-ready':''}">${pos(edge.to)?'✓':'⌖'} Saída · ${e(to?.name??edge.to.sceneId)}</button></div><div class="sy-scene-atlas-provider-row">${badge('stairways','Stairways',stair)}${badge('native','Regiões',native)}</div><div class="sy-scene-atlas-edge-actions"><button data-op="lib-atlas-build" data-id="${e(edge.id)}" ${pos(edge.from)&&pos(edge.to)?'':'disabled'}>Construir opções ligadas</button>${stair?button('atlas-runtime',`${edge.id}|stairways`,'Usar Stairways'):''}${native?button('atlas-runtime',`${edge.id}|native`,'Usar Regiões'):''}</div></article>`;
+  }
+  renderSceneAtlas(){
+    const atlas=this.sceneAtlas,scenes=Array.from(this.game.scenes??[]),sceneMap=new Map(scenes.map(scene=>[scene.id,scene]));
+    const tree=buildSceneAtlasTree({atlas,regions:REGIONS,places:PLACES,scenes,placeScenes:this.placeScenes,regionScenes:this.regionScenes});
+    const stairModule=this.game.modules?.get?.('stairways'),stairVersion=String(stairModule?.version??'');
+    const stairAvailable=Boolean(stairModule?.active&&/^0\.11\./.test(stairVersion));
+    const nativeAvailable=Number(String(this.game.version??globalThis.game?.version??'13').split('.')[0])===13;
+    const toggle=(id,label,available,detail)=>{const on=atlas.providers[id];return `<button class="sy-scene-atlas-toggle ${on?'is-on':''}" data-op="lib-atlas-provider" data-id="${id}:${on?'off':'on'}" aria-pressed="${on}"><i class="fa-solid ${on?'fa-toggle-on':'fa-toggle-off'}" aria-hidden="true"></i><span>${e(label)}<small>${e(available?detail:'indisponível agora')}</small></span></button>`;};
+    const sceneOptions=sortByName(scenes).map(scene=>`<option value="${e(scene.id)}">${e(scene.name)}</option>`).join('');
+    const edgeForm=scenes.length>=2?`<section class="sy-scene-atlas-editor"><h3>Nova ligação jogável</h3><div class="sy-scene-atlas-edge-form"><label>Origem<select name="atlasEdgeFrom"><option value="">Escolha…</option>${sceneOptions}</select></label><label>Destino<select name="atlasEdgeTo"><option value="">Escolha…</option>${sceneOptions}</select></label><label>Nome<input name="atlasEdgeLabel" placeholder="Ex.: Porta da taverna"></label><label class="sy-inline-check"><input name="atlasEdgeBidirectional" type="checkbox" checked> Ida e volta</label><button data-op="lib-atlas-edge-add" data-id="">Adicionar ligação</button></div></section>`:'<p class="sy-note">Crie ou vincule pelo menos duas cenas para montar uma ligação jogável.</p>';
+    const regions=tree.children.filter(node=>node.type==='region').map(region=>`<details class="sy-scene-atlas-region" ${region.counts?.scenes?'open':''} style="--sy-region:${e(this.regionColor(region.key))}"><summary><span class="sy-atlas-dot"></span><strong>${e(region.label)}</strong><span>${region.counts?.scenes??0} mapa${region.counts?.scenes===1?'':'s'} · ${region.counts?.edges??0} ligações</span></summary><div class="sy-scene-atlas-region-body">${this.sceneAtlasAddForm(region.id)}${(region.children??[]).map(place=>this.renderSceneAtlasPlace(place,atlas)).join('')||'<small>Nenhuma localidade cadastrada.</small>'}</div></details>`).join('');
+    const unassigned=tree.children.find(node=>node.type==='group');
+    const loose=(unassigned?.children??[]).map(scene=>this.renderSceneAtlasScene(scene,atlas)).join('');
+    const edges=Object.values(atlas.edges).map(edge=>this.renderSceneAtlasEdge(edge,sceneMap)).join('');
+    const summary=tree.summary;
+    return `<section class="sy-scene-atlas"><header class="sy-scene-atlas-head"><div><small>VISÃO CONCEITUAL</small><h2>Atlas de cenas</h2><p>Região → cidade ou local → mapas internos. Cenas novas aparecem automaticamente em “Sem local”.</p></div><div class="sy-scene-atlas-metrics"><span><b>${summary.actualScenes}</b> cenas</span><span><b>${summary.assignedScenes+summary.legacyAssignedScenes}</b> organizadas</span><span><b>${summary.edges}</b> ligações</span></div></header><section class="sy-scene-atlas-automation"><div><h3>Construções automáticas</h3><p>Ligue um ou os dois construtores. As duas versões podem ficar prontas; cada passagem usa só uma delas durante o jogo.</p></div>${toggle('stairways','Stairways',stairAvailable,`v${stairVersion}`)}${toggle('native','Regiões nativas',nativeAvailable,'Foundry 13')}<button data-op="lib-atlas-build-all" data-id="">Construir tudo que estiver pronto</button><button data-op="lib-atlas-thumbnails" data-id="${this.state.atlasThumbnails?'hide':'show'}"><i class="fa-solid fa-image" aria-hidden="true"></i> ${this.state.atlasThumbnails?'Ocultar':'Mostrar'} miniaturas</button></section>${edgeForm}<div class="sy-scene-atlas-layout"><div class="sy-scene-atlas-regions">${regions}</div><aside class="sy-scene-atlas-links"><h3>Ligações</h3>${edges||'<p class="sy-note">Nenhuma ligação criada.</p>'}<details class="sy-scene-atlas-unassigned" ${loose?'open':''}><summary>Sem local <span>${unassigned?.counts?.scenes??0}</span></summary>${loose||'<small>Todas as cenas estão organizadas.</small>'}</details></aside></div></section>`;
+  }
+  /** O mestre tem duas vistas do Mapa: o mapa de Opath de sempre e o atlas de cenas.
+   *  O jogador continua vendo só o mapa. */
   renderMap(readonly=false){
+    if(readonly)return this.renderMapGeographic(true);
+    const atlas=this.state.mapDisplay==='atlas';
+    const vista=`<nav class="sy-library-tabs sy-map-display" aria-label="Vista do mapa"><button data-op="lib-map-display" data-id="geographic" aria-current="${atlas?'false':'page'}"><i class="fa-solid fa-map" aria-hidden="true"></i> Mapa de Opath</button><button data-op="lib-map-display" data-id="atlas" aria-current="${atlas?'page':'false'}"><i class="fa-solid fa-sitemap" aria-hidden="true"></i> Atlas de cenas</button></nav>`;
+    return `${vista}${atlas?this.renderSceneAtlas():this.renderMapGeographic(false)}`;
+  }
+  renderMapGeographic(readonly=false){
     const {mapView,region:regionId,place:placeId}=this.state;
     const region=REGIONS.find(i=>i.id===regionId),place=[...PLACES,...BEYOND].find(i=>i.id===placeId);
     if(!readonly&&this.state.regionTakeover&&region&&!place)return this.renderRegionView(region);
