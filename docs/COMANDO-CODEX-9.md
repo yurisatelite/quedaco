@@ -1,5 +1,9 @@
 # COMANDO CODEX — 9ª rodada
 
+> **Rodada encerrada em 17/09/2026.** Continua em `docs/COMANDO-CODEX-10.md`. Este
+> arquivo fica como histórico — as especificações das tarefas 5, 8, 9 e 10 (nunca
+> começadas) continuam valendo e são citadas de lá; não duplicadas.
+
 Documento de passagem. **Claude estrutura, Codex executa, Yuri confirma.** Leia este arquivo
 e o `CLAUDE.md` da raiz; não precisa reler conversa nenhuma nem a 8ª rodada.
 

@@ -81,7 +81,7 @@ O pacote resultante fica em `dist/quedaco-<versão>/quedaco`. `npm run release` 
 ## Quem está executando
 
 Desde 15/09/2026 a fila é executada pelo **Codex**: o Claude estrutura, o Codex executa,
-o Yuri confirma. A rodada atual é **`docs/COMANDO-CODEX-9.md`**: regras, tarefas em ordem, o que fica com o Yuri e o diário do que foi executado (seção 4) — **leia-o antes de retomar qualquer coisa**. A 8ª rodada (`COMANDO-CODEX-8.md`) está encerrada e fica como histórico.
+o Yuri confirma. A rodada atual é **`docs/COMANDO-CODEX-10.md`**: regras, tarefas em ordem, o que fica com o Yuri e o diário do que foi executado (seção 4) — **leia-o antes de retomar qualquer coisa**. As rodadas 8 e 9 (`COMANDO-CODEX-8.md`, `COMANDO-CODEX-9.md`) estão encerradas e ficam como histórico.
 
 ## Entrega de uma mudança
 
