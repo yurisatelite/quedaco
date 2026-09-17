@@ -33,6 +33,14 @@ Os utilitários de `tools/` acham a raiz sozinhos (`tools/raiz.mjs`); não volte
 7. Aumente `module.json.version` e `package.json.version` somente ao preparar uma versão instalável.
 8. Não publique a fonte Noka em repositório público sem confirmar sua licença de redistribuição.
 
+## Antes de explorar código pra uma feature nova
+
+Confira **[docs/MAPA-DO-MODULO.md](docs/MAPA-DO-MODULO.md)** — provavelmente já tem uma
+linha dizendo qual arquivo/função cuida daquela área, os testes e o que falta. Pra campo
+do sistema Skyfall (perícia, idioma, tamanho, tipo de Item...), **[docs/REFERENCIA-SKYFALL.md](docs/REFERENCIA-SKYFALL.md)**.
+Pra saber o que existe *no mundo agora* (NPCs, guildas, região), não dá pra ler código —
+ver **[docs/COMO-CONSULTAR-O-MUNDO.md](docs/COMO-CONSULTAR-O-MUNDO.md)**.
+
 ## Arquitetura
 
 - `src/app.mjs`: interface ApplicationV2, navegação e fluxo de 13 etapas.
