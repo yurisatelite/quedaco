@@ -7,22 +7,20 @@
 >
 > Caso de estudo: **Gigante das Nuvens** (Cloud Giant, SRD 5.1).
 
-> **Atualização 17/09/2026 (Claude/Sonnet):** o Yuri rodou `.local/exportar-comparacao-monstro.js`
-> e mandou o JSON de comparação. Com a ficha real de 4 monstros nativos, os itens abaixo já
-> foram corrigidos e testados em `src/monster-convert.mjs` (`npm test`, 211 testes):
-> arquétipo (um arremesso não faz mais de ninguém "Atirador"), alcance de corpo a corpo
-> (o "reach" nunca era lido — bug de regex, corrigido, afetava melee **e** à distância),
-> tamanho (`system.size`; o token o próprio Skyfall ajusta sozinho ao criar o Actor, não
-> precisa setar `prototypeToken`), testes de resistência explícitos (mandam sobre "os dois
-> atributos mais altos" quando a ficha lista), perícias, idiomas com equivalente, e
-> resistência/imunidade/vulnerabilidade a dano e a condição. **Confirmado pela ficha real:**
-> não existe campo de sentidos nem de "temperamento/tendência" no Skyfall — sentidos e
-> tendência continuam só na biografia, como já estava. **Ainda falta** (fica pra quem pegar
-> esta tarefa a seguir): traços e magia inata como Itens (hoje só texto), Ataque Múltiplo
-> como Item, e copiar os Itens `hierarchy`/`archetype` do compêndio `skyfall-core.npc-creation`
-> pelo `identifier` (a ficha do Golem Mecânico mostra o molde: um Item `hierarchy` e um ou
-> mais `archetype`, cada um com seus próprios Itens `ability` de passiva). A seção 6 tem a
-> tabela de mapeamento perícia/idioma usada — é uma aproximação nossa, não vem de nenhum guia.
+> **Atualização 17/09/2026 (Claude/Sonnet) — T24 concluída.** Os 5 passos da seção 5 estão
+> feitos e testados (`npm test`, 221 testes): tamanho, testes de resistência explícitos,
+> perícias, idiomas, resistências/imunidades/vulnerabilidades e condição imune (todos
+> confirmados contra 4 fichas nativas — `.local/exportar-comparacao-monstro.js`); o
+> arquétipo (um arremesso não faz mais de ninguém "Atirador") e o alcance corpo a corpo
+> (bug de regex que zerava o "reach"/"range", afetava melee e à distância); e agora também
+> traços, magia inata (com `uses.max`/`uses.per`) e Ataque Múltiplo como Itens, mais os
+> Itens de hierarquia/arquétipo copiados do compêndio `skyfall-core.npc-creation` com os
+> benefícios que eles concedem (`adapter.mjs: attachCreatureRoleItems`, ligado em
+> `library.mjs: importMonster`). **O que falta não é mais código desta tarefa:** reconverter
+> os 326 já importados (a primeira importação não guardou teste de resistência/perícia/
+> idioma/tamanho em lugar nenhum — precisa buscar de novo no SRD) e **verificar no Foundry**
+> — os Itens de hierarquia/arquétipo só foram testados com compêndio falso, nunca contra o
+> `skyfall-core.npc-creation` de verdade.
 
 ---
 
@@ -42,13 +40,13 @@
 | Sentidos | Percepção passiva 17 | **Não.** |
 | Idiomas | Comum, Gigante | **Corrigido 17/09.** `system.languages=['common']`; Gigante, sem equivalente, continua só na biografia. |
 | ND | 9 | Sim: ND 7 pela tabela do guia. |
-| Traço: Olfato Aguçado | vantagem em Percepção por olfato | **Só como texto** colado no fim da biografia. |
-| Traço: Magia Inata | 3 à vontade, 4 × 3/dia, 2 × 1/dia, CD 15 | **Só como texto.** Nenhum item e nenhum limite de uso. |
-| Ação: Ataque múltiplo | 2 × Estrela da Manhã | **Não virou item.** |
+| Traço: Olfato Aguçado | vantagem em Percepção por olfato | **Feito 17/09.** Vira Item `ability` passivo ("Keen Smell" — nome traduzido fica pro mestre revisar; a tradução automática de nome de traço não entrou nesta rodada). |
+| Traço: Magia Inata | 3 à vontade, 4 × 3/dia, 2 × 1/dia, CD 15 | **Feito 17/09.** Um Item por frequência ("Magia Inata (à vontade)", "(3/dia)"...) com `uses.max`/`uses.per`. Magias ficam com o nome de D&D — trocar pelo equivalente do compêndio ainda é manual, não entrou nesta rodada. |
+| Ação: Ataque múltiplo | 2 × Estrela da Manhã | **Feito 17/09.** Item "Ataque Múltiplo", com a frase original do D&D quando existe. |
 | Ação: Estrela da Manhã | +12, **alcance 3 m**, 3d8+8 perfurante | **Corrigido 17/09.** Era um bug de regex — o "reach"/"range" nunca era capturado, no corpo a corpo nem à distância (a Rocha também passou a ter alcance real: 18 m em vez de 6 m fixos). Vira item com 3 m. |
 | Ação: Rocha | +12, 18/72 m, 4d10+8 impacto | Virou item. |
 | Arquétipo | um gigante que bate e arremessa pedra | **Corrigido 17/09.** "Atirador" só entra sem ataque corpo a corpo, ou com maioria à distância. O Gigante tem um de cada → Bruto. |
-| Hierarquia e arquétipo como itens | — | **Não.** O Skyfall monta a linha "ND 7, Complexo (Bruto)" e decide se é chefão lendo **itens** do tipo `hierarchy` e `archetype`; o conversor só grava o texto em `system.hierarchy`. Conferido no código do sistema (`NPC.directoryData`, `NPC.isBoss`). É por isso que a ficha parece vazia. |
+| Hierarquia e arquétipo como itens | — | **Feito 17/09** (`adapter.mjs: attachCreatureRoleItems`), mas **não verificado no Foundry** — só testado com compêndio falso. Copia o Item `hierarchy`/`archetype` do compêndio pelo `identifier`, e os Itens de passiva que ele concede (`system.benefits`). Sem o compêndio instalado ou sem correspondência, segue sem travar — fica como estava (só o texto). |
 
 **Resumo:** chegaram o esqueleto numérico e dois ataques. Ficaram de fora o tamanho, as
 proteções certas, as perícias, os sentidos, os idiomas, os traços, as magias e o ataque
@@ -73,12 +71,12 @@ nativos lado a lado. O Yuri roda a macro e o arquivo baixado fica em `.local/`.
 | Idiomas | `system.languages` | **Feito 17/09.** Só os que existem: Comum → `common`, Abissal → `abyssal`, Celestial → `celestial`, Dracônico → `draconic`, Élfico → `elvish`. O resto (Gigante, Infernal, Anão...) fica listado na biografia. |
 | Resistências, imunidades, vulnerabilidades | `system.modifiers.damage.taken.<tipo>` | **Feito 17/09.** Confirmado pela ficha nativa (`'resistance'`/`'imunity'`/`'vulnerability'`/`'normal'`). Por tipo de dano, com `force` → `energy` (já existia o mapa). |
 | Imunidade a condição | `system.modifiers.condition.imune` (array) | **Feito 17/09.** Confirmado pela ficha nativa — ids em inglês, iguais aos status do D&D (`frightened`, `charmed`, `poisoned`, `paralyzed`, `petrified`, `prone`...). |
-| **Cada traço** (Olfato Aguçado, Anfíbio...) | Item `ability`, passivo | Nome traduzido, descrição curta, sem copiar texto longo. |
-| **Magia inata / conjuração** | Um item `ability` por grupo de uso: "Magia Inata (à vontade)", "(3/dia)", "(1/dia)" | `uses.max` e `uses.per` para os limitados. Cada magia leva o **nome do Skyfall quando existe equivalente** no compêndio de magias; senão, o nome do D&D com um efeito de uma linha. CD → proteção contra atributo de conjuração. |
-| **Ataque múltiplo** | Item `ability` de ação: "Ataque Múltiplo" | Mesmo molde da Víbora sorrateira do livro, com a redução de 1 ataque do guia (chefão mantém). |
+| **Cada traço** (Olfato Aguçado, Anfíbio...) | Item `ability`, passivo | **Feito 17/09.** Um bloco "Nome. Descrição" por parágrafo em branco no texto (funciona bem quando a fonte já separa por \n\n, como o Open5e; formatos que colam tudo numa linha só continuam sem separar — nada se perde, o texto original segue na biografia). Nome **não traduzido** ainda — fica em inglês. |
+| **Magia inata / conjuração** | Um item `ability` por grupo de uso: "Magia Inata (à vontade)", "(3/dia)", "(1/dia)" | **Feito 17/09**, com `uses.max`/`uses.per`. As magias ficam listadas pelo **nome de D&D** — trocar pelo equivalente do compêndio de magias do Skyfall não entrou nesta rodada (fica pra quem for revisar a ficha antes de usar em mesa).
+| **Ataque múltiplo** | Item `ability` de ação: "Ataque Múltiplo" | **Feito 17/09**, com a frase original do D&D quando existe. **A redução de 1 ataque continua só na biografia** — decidir qual ataque tirar é uma escolha de mesa, não algo pra automatizar. |
 | Ataques | Item `ability` (já existe) | **Alcance corpo a corpo também**: 10 pés → 3 m. Guarda os dados de dano na descrição mesmo usando dano fixo. |
-| Ações lendárias / de covil / reações | Itens `ability` | Regras de chefão do guia (já descritas na biografia hoje; viram itens). |
-| Hierarquia e arquétipo | **Itens** `hierarchy` e `archetype` copiados do compêndio do sistema | Não crie item novo: copie o nativo pelo `identifier`. |
+| Ações lendárias / de covil / reações | Itens `ability` | **Parcial.** Cada ação lendária que estiver separada por parágrafo em branco já vira um Item genérico, pelo mesmo mecanismo dos traços — mas sem a conversão de custo do guia (1–2 ações → normal, 3 → recarga). Isso continua manual, descrito na biografia. |
+| Hierarquia e arquétipo | **Itens** `hierarchy` e `archetype` copiados do compêndio do sistema | **Feito 17/09** — `adapter.mjs: attachCreatureRoleItems`, testado com compêndio falso (3 testes). **Não verificado contra o compêndio de verdade.** |
 | Arquétipo | `guessArchetype` | **Corrigir:** ranged só se **não houver ataque corpo a corpo** ou se os ataques à distância forem maioria. Um arremesso não faz de ninguém um atirador. Gigante = Bruto. |
 
 ---
@@ -167,13 +165,17 @@ que está no mundo não recupera isso. Caminho:
    arrumou um bug que afetava ataques à distância (a Rocha ganhou alcance real).
 3. ~~Com o JSON: tamanho/token, proteções pelos testes, perícias, idiomas, resistências.~~
    **Feito 17/09.** 9 testes novos em `tests/monster-convert.test.mjs`, `npm test` com 211.
-4. **Falta:** traços, magia inata e ataque múltiplo como itens.
-5. **Falta:** itens de hierarquia e arquétipo copiados do compêndio.
+4. ~~Traços, magia inata e ataque múltiplo como itens.~~ **Feito 17/09.** 10 testes novos.
+5. ~~Itens de hierarquia e arquétipo copiados do compêndio.~~ **Feito 17/09**
+   (`adapter.mjs: attachCreatureRoleItems`, 3 testes com compêndio falso) — **mas não
+   verificado contra o compêndio de verdade dentro do Foundry.**
 6. **Falta:** biografia em ficha de campo (sem o arquivo de fichas, os blocos saem vazios).
 7. **Falta:** ferramenta SRD + macro de reconversão para os 326 já importados.
 
 **Pronto quando:** o Gigante das Nuvens reconvertido mostra, na ficha do Skyfall,
 "Complexo (Bruto)", CON/SAB/CAR treinadas, Intuição e Percepção, Comum nos idiomas, Olfato
 Aguçado, três itens de Magia Inata com usos, Ataque Múltiplo, Estrela da Manhã a 3 m e
-Rocha a 18 m — os últimos três (passos 4, 5) ainda faltam. O tamanho, as proteções, as
-perícias, os idiomas e o alcance **já estão corretos e testados**.
+Rocha a 18 m. **Confirmado em código e testes (221, `npm test`), mas nunca visto na tela
+do Foundry** — os passos 4 e 5 dependem de compêndio real (`skyfall-core.npc-creation`),
+e só foram testados com um compêndio falso. Os passos 6 e 7 seguem pendentes; não bloqueiam
+o uso do conversor no dia a dia — o Gigante já sai bem melhor do que antes desta rodada.

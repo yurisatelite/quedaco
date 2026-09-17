@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {crToNd,abilityMod,feetToMeters,skyfallCreatureType,parseCr,guessHierarchy,guessArchetype,toSkyfallNpc,normalizeOpen5e,parseStatblock,normalizeMonsterInput,parseHitDice,dndProficiencyForCr,rdForArchetype,parseAttacksFromText,skyfallSize,parseSavingThrows,parseMonsterSkills,parseMonsterLanguages,parseConditionList,parseDamageTypeList} from '../src/monster-convert.mjs';
+import {crToNd,abilityMod,feetToMeters,skyfallCreatureType,parseCr,guessHierarchy,guessArchetype,toSkyfallNpc,normalizeOpen5e,parseStatblock,normalizeMonsterInput,parseHitDice,dndProficiencyForCr,rdForArchetype,parseAttacksFromText,skyfallSize,parseSavingThrows,parseMonsterSkills,parseMonsterLanguages,parseConditionList,parseDamageTypeList,parseTraitBlocks,parseInnateSpellcasting,buildSpellcastingItem,buildMultiattackItem} from '../src/monster-convert.mjs';
+import {attachCreatureRoleItems,NPC_CREATION_PACK} from '../src/adapter.mjs';
 
 test('CR de D&D vira ND do Skyfall com teto 12',()=>{
   assert.equal(crToNd('1/4'),1);
@@ -156,8 +157,9 @@ test('toSkyfallNpc cria Itens de ataque no molde da ficha nativa (dano fixo, sem
   const text='Multiattack. The bandit makes two melee attacks.\n\nScimitar. Melee Weapon Attack: +3 to hit, reach 5 ft., one target. Hit: 4 (1d6 + 1) slashing damage.\n\nLight Crossbow. Ranged Weapon Attack: +3 to hit, range 80/320 ft., one target. Hit: 5 (1d8 + 1) piercing damage.';
   const mob={name:'Bandido D&D',cr:'1/8',abilities:{str:11,dex:12,con:12,int:10,wis:10,cha:10},ac:12,hp:'11 (2d8 + 2)',speed:{walk:30},type:'humanoid',text};
   const src=toSkyfallNpc(mob);
-  assert.equal(src.items.length,2);
-  const [melee,ranged]=src.items;
+  // "Multiattack." no texto agora também vira um Item de ação (T24, passo 4).
+  assert.ok(src.items.some(i=>i.name==='Ataque Múltiplo'));
+  const [melee,ranged]=src.items.filter(i=>i.name.includes('(Ataque'));
   assert.equal(melee.name,'Scimitar (Ataque Corpo a Corpo)');
   assert.equal(melee.type,'ability');
   assert.equal(melee.system.attack.ability,'str');
@@ -210,8 +212,12 @@ test('Gigante das Nuvens (SRD): caso de estudo da T24 — alcance, arquétipo, p
   assert.deepEqual(Object.entries(src.system.abilities).filter(([,v])=>v.proficient).map(([k])=>k).sort(),['cha','con','wis']);
   assert.deepEqual(src.system.skills,{insi:{value:1},perc:{value:1}});
   assert.deepEqual(src.system.languages,['common']);
-  assert.equal(src.items[0].system.range.value,3);
-  assert.equal(src.items[1].system.range.value,18);
+  const [melee,ranged]=src.items.filter(i=>i.name.includes('(Ataque'));
+  assert.equal(melee.system.range.value,3);
+  assert.equal(ranged.system.range.value,18);
+  // Traço e Ataque Múltiplo agora também são Itens (T24, passo 4), não só texto.
+  assert.ok(src.items.some(i=>i.name==='Keen Smell'));
+  assert.ok(src.items.some(i=>i.name==='Ataque Múltiplo'));
 });
 
 test('skyfallSize mapeia o tamanho de D&D pra chave do Skyfall',()=>{
@@ -267,4 +273,97 @@ test('normalize5eTools e parseStatblock também repassam tamanho, perícias, idi
   assert.equal(stat.savingThrows,'Dex +2, Con +3');
   assert.equal(stat.skills,'Stealth +6, Survival +2');
   assert.equal(stat.languages,'Common, Goblin');
+});
+
+test('parseTraitBlocks lê "Nome. Descrição." por parágrafo e pula ataque, Multiattack e Innate Spellcasting',()=>{
+  const text=[
+    'Keen Smell. The giant has advantage on Wisdom (Perception) checks that rely on smell.',
+    'Innate Spellcasting. The giant can cast spells.',
+    'Multiattack. The giant makes two attacks.',
+    'Actions',
+    'Morningstar. Melee Weapon Attack: +12 to hit, reach 10 ft., one target. Hit: 21 (3d8 + 8) piercing damage.'
+  ].join('\n\n');
+  const traits=parseTraitBlocks(text,{skipNames:['multiattack','innate spellcasting']});
+  assert.deepEqual(traits.map(t=>t.name),['Keen Smell']);
+  assert.match(traits[0].description,/advantage on Wisdom/);
+});
+
+test('parseTraitBlocks não confunde uma frase qualquer com um traço (sem texto depois do ponto final)',()=>{
+  assert.deepEqual(parseTraitBlocks('Sem ações descritas.'),[]);
+});
+
+test('parseInnateSpellcasting separa por frequência (à vontade, X/dia) com a lista de magias',()=>{
+  const text='Innate Spellcasting. The giant can innately cast the following spells: At will: detect magic, fog cloud, light. 3/day each: feather fall, fly, misty step, telekinesis. 1/day each: control weather, gaseous form.';
+  const groups=parseInnateSpellcasting(text);
+  assert.equal(groups.length,3);
+  assert.deepEqual(groups[0],{label:'à vontade',max:null,per:null,spells:['detect magic','fog cloud','light']});
+  assert.deepEqual(groups[1].spells,['feather fall','fly','misty step','telekinesis']);
+  assert.equal(groups[1].max,3);
+  assert.equal(groups[2].max,1);
+});
+
+test('sem "Innate Spellcasting" no texto, não gera nenhum grupo de magia',()=>{
+  assert.deepEqual(parseInnateSpellcasting('Bite. Melee Weapon Attack: +4 to hit.'),[]);
+});
+
+test('buildSpellcastingItem grava uses.max/per só nos grupos limitados; à vontade fica sem limite',()=>{
+  const aVontade=buildSpellcastingItem({label:'à vontade',max:null,per:null,spells:['light']});
+  assert.deepEqual(aVontade.system.uses,{value:null,max:null,per:null,recovery:''});
+  const limitado=buildSpellcastingItem({label:'3/dia',max:3,per:'day',spells:['fly']});
+  assert.deepEqual(limitado.system.uses,{value:3,max:3,per:'day',recovery:''});
+});
+
+test('buildMultiattackItem usa a frase original do "Multiattack." quando existe, senão lista os ataques',()=>{
+  const comTexto=buildMultiattackItem({text:'Multiattack. The giant makes two morningstar attacks.'},['Morningstar']);
+  assert.match(comTexto.system.description.value,/two morningstar attacks/);
+  const semTexto=buildMultiattackItem({text:''},['Garra','Mordida']);
+  assert.match(semTexto.system.description.value,/Garra, Mordida/);
+});
+
+test('Gigante das Nuvens (SRD): traços, magia inata e Ataque Múltiplo viram Itens (T24, passo 4)',()=>{
+  const text=[
+    'Keen Smell. The giant has advantage on Wisdom (Perception) checks that rely on smell.',
+    "Innate Spellcasting. The giant's innate spellcasting ability is Charisma. It can innately cast the following spells, requiring no material components: At will: detect magic, fog cloud, light. 3/day each: feather fall, fly, misty step, telekinesis. 1/day each: control weather, gaseous form.",
+    'Multiattack. The giant makes two morningstar attacks.',
+    'Morningstar. Melee Weapon Attack: +12 to hit, reach 10 ft., one target. Hit: 21 (3d8 + 8) piercing damage.',
+    'Rock. Ranged Weapon Attack: +12 to hit, range 60/240 ft., one target. Hit: 30 (4d10 + 8) bludgeoning damage.'
+  ].join('\n\n');
+  const mob={name:'Cloud Giant',cr:9,abilities:{str:27,dex:10,con:22,int:12,wis:16,cha:16},ac:14,hp:'200 (16d12 + 96)',speed:{walk:40},type:'Huge giant',size:'Huge',text};
+  const src=toSkyfallNpc(mob);
+  assert.deepEqual(src.items.map(i=>i.name),['Keen Smell','Magia Inata (à vontade)','Magia Inata (3/dia)','Magia Inata (1/dia)','Ataque Múltiplo','Morningstar (Ataque Corpo a Corpo)','Rock (Ataque à Distância)']);
+  const tresDia=src.items.find(i=>i.name==='Magia Inata (3/dia)');
+  assert.deepEqual(tresDia.system.uses,{value:3,max:3,per:'day',recovery:''});
+});
+
+// ── T24, passo 5: Itens de hierarquia/arquétipo copiados do compêndio ──────────────────
+function fakeItemDoc(id,data){return {_id:id,toObject:()=>({_id:id,...structuredClone(data)})};}
+function fakePack(entries){
+  const byId=new Map(entries.map(e=>[e._id,fakeItemDoc(e._id,e)]));
+  return {getIndex:async()=>entries.map(({_id,type,system})=>({_id,type,system:{identifier:system.identifier}})),getDocument:async id=>byId.get(id)};
+}
+test('attachCreatureRoleItems copia o Item de hierarquia/arquétipo e os benefícios que ele concede',async()=>{
+  const pack=fakePack([
+    {_id:'h-boss',type:'hierarchy',name:'Chefão',system:{identifier:'boss',benefits:[{type:'ability',uuid:'Compendium.x.Item.chefao-passiva'}]}},
+    {_id:'a-brute',type:'archetype',name:'Bruto',system:{identifier:'brute',benefits:[{type:'ability',uuid:'Compendium.x.Item.bruto-passiva'}]}},
+  ]);
+  const benefitDocs={'Compendium.x.Item.chefao-passiva':fakeItemDoc('chefao-passiva',{type:'ability',name:'Chefão'}),'Compendium.x.Item.bruto-passiva':fakeItemDoc('bruto-passiva',{type:'ability',name:'Bruto'})};
+  const game={packs:{get:id=>id===NPC_CREATION_PACK?pack:null}};
+  const resolveDocument=async uuid=>benefitDocs[uuid]??null;
+  const source={system:{hierarchy:'boss',archetype:['brute']},items:[{name:'Ataque',type:'ability'}]};
+  const result=await attachCreatureRoleItems(game,source,resolveDocument);
+  assert.deepEqual(result.items.map(i=>i.name),['Chefão','Chefão','Bruto','Bruto','Ataque']);
+  assert.equal(result.items[0].type,'hierarchy');
+  assert.equal(result.items[1].type,'ability');
+  assert.ok(!('_id' in result.items[0]));
+});
+test('attachCreatureRoleItems sem o compêndio instalado devolve o source intacto, sem travar',async()=>{
+  const source={system:{hierarchy:'boss',archetype:['brute']},items:[]};
+  const result=await attachCreatureRoleItems({packs:{get:()=>null}},source);
+  assert.equal(result,source);
+});
+test('attachCreatureRoleItems sem identificador correspondente no compêndio, segue sem essa peça',async()=>{
+  const pack=fakePack([{_id:'h-simple',type:'hierarchy',name:'Simples',system:{identifier:'simple',benefits:[]}}]);
+  const source={system:{hierarchy:'boss',archetype:['ranged']},items:[]}; // nem 'boss' nem 'ranged' existem no fake pack
+  const result=await attachCreatureRoleItems({packs:{get:()=>pack}},source);
+  assert.deepEqual(result.items,[]);
 });

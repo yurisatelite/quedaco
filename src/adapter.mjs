@@ -515,6 +515,48 @@ export async function ensureNativeRegions(game,edge){
   return syncRuntimeProvider(game,reconciled,reconciled.runtimeProvider);
 }
 
+// T24, passo 5 — a ficha nativa mostra "Complexo (Bruto)" lendo Itens `hierarchy`/
+// `archetype` embutidos no Actor (não um texto). Cada um carrega os próprios Itens
+// `ability` de passiva na lista `system.benefits` (ex.: o arquétipo "Bruto" carrega a
+// passiva "Bruto", dado extra + crítico em 19–20). Confirmado em 17/09/2026 com 4 Actors
+// nativos do compêndio skyfall-core.enemies — ver docs/T24-MONSTROS-COMPLETOS.md.
+export const NPC_CREATION_PACK='skyfall-core.npc-creation';
+/** Acha o Item `hierarchy`/`archetype` do compêndio pelo `system.identifier` (mesma
+ * string do tier/arquétipo do conversor — não precisa de tabela de conversão). */
+async function findRoleItem(pack,type,identifier){
+  const index=await pack.getIndex({fields:['type','system.identifier']});
+  const entry=index.find?.(e=>e.type===type&&e.system?.identifier===identifier)
+    ??[...(index.values?.()??[])].find(e=>e.type===type&&e.system?.identifier===identifier);
+  return entry?pack.getDocument(entry._id):null;
+}
+/** Copia o Item de hierarquia/arquétipo do compêndio pro `_source` do Actor, com os
+ * Itens de passiva que ele concede (`system.benefits`, resolvidos por `resolveDocument`).
+ * Falta no compêndio (não instalado, ou identificador sem correspondência) não trava a
+ * conversão — só deixa a hierarquia/arquétipo como estavam, só em `system.hierarchy`/
+ * `system.archetype` (texto), do jeito que já funcionava antes desta tarefa. */
+export async function attachCreatureRoleItems(game,actorSource,resolveDocument=globalThis.fromUuid,packId=NPC_CREATION_PACK){
+  const pack=game.packs?.get?.(packId);
+  if(!pack)return actorSource;
+  const wanted=[{type:'hierarchy',identifier:actorSource.system?.hierarchy},...(actorSource.system?.archetype??[]).map(identifier=>({type:'archetype',identifier}))];
+  const extraItems=[];
+  for(const {type,identifier} of wanted){
+    if(!identifier)continue;
+    let doc;try{doc=await findRoleItem(pack,type,identifier);}catch{doc=null;}
+    if(!doc)continue;
+    const clone=doc.toObject();delete clone._id;
+    extraItems.push(clone);
+    for(const benefit of clone.system?.benefits??[]){
+      if(benefit?.type!=='ability'||!benefit.uuid)continue;
+      let benefitDoc;try{benefitDoc=await resolveDocument(benefit.uuid);}catch{benefitDoc=null;}
+      if(!benefitDoc)continue;
+      const benefitClone=benefitDoc.toObject();delete benefitClone._id;
+      extraItems.push(benefitClone);
+    }
+  }
+  if(!extraItems.length)return actorSource;
+  return {...actorSource,items:[...extraItems,...(actorSource.items??[])]};
+}
+
 /** Ativa um runtime e desativa o outro. `null`/`none` deixa ambos desativados. */
 export async function setRuntimeProvider(game,edge,provider){
   validateTeleportEdge(edge);

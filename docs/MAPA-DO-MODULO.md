@@ -66,7 +66,7 @@ Funcionalidade grande, em andamento — tem doc próprio de progresso, não repi
 | Conversor D&D 5e → Skyfall | [monster-convert.mjs](../src/monster-convert.mjs) — ver `docs/T24-MONSTROS-COMPLETOS.md` pro estado exato |
 | Filtro/facetas na tela (tipo, papel, porte, ND) | `library.mjs: monsterFacetValues, monsterMatches` |
 | Região/habitat de cada monstro do mundo | macro `.local/distribuir-monstros-por-regiao.js` → `flags.quedaco.monster` |
-| Falta conhecido | traços/magia inata/ataque múltiplo como Itens; Itens de hierarquia/arquétipo copiados do compêndio (T24, passos 4–5); filtro de região na tela ainda não lê a flag (tarefa 10) |
+| Falta conhecido | traços/magia/hierarquia/arquétipo já viram Itens (T24, passos 4–5, feito 17/09) — mas **não verificado no Foundry**; reconverter os 326 já importados (perderam dado na 1ª importação); filtro de região na tela ainda não lê a flag (tarefa 10) |
 
 ## Mundo do livro (regiões, locais, moedas)
 

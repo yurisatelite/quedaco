@@ -243,14 +243,21 @@ painel ainda não lê isso.
 **Pronto quando:** checklist da regra 1; teste de `monsterFacetValues` com as três situações
 (livro com `placeId`, mundo com flag, sem nada).
 
-### Tarefa 11 — Conversor de monstros completo  · *grande — especificada em `docs/T24-MONSTROS-COMPLETOS.md`*
+### Tarefa 11 — Conversor de monstros completo  · **concluída em 17/09/2026**
 
-Leia o documento inteiro, **inclusive a atualização de 17/09 no topo**: os passos 1 a 3 já
-estão feitos (tamanho, proteções por teste de resistência, perícias, idiomas, resistências,
-arquétipo, alcance — 9 testes novos, `npm test` com 211). Continue pelo **passo 4**: traços,
-magia inata e ataque múltiplo como Itens. Depois o passo 5 (Itens de hierarquia/arquétipo
-copiados do compêndio `skyfall-core.npc-creation`, pelo `identifier` — a ficha do Golem
-Mecânico no JSON mostra o molde). Não invente campo que a ficha nativa não confirmar.
+Leia `docs/T24-MONSTROS-COMPLETOS.md` (atualização do topo) se for mexer aqui de novo.
+Os 5 passos estão feitos e testados (221 testes): tamanho, testes de resistência, perícias,
+idiomas, resistências, arquétipo, alcance, traços/magia inata/Ataque Múltiplo como Itens, e
+os Itens de hierarquia/arquétipo copiados do compêndio `skyfall-core.npc-creation` (com
+seus benefícios), ligado em `library.mjs: importMonster`. **Não verificado no Foundry** —
+falta um monstro de teste de verdade passar por `Actor.create` com o compêndio instalado
+(o `getIndex`/`getDocument` reais podem ter alguma diferença de forma que o fake dos
+testes não captura). Se for melhorar a conversão de novo, o que falta é o que já está
+listado no documento: reconverter os 326 já importados (busca de novo no SRD, porque a
+primeira importação não guardou teste de resistência/perícia/idioma/tamanho em lugar
+nenhum), e as regras de custo de ação lendária do guia (1–2 ações → normal, 3 → recarga)
+não são aplicadas sozinhas — os Itens de ação lendária viram Item genérico, texto do guia
+continua na biografia pro mestre ajustar na mão.
 
 ---
 

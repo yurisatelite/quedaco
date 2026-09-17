@@ -158,6 +158,82 @@ export function buildAttackItem(atk){
   };
 }
 
+/** Item `ability` passivo (traço, sem ataque nem rolagem) — molde da Constructo/Bruto nativas. */
+export function buildPassiveItem(name,descriptionHtml,{activation='passive'}={}){
+  return {
+    name,type:'ability',
+    img:'icons/svg/aura.svg',
+    system:{
+      description:{value:descriptionHtml,flavor:''},
+      origin:[''],descriptors:[],
+      activation:{type:activation,cost:null,repeatable:false,recharge:null},
+      trigger:{descriptive:''},
+      duration:{descriptive:'',value:null,units:'',event:'',concentration:false},
+      target:{descriptive:'',type:'',quantity:null,shape:'',length:null,width:null,units:'m'},
+      range:{descriptive:'',value:null,units:''},
+      attack:{descriptive:'',hit:'',miss:'',type:null,ability:'',protection:'',damage:''},
+      effect:{descriptive:descriptionHtml,damage:''},
+      special:{descriptive:''},
+      uses:{value:null,max:null,per:null,recovery:''},
+      consume:{type:'',target:null,amount:null,scale:false},
+      identifier:'',rolls:{},
+      wip:{rolls:{},description:''}
+    },
+    effects:[]
+  };
+}
+
+/** "Nome. Descrição." → blocos separados por parágrafo em branco (Open5e já entrega assim,
+ * um `special_ability`/`action` por bloco). Não tenta separar traços colados numa linha só
+ * (5e.tools às vezes junta tudo — esses ficam só na biografia, como já estava). */
+export function parseTraitBlocks(text,{skipNames=[]}={}){
+  const raw=String(text||'').replace(/<[^>]*>/g,' ').trim();
+  if(!raw)return [];
+  const skip=new Set(['actions','legendary actions','reactions','bonus actions',...skipNames.map(n=>n.toLowerCase())]);
+  const out=[];
+  for(const block of raw.split(/\n{2,}/)){
+    const m=block.trim().match(/^([A-Z][A-Za-z' -]{2,60}?)\.\s+([\s\S]+)$/);
+    if(!m)continue;
+    const [,name,desc]=m;
+    if(skip.has(name.trim().toLowerCase()))continue;
+    if(/weapon attack:|spell attack:/i.test(desc))continue; // isso é ataque, não traço
+    out.push({name:name.trim(),description:desc.trim().replace(/\s+/g,' ')});
+  }
+  return out;
+}
+
+/** Ataque Múltiplo, no molde da Víbora sorrateira do livro: um item de ação citando os
+ * ataques que a criatura de fato tem (depois da redução de 1 do guia — ver rdForArchetype). */
+export function buildMultiattackItem(mob,attackNames){
+  const grab=String(mob.text||'').match(/Multiattack\.\s*([^.]+\.)/i)?.[1]?.trim();
+  const desc=grab||`A criatura realiza ${Math.max(1,attackNames.length)} ataque(s): ${attackNames.join(', ')||'ver Itens de ataque'}.`;
+  return buildPassiveItem('Ataque Múltiplo',`<p><b>Efeito:</b> ${desc}</p>`,{activation:'action'});
+}
+
+/** "Innate Spellcasting... At will: a, b 3/day each: c 1/day each: d" → um item por
+ * frequência (à vontade / X por dia), com uses.max/per pros limitados. As magias ficam
+ * listadas pelo nome de D&D — o mestre troca pelo equivalente do compêndio se houver. */
+export function parseInnateSpellcasting(text){
+  const m=String(text||'').match(/Innate Spellcasting\.([\s\S]*?)(?:\n\n|$)/i);
+  if(!m)return [];
+  const body=m[1];
+  const groups=[];
+  const atWill=body.match(/at will:\s*([^.]+)\./i);
+  if(atWill)groups.push({label:'à vontade',max:null,per:null,spells:atWill[1].split(',').map(s=>s.trim()).filter(Boolean)});
+  const perDay=[...body.matchAll(/(\d+)\/day(?: each)?:\s*([^.]+)\./gi)];
+  for(const [,n,list] of perDay){
+    groups.push({label:`${n}/dia`,max:Number(n),per:'day',spells:list.split(',').map(s=>s.trim()).filter(Boolean)});
+  }
+  return groups;
+}
+export function buildSpellcastingItem(group){
+  const lista=group.spells.join(', ');
+  const desc=`<p><b>Efeito:</b> Magia inata (${group.label}): ${lista}. Nomes de D&amp;D — troque pelo equivalente do compêndio de magias quando houver, ou descreva o efeito.</p>`;
+  const item=buildPassiveItem(`Magia Inata (${group.label})`,desc,{activation:'action'});
+  if(group.max)item.system.uses={value:group.max,max:group.max,per:group.per,recovery:''};
+  return item;
+}
+
 export function guessHierarchy(mob){
   if(mob.legendary||/legendary (actions?|resistance)/i.test(mob.text||''))return 'boss';
   if(mob.multiattack||/multiattack/i.test(mob.text||'')||parseCr(mob.cr)>=5)return 'complex';
@@ -228,6 +304,12 @@ export function toSkyfallNpc(mob,{hierarchy=null,boss=null}={}){
   const attacksFound=parsedAttacks.length>0;
   const fallbackDamage=Math.max(2,Math.round(3+nd*1.5));
   const attackItems=(attacksFound?parsedAttacks:[{name:'Ataque',ranged:archetype==='ranged',rangeFt:archetype==='ranged'?60:null,damage:fallbackDamage,damageType:'mundane'}]).map(buildAttackItem);
+  // Ataque Múltiplo, traços e magia inata viram Itens de verdade, não só texto na bio
+  // (T24, passo 4) — a redução de 1 ataque do guia continua só anotada na bio: é uma
+  // decisão de mesa (qual ataque tirar), não algo pra escolher sozinho.
+  const multiattackItems=(mob.multiattack||/multiattack/i.test(mob.text||''))?[buildMultiattackItem(mob,parsedAttacks.map(a=>a.name))]:[];
+  const traitItems=parseTraitBlocks(mob.text,{skipNames:['multiattack','innate spellcasting']}).map(t=>buildPassiveItem(t.name,`<p><b>Efeito:</b> ${t.description}</p>`));
+  const spellItems=parseInnateSpellcasting(mob.text).map(buildSpellcastingItem);
   const skillKeys=parseMonsterSkills(mob.skills);
   const skills={};
   for(const key of skillKeys)skills[key]={value:1};
@@ -262,7 +344,7 @@ export function toSkyfallNpc(mob,{hierarchy=null,boss=null}={}){
       ...((Object.keys(dmgTaken).length||conditionImmune.length)?{modifiers:{damage:{taken:dmgTaken},condition:{imune:conditionImmune}}}:{}),
       biography:buildBiography(mob,nd,{tier,archetype,dr,prof,trained,hpSource:diceMax!=null?'dice':'estimado',attacksFound,savingThrowsExplicit:savingThrows.length>0})
     },
-    items:attackItems,
+    items:[...traitItems,...spellItems,...multiattackItems,...attackItems],
     flags:{quedaco:{convertedFrom:mob.source==='homebrew'?'homebrew':'dnd5e',sourceCr:String(mob.cr??''),sourceName:String(mob.name||'')}}
   };
   if(mob.img&&/^https?:|^\w[\w./-]*\.(webp|png|jpe?g)$/i.test(String(mob.img)))source.img=String(mob.img);
