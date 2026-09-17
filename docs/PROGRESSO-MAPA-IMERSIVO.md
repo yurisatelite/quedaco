@@ -10,28 +10,38 @@
 > de **Mapa Imersivo**. É o nome que aparece na aba do Mestre (antes "Atlas de cenas") e
 > nesta e em outras documentações a partir de agora.
 
-**Última atualização:** 17/09/2026 (Claude/Sonnet), pelo estado real do código e dos testes.
+**Última atualização:** 17/09/2026, depois do primeiro uso real no Foundry (v0.9.0
+publicada e testada pelo Yuri) — ver `docs/T25-MAPA-IMERSIVO-VISUAL.md`.
 
 ## Visão geral
 
 ```
-[███████████████████████████████░░░░░░░] 82%
+[██████████████████████████░░░░░░░░░░░░] 65%
 ```
 
-Das 5 etapas, 4 têm código pronto e testado (com dados falsos). Só falta ver tudo
-funcionando dentro do Foundry de verdade — nenhuma foi confirmada em jogo ainda.
+**A etapa A caiu de 100% pra 60%:** "testado e visto no Foundry" não é o mesmo que
+"pronto". O Yuri usou de verdade e voltou com 6 ajustes de uso e um pedido que não foi
+atendido — o "mapa conceitual" virou uma árvore de listas, não um diagrama visual. Isso
+é a Tarefa 13 (`docs/T25-MAPA-IMERSIVO-VISUAL.md`). As etapas D e E (painel da cena
+ativa, pergunta ao ativar cena) ainda não tiveram nenhum retorno de uso — só B e a
+árvore da A foram testadas até agora.
 
 | # | Etapa | Código | Testado (fake) | Visto no Foundry | % |
 |---|---|---|---|---|---|
-| A | Atlas de cenas (árvore região → local → cena, editar à mão) | ✅ | ✅ | ❌ | 100% |
-| B | Teletransporte automático (Stairways ou Regions nativas) | ✅ | ✅ | ❌ | 100% |
-| C | **Conferir A e B no Foundry** (T3, roteiro pronto) | — | — | ⬜ pendente | 0% |
-| D | Painel da cena ativa (T6) | ✅ | ✅ | ❌ | 100% |
-| E | Perguntar ao ativar cena (T7) | ✅ | ✅ | ❌ | 100% |
+| A | Atlas de cenas (árvore região → local → cena, editar à mão) | ✅ | ✅ | 🟡 visto, com 6 ajustes pendentes (T25 §1) + o diagrama visual ainda não existe (T25 §2) | 60% |
+| B | Teletransporte automático (Stairways ou Regions nativas) | ✅ | ✅ | ❌ ainda não testado | 100% |
+| C | **Conferir A e B no Foundry** (T3, roteiro pronto) | — | — | 🟡 A foi visto (com ressalvas); B segue pendente | 40% |
+| D | Painel da cena ativa (T6) | ✅ | ✅ | ❌ ainda não testado | 100% |
+| E | Perguntar ao ativar cena (T7) | ✅ | ✅ | ❌ ainda não testado | 100% |
 
 ---
 
-## A — Atlas de cenas · 100% do código, 0% conferido
+## A — Atlas de cenas · 60% — visto no Foundry, precisa de rework visual
+
+> **Atualização 17/09/2026:** visto de verdade pela primeira vez. Retorno completo em
+> [T25-MAPA-IMERSIVO-VISUAL.md](T25-MAPA-IMERSIVO-VISUAL.md) — 6 ajustes de uso pequenos
+> e o pedido principal (um diagrama visual, não a árvore de listas de hoje) ainda em
+> aberto, esperando decisão de design do Yuri antes de codar.
 
 Árvore que liga região → localidade → cena, editável pela aba **Mapa Imersivo** do
 Mestre. Dá pra criar uma cena dentro de uma região ou localidade.

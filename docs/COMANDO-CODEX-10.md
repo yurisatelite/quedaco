@@ -70,6 +70,15 @@ comportamento, o-que-quer e ganchos por monstro — **esse arquivo ainda não ex
 do livro) e deixe os blocos vazios (título + "—") pros que não tiverem entrada, como o
 documento já prevê. Não é código, é conteúdo — pode ser feito aos poucos.
 
+### Tarefa 13 — Mapa Imersivo: ajustes de uso e o mapa conceitual de verdade  · *grande — especificada em `docs/T25-MAPA-IMERSIVO-VISUAL.md`*
+
+**Primeiro retorno de uso real** — o Yuri testou a v0.9.0 no Foundry e mandou prints.
+Leia o documento inteiro antes de começar: tem 6 ajustes pequenos (seção 1, façam
+primeiro, nesta ordem) e o pedido principal, que **não foi atendido na v0.9.0** — um
+diagrama visual de verdade (caixas e linhas), não a árvore de `<details>` de hoje (seção
+2). A seção 2 tem uma pergunta pro Yuri que precisa de resposta **antes** de codar o
+diagrama — não adivinhe.
+
 ---
 
 ## 2. Enquanto trabalha — melhorias de estrutura
@@ -84,10 +93,12 @@ documento já prevê. Não é código, é conteúdo — pode ser feito aos pouco
 
 | Item | O que falta |
 |---|---|
-| **Publicar a versão nova** | Tudo desde a 0.8.0 (Mapa Imersivo completo, T24 completa) está commitado e **não publicado**. Prepare a próxima versão (`module.json`/`package.json`) antes ou durante esta rodada, com o Claude, e publique com título + descrição + os 2 arquivos, como sempre. |
-| `gh auth login` | Segue pendente desde a 9ª rodada, se ainda não foi feito. |
-| Mundo de teste | Necessário pras conferências abaixo — nenhuma delas foi feita ainda. |
-| **Conferir o Mapa Imersivo no Foundry** | `docs/PROGRESSO-MAPA-IMERSIVO.md`, etapas C, D, E. Nada do atlas, teletransporte, painel da cena ativa ou da pergunta ao ativar cena foi visto rodando — só testado com dado falso. |
+| ~~Publicar a versão nova~~ | **Feito** — v0.9.0 publicada em 17/09/2026 (`gh release`), com `quedaco.zip` e `module.json`. |
+| ~~`gh auth login`~~ | **Feito.** O Claude publica release sozinho a partir de agora, com autorização do Yuri pra cada versão. |
+| **Decisão de design — Tarefa 13, seção 2.1** | Diagrama do Mapa Imersivo: Opção A (calculado, sem arrastar — mais rápido) ou Opção B (arrastável, posição de cada caixa lembrada — o que o print sugere, mas bem mais trabalho)? Ver `docs/T25-MAPA-IMERSIVO-VISUAL.md`. |
+| **Decisão de design — Tarefa 13, seção 2.3** | O diagrama novo substitui a lista de hoje, ou os dois convivem (abas "Diagrama"/"Lista")? O Yuri disse que gostou da ideia de lista, só não do jeito que ficou. |
+| Mundo de teste | Ainda vale a pena, pra conferir as próximas rodadas sem risco ao mundo oficial. |
+| **Conferir o resto do Mapa Imersivo no Foundry** | O painel da cena ativa e a pergunta ao ativar cena (`docs/PROGRESSO-MAPA-IMERSIVO.md`, etapas D e E) ainda não tiveram retorno — só o atlas (etapa A/C) foi testado, e virou a Tarefa 13. |
 | **Reconverter os 326 monstros de D&D** | Depois de publicar: `node tools/buscar-srd.mjs` no seu computador, depois `.local/reconverter-monstros-dnd.js` no Foundry (prévia primeiro). Backup do mundo antes — ela apaga e recria os Itens de cada monstro convertido. |
 | **T21** — trocar legado no editor | Ainda precisa de conversa de design. |
 | **T8b** — ficha de profissão do NPC | Protótipo em `.local/criar-vendedor-prototipo.js`; falta o brainstorm. |
