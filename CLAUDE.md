@@ -32,6 +32,15 @@ Os utilitários de `tools/` acham a raiz sozinhos (`tools/raiz.mjs`); não volte
 6. Rode `npm test` e `npm run package` antes de considerar a alteração pronta.
 7. Aumente `module.json.version` e `package.json.version` somente ao preparar uma versão instalável.
 8. Não publique a fonte Noka em repositório público sem confirmar sua licença de redistribuição.
+9. **Pesquisa funda vira documento antes de fechar a tarefa.** Sempre que reabrir o
+   sistema Skyfall, um compêndio, ou explorar uma área do módulo a fundo pra entender
+   "como isso funciona por dentro", registre o que descobriu em
+   `docs/REFERENCIA-SKYFALL.md` (fato do sistema, quase nunca muda) ou
+   `docs/MAPA-DO-MODULO.md` (fato do módulo, arquivo/função por área) antes de considerar
+   a tarefa pronta — não só no código e na mensagem de commit. O objetivo é que a próxima
+   vez que alguém mexer naquela área — humano ou modelo — não precise repetir a mesma
+   investigação. Pedido do Yuri em 17/09/2026: "a gente vai criar uma estrutura para que
+   cada vez mais a gente faça menos esforço".
 
 ## Antes de explorar código pra uma feature nova
 
