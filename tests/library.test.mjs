@@ -748,7 +748,7 @@ test('redistribuição confirma resumo, grava NPCs e guildas em lotes de 50 e se
   }finally{globalThis.foundry=previousFoundry;globalThis.Actor=previousActor;globalThis.ui=previousUi;}
 });
 
-test('painel da cena ativa (T6, Mapa Imersivo): junta NPCs, guilda, mercador e rumor da localidade da cena ativa',async()=>{
+test('painel da cena ativa (T13): junta NPCs, guilda, mercador e rumor na área própria',async()=>{
   const mercador={id:'mercador',uuid:'Actor.mercador',name:'Brida',type:'character',isOwner:false,hasPlayerOwner:false,img:'brida.webp',items:[],ownership:{default:1},system:{level:{value:2}},sheet:{render(){}},
     flags:{quedaco:{npc:{role:'merchant',regionId:'thurthur',placeId:'alberich',tokenVisible:true,note:'',shop:{markup:1,attitude:'indiferente',stock:[{uuid:'Compendium.teste.Item.espada',price:100,qty:2,qtyMax:2}]}}}}};
   const guilda={id:'guilda',uuid:'Actor.guilda',name:'Companhia do Porto',type:'guild',img:'guilda.webp',items:[],system:{motto:'',abilities:{},members:[]},flags:{quedaco:{npc:{guildUuid:'Actor.guilda'}}}};
@@ -765,7 +765,7 @@ test('painel da cena ativa (T6, Mapa Imersivo): junta NPCs, guilda, mercador e r
   const game={user:{isGM:true},actors:[mercador,guilda],users:[],packs:[],folders:[],version:'13.351',scenes,modules:{get:()=>null},
     settings:{get:(_m,k)=>(k==='sharedContent'?{}:(store[k]??{})),set:async(_m,k,v)=>{store[k]=v;}}};
   const library=new CampaignLibrary(game,{items:[]});
-  const painel=library.renderMap(false);
+  const painel=library.render('activeScene');
   assert.match(painel,/CENA ATIVA/);
   assert.match(painel,/Alberich — Praça/);
   assert.match(painel,/Brida/); // NPC da localidade
@@ -774,14 +774,15 @@ test('painel da cena ativa (T6, Mapa Imersivo): junta NPCs, guilda, mercador e r
   assert.match(painel,/Liberar esta localidade/);
   // sem cena ativa nenhuma: painel não aparece
   cenaAtiva.active=false;
-  assert.doesNotMatch(library.renderMap(false),/CENA ATIVA/);
+  assert.doesNotMatch(library.render('activeScene'),/CENA ATIVA/);
   cenaAtiva.active=true;
   // cena ativa fora do atlas: avisa e não quebra
   store.sceneAtlas={schema:1,providers:{stairways:false,native:false},scenes:{},edges:{}};
-  const semAtlas=library.renderMap(false);
+  const semAtlas=library.render('activeScene');
   assert.match(semAtlas,/ainda não está no Mapa Imersivo/);
   // jogador nunca vê o painel
-  assert.doesNotMatch(library.renderMap(true),/CENA ATIVA/);
+  assert.doesNotMatch(library.render('activeScene',true),/CENA ATIVA/);
+  assert.doesNotMatch(library.renderMap(false),/CENA ATIVA/);
 });
 
 test('shouldAskReleaseOnActivate (T7): configuração desligada, sem localidade e localidade já liberada não perguntam',()=>{

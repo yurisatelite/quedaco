@@ -1158,7 +1158,7 @@ export class CampaignLibrary {
     if(!readonly)this.assertGM();
     else if(area!=='quests'&&!this.shared.areas.includes(area))return `<main class="sy-library"><small>CONSULTA DA CAMPANHA</small><h2>${area}</h2><p class="sy-library-deferred">O mestre ainda não liberou este conteúdo.</p></main>`;
     const titles={npcs:'NPCs',guilds:'Guildas e Hansas',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'};
-    const body=area==='npcs'?this.renderNpcs(readonly):area==='guilds'?this.renderGuilds(readonly):area==='map'?this.renderMap(readonly):area==='monsters'?this.renderMonsters(readonly):area==='imbue'?this.renderImbue(readonly):area==='quests'?this.renderQuests(readonly):this.renderItems(readonly);
+    const body=area==='npcs'?this.renderNpcs(readonly):area==='guilds'?this.renderGuilds(readonly):area==='map'?this.renderMap(readonly):area==='activeScene'?this.renderActiveScenePanel():area==='monsters'?this.renderMonsters(readonly):area==='imbue'?this.renderImbue(readonly):area==='quests'?this.renderQuests(readonly):this.renderItems(readonly);
     const maintenance=readonly?'':`<div class="sy-library-maintenance">${button('images-reindex','','Reindexar imagens')}</div>`;
     return `<main class="sy-library"><small>${area==='quests'?'QUESTS DA CAMPANHA':readonly?'LIBERADO PELO MESTRE':'CONSULTA DA CAMPANHA'}</small><h2>${titles[area]}</h2>${maintenance}${body}</main>`;
   }
@@ -1818,7 +1818,7 @@ export class CampaignLibrary {
     if(readonly)return this.renderMapGeographic(true);
     const atlas=this.state.mapDisplay==='atlas';
     const vista=`<nav class="sy-library-tabs sy-map-display" aria-label="Vista do mapa"><button data-op="lib-map-display" data-id="atlas" aria-current="${atlas?'page':'false'}"><i class="fa-solid fa-sitemap" aria-hidden="true"></i> Mapa Imersivo</button><button data-op="lib-map-display" data-id="geographic" aria-current="${atlas?'false':'page'}"><i class="fa-solid fa-map" aria-hidden="true"></i> Mapa de Opath</button></nav>`;
-    return `${this.renderActiveScenePanel()}${vista}${atlas?this.renderSceneAtlas():this.renderMapGeographic(false)}`;
+    return `${vista}${atlas?this.renderSceneAtlas():this.renderMapGeographic(false)}`;
   }
   renderMapGeographic(readonly=false){
     const {mapView,region:regionId,place:placeId}=this.state;

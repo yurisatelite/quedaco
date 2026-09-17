@@ -77,7 +77,7 @@ Hooks.on('updateActor',(actor,changed)=>{
 // depois que o canvas troca de verdade. Nada abre sozinho — só re-renderiza quem já
 // está com a janela aberta na aba Mapa.
 Hooks.on('canvasReady',()=>{
-  if(app?.rendered&&app.area==='map'&&game.user?.isGM)app.render(false);
+  if(app?.rendered&&['map','activeScene'].includes(app.area)&&game.user?.isGM)app.render(false);
 });
 // A entrada é administrativa, não a Scene em si. Ao apagar a Scene no Foundry,
 // removemos somente essa entrada e mantemos as ligações para poder repará-las depois.

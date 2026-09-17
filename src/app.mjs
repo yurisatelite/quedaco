@@ -29,8 +29,8 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     if(!this.loading&&this.visited.size)this.visited.add(this.step);
     const selected=this.selected('class');let hp='—';try{hp=hitPoints(selected?.name,this.draft.attributes.con,this.draft.level,this.draft.hpMethod==='rolled'?this.draft.hpRolls:null);}catch{}
     const money=this.money(),purchaseMoney=money?resolvePurchases(this.catalog,money.cash,money.equipmentBudget,this.purchasesCash,this.purchasesBudget):null,displayWallet=purchaseMoney?wallet(Math.max(0,purchaseMoney.cashRemaining)):money?.wallet;
-    const areaLabels={npcs:'NPCs',guilds:'Guildas',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'};
-    const areaIcons={characters:'fa-user-pen',npcs:'fa-masks-theater',guilds:'fa-shield-halved',map:'fa-map',monsters:'fa-dragon',items:'fa-box-archive',imbue:'fa-wand-sparkles',quests:'fa-scroll'};
+    const areaLabels={npcs:'NPCs',guilds:'Guildas',map:'Mapa',activeScene:'Cena Atual',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'};
+    const areaIcons={characters:'fa-user-pen',npcs:'fa-masks-theater',guilds:'fa-shield-halved',map:'fa-map',activeScene:'fa-tower-broadcast',monsters:'fa-dragon',items:'fa-box-archive',imbue:'fa-wand-sparkles',quests:'fa-scroll'};
     const areas=[...(game.user.isGM?Object.entries(areaLabels):sharedAreas.map(a=>[a,areaLabels[a]])),['characters','Criação de Personagens']];
     const areaNav=areas.length>1?`<div class="sy-area-nav">${areas.map(([id,label])=>`<button class="sy-area-btn ${id==='characters'?'is-characters':''}" data-op="area" data-area="${id}" aria-current="${this.area===id?'page':'false'}"><i class="fa-solid ${areaIcons[id]||'fa-circle'}" aria-hidden="true"></i><span>${label}</span></button>`).join('')}</div>`:'';
     if(this.area!=='characters')return `<div class="sy-shell"><header><div class="sy-brand-lockup"><img src="modules/quedaco/assets/quedaco-logo.png" alt="QUEDAÇO — por Yuri Satélite"></div></header>${areaNav}${this.renderArea()}</div>`;
@@ -83,7 +83,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   }
   stepDone(i){return !this.stepIssues(i).length;}
   renderArea(){
-    if(['npcs','guilds','map','monsters','items','imbue','quests'].includes(this.area))return `${this.message?`<p class="sy-alert" role="status">${e(this.message)}</p>`:''}${this.library.render(this.area,!game.user.isGM)}`;
+    if(['npcs','guilds','map','activeScene','monsters','items','imbue','quests'].includes(this.area))return `${this.message?`<p class="sy-alert" role="status">${e(this.message)}</p>`:''}${this.library.render(this.area,!game.user.isGM)}`;
     const definitions={npcs:['Mercadores','Aliados','Rivais','Figurantes'],map:['Regiões','Cidades e locais','Mapas e cenas','Encontros da região'],monsters:['Aquáticos','Terrestres','Aéreos','Outros'],items:['Armas','Armaduras','Equipamentos','Consumíveis'],quests:['Disponíveis','Ativas','Concluídas']};
     const titles={npcs:'NPCs',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'},items=definitions[this.area]??[];
     return `<main class="sy-empty-area"><small>PAINEL HÍBRIDO DA MESTRA</small><h2>${titles[this.area]}</h2><p>Os cartões desta área serão índices do QUEDAÇO ligados aos documentos nativos da mesa.</p><div class="sy-empty-grid">${items.map(item=>`<section><span class="sy-done sy-pending">·</span><h3>${item}</h3><small>Aguardando preenchimento e vínculo com o Foundry.</small></section>`).join('')}</div></main>`;
