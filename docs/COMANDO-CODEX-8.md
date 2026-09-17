@@ -1,5 +1,8 @@
 # COMANDO CODEX — 8ª rodada
 
+> **Rodada encerrada em 17/09/2026.** Continua em `docs/COMANDO-CODEX-9.md`. Este arquivo
+> fica como histórico do que foi feito na 8ª rodada.
+
 Documento de passagem. **Claude estrutura, Codex executa, Yuri confirma.** Este arquivo
 é auto-suficiente: leia ele e o `CLAUDE.md` da raiz, e você tem tudo para trabalhar sem
 reler conversa nenhuma.
