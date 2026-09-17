@@ -245,8 +245,12 @@ painel ainda não lê isso.
 
 ### Tarefa 11 — Conversor de monstros completo  · *grande — especificada em `docs/T24-MONSTROS-COMPLETOS.md`*
 
-Leia o documento inteiro. **Passo 1 é do Yuri** (exportar o JSON de comparação). Os passos 2
-(arquétipo e alcance) podem começar antes. Os demais esperam o JSON: não invente campo.
+Leia o documento inteiro, **inclusive a atualização de 17/09 no topo**: os passos 1 a 3 já
+estão feitos (tamanho, proteções por teste de resistência, perícias, idiomas, resistências,
+arquétipo, alcance — 9 testes novos, `npm test` com 211). Continue pelo **passo 4**: traços,
+magia inata e ataque múltiplo como Itens. Depois o passo 5 (Itens de hierarquia/arquétipo
+copiados do compêndio `skyfall-core.npc-creation`, pelo `identifier` — a ficha do Golem
+Mecânico no JSON mostra o molde). Não invente campo que a ficha nativa não confirmar.
 
 ---
 
@@ -272,7 +276,7 @@ Não são tarefas próprias; faça **só quando já estiver mexendo naquela part
 | **T8b** — ficha de profissão do NPC | Protótipo em `.local/criar-vendedor-prototipo.js`; falta o brainstorm. |
 | Imagens das moedas | 33 prompts prontos em `docs/T17-PROMPTS-MOEDAS.md`. |
 | Macros que gravam no mundo | Fazer backup do mundo antes de rodar. |
-| JSON de comparação de monstro | Rodar `.local/exportar-comparacao-monstro.js` e guardar o arquivo baixado em `.local/`. Destrava a tarefa 11. |
+| ~~JSON de comparação de monstro~~ | **Feito 17/09.** A tarefa 11 já usa a ficha real; leia `docs/T24-MONSTROS-COMPLETOS.md` antes de continuar — parte já está pronta (tamanho, proteções, perícias, idiomas, arquétipo, alcance), falta traços/magia/ataque múltiplo como Itens e os Itens de hierarquia/arquétipo copiados do compêndio. |
 | Monstros por região | Conferir a prévia de `.local/distribuir-monstros-por-regiao.js` e aplicar. A tarefa 10 mostra o resultado no painel. |
 
 ---

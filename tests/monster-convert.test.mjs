@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {crToNd,abilityMod,feetToMeters,skyfallCreatureType,parseCr,guessHierarchy,guessArchetype,toSkyfallNpc,normalizeOpen5e,parseStatblock,normalizeMonsterInput,parseHitDice,dndProficiencyForCr,rdForArchetype,parseAttacksFromText} from '../src/monster-convert.mjs';
+import {crToNd,abilityMod,feetToMeters,skyfallCreatureType,parseCr,guessHierarchy,guessArchetype,toSkyfallNpc,normalizeOpen5e,parseStatblock,normalizeMonsterInput,parseHitDice,dndProficiencyForCr,rdForArchetype,parseAttacksFromText,skyfallSize,parseSavingThrows,parseMonsterSkills,parseMonsterLanguages,parseConditionList,parseDamageTypeList} from '../src/monster-convert.mjs';
 
 test('CR de D&D vira ND do Skyfall com teto 12',()=>{
   assert.equal(crToNd('1/4'),1);
@@ -184,4 +184,87 @@ test('parseAttacksFromText separa múltiplos ataques por nome, alcance e tipo de
   assert.equal(atks[0].damageType,'piercing');
   assert.equal(atks[1].name,'Claw');
   assert.equal(atks[1].damageType,'slashing');
+});
+
+test('parseAttacksFromText lê o alcance de verdade (reach do corpo a corpo, range do à distância)',()=>{
+  const atks=parseAttacksFromText('Morningstar. Melee Weapon Attack: +12 to hit, reach 10 ft., one target. Hit: 21 (3d8 + 8) piercing damage.\n\nRock. Ranged Weapon Attack: +12 to hit, range 60/240 ft., one target. Hit: 30 (4d10 + 8) bludgeoning damage.');
+  assert.equal(atks[0].rangeFt,10);
+  assert.equal(atks[1].rangeFt,60);
+});
+
+test('Gigante das Nuvens (SRD): caso de estudo da T24 — alcance, arquétipo, proteções, perícias, idiomas e tamanho',()=>{
+  const mob={
+    name:'Cloud Giant',cr:9,abilities:{str:27,dex:10,con:22,int:12,wis:16,cha:16},
+    ac:14,hp:'200 (16d12 + 96)',speed:{walk:40},
+    type:'Huge giant, neutral good (50%) or neutral evil (50%)',size:'Huge',
+    savingThrows:'Con +10, Wis +7, Cha +7',skills:'Insight +7, Perception +7',
+    senses:'passive Perception 17',languages:'Common, Giant',
+    text:'Keen Smell. The giant has advantage on Wisdom (Perception) checks that rely on smell.\n\nActions\nMultiattack. The giant makes two morningstar attacks.\n\nMorningstar. Melee Weapon Attack: +12 to hit, reach 10 ft., one target. Hit: 21 (3d8 + 8) piercing damage.\n\nRock. Ranged Weapon Attack: +12 to hit, range 60/240 ft., one target. Hit: 30 (4d10 + 8) bludgeoning damage.'
+  };
+  const src=toSkyfallNpc(mob);
+  assert.equal(src.system.size,'huge');
+  assert.equal(src.system.resources.hp.max,288);
+  // Um arremesso não faz de ninguém "Atirador": tem corpo a corpo, então é Bruto.
+  assert.deepEqual(src.system.archetype,['brute']);
+  // A ficha lista os testes de CON/WIS/CHA — eles mandam, não os dois atributos mais altos.
+  assert.deepEqual(Object.entries(src.system.abilities).filter(([,v])=>v.proficient).map(([k])=>k).sort(),['cha','con','wis']);
+  assert.deepEqual(src.system.skills,{insi:{value:1},perc:{value:1}});
+  assert.deepEqual(src.system.languages,['common']);
+  assert.equal(src.items[0].system.range.value,3);
+  assert.equal(src.items[1].system.range.value,18);
+});
+
+test('skyfallSize mapeia o tamanho de D&D pra chave do Skyfall',()=>{
+  assert.equal(skyfallSize('Huge'),'huge');
+  assert.equal(skyfallSize('Large humanoid (goblinoid)'),'lg');
+  assert.equal(skyfallSize('Medium giant, chaotic evil'),'med');
+  assert.equal(skyfallSize(''),'');
+});
+
+test('parseSavingThrows aceita abreviação ou nome por extenso',()=>{
+  assert.deepEqual(parseSavingThrows('CON +10, WIS +7, CHA +7').sort(),['cha','con','wis']);
+  assert.deepEqual(parseSavingThrows('strength, wisdom').sort(),['str','wis']);
+  assert.deepEqual(parseSavingThrows(''),[]);
+});
+
+test('parseMonsterSkills aceita texto ("Stealth +6") ou objeto ({perception:5})',()=>{
+  assert.deepEqual(parseMonsterSkills('Stealth +6, Survival +2').sort(),['natu','stea']);
+  assert.deepEqual(parseMonsterSkills({perception:5,stealth:3}).sort(),['perc','stea']);
+  assert.deepEqual(parseMonsterSkills(''),[]);
+});
+
+test('parseMonsterLanguages só traz os que existem no Skyfall; o resto fica de fora',()=>{
+  assert.deepEqual(parseMonsterLanguages('Common, Giant'),['common']);
+  assert.deepEqual(parseMonsterLanguages('Giant, Undercommon'),[]);
+});
+
+test('parseConditionList e parseDamageTypeList lêem a lista pelo nome',()=>{
+  assert.deepEqual(parseConditionList('charmed, exhaustion, frightened, paralyzed, petrified, poisoned').sort(),['charmed','exhaustion','frightened','paralyzed','petrified','poisoned']);
+  assert.deepEqual(parseDamageTypeList('bludgeoning, piercing, and slashing from nonmagical attacks').sort(),['bludgeoning','piercing','slashing']);
+});
+
+test('resistências, imunidades e condição imune viram system.modifiers',()=>{
+  const mob={name:'Golem de Teste',cr:5,abilities:{str:18,dex:8,con:18,int:3,wis:8,cha:3},ac:17,hp:'60 (8d10+16)',speed:{walk:30},type:'construct',
+    dmgResistances:'bludgeoning, piercing, and slashing from nonmagical attacks',
+    dmgImmunities:'poison, psychic',
+    conditionImmunities:'charmed, exhaustion, frightened, paralyzed, petrified, poisoned',
+    text:'Slam. Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 10 (2d6+3) bludgeoning damage.'};
+  const src=toSkyfallNpc(mob);
+  assert.equal(src.system.modifiers.damage.taken.psychic,'imunity');
+  assert.equal(src.system.modifiers.damage.taken.poison,'imunity');
+  assert.equal(src.system.modifiers.damage.taken.bludgeoning,'resistance');
+  assert.deepEqual(src.system.modifiers.condition.imune.sort(),['charmed','exhaustion','frightened','paralyzed','petrified','poisoned']);
+});
+
+test('normalize5eTools e parseStatblock também repassam tamanho, perícias, idiomas e testes de resistência',()=>{
+  const tools=normalizeOpen5e({name:'X',strength_save:6,skills:{perception:5},languages:'Common',size:'Large',damage_immunities:'poison'});
+  assert.equal(tools.savingThrows,'strength');
+  assert.deepEqual(tools.skills,{perception:5});
+  assert.equal(tools.languages,'Common');
+  assert.equal(tools.size,'Large');
+  const stat=parseStatblock('Bugbear\nMedium humanoid (goblinoid), chaotic evil\nArmor Class 16\nHit Points 27 (5d8 + 5)\nSpeed 30 ft.\nSaving Throws Dex +2, Con +3\nSkills Stealth +6, Survival +2\nSenses darkvision 60 ft.\nLanguages Common, Goblin\nChallenge 1 (200 XP)\nActions\nMorningstar. Melee Weapon Attack: +4 to hit.');
+  assert.equal(stat.size,'Medium humanoid (goblinoid), chaotic evil');
+  assert.equal(stat.savingThrows,'Dex +2, Con +3');
+  assert.equal(stat.skills,'Stealth +6, Survival +2');
+  assert.equal(stat.languages,'Common, Goblin');
 });
