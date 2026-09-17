@@ -138,21 +138,39 @@ para o mestre preencher.
 
 ---
 
-## 4. Os 326 já importados
+## 4. Os 326 já importados · **feito em 17/09/2026, esperando publicação e o Yuri rodar**
 
 A ficha deles perdeu dados na importação. Testes de resistência, perícias, idiomas e
-tamanho **não ficaram guardados em lugar nenhum**, nem na biografia. Reconverter só com o
-que está no mundo não recupera isso. Caminho:
+tamanho não ficavam guardados em lugar nenhum, nem na biografia.
 
-1. Buscar de novo a fonte **SRD 5.1** (licença CC-BY 4.0) pela API pública do Open5e, com
-   uma ferramenta em `tools/` que salva em `.local/srd-monstros.json`. É a mesma fonte que
-   o conversor já sabe ler (`normalizeOpen5e`).
-2. `normalizeOpen5e` passa a ler também `saving_throws`/`strength_save`..., `skills`,
-   `languages`, `size`, `alignment`, `condition_immunities` e `damage_vulnerabilities`.
-3. **Reconverter é atualizar, não recriar:** uma macro casa o Actor pelo
-   `flags.quedaco.sourceName`, troca sistema e itens, e **preserva** nome, retrato, token,
-   pasta, `flags.quedaco.monster` (região) e o parágrafo "Habitat em Opath". Prévia antes,
-   com `APLICAR=false`, como as outras.
+1. ~~Buscar de novo a fonte SRD 5.1 pela API pública do Open5e.~~ **Feito** —
+   [tools/buscar-srd.mjs](../tools/buscar-srd.mjs), rodado de verdade contra a API:
+   **322 monstros baixados**, todos convertem sem erro pelo conversor atual.
+2. ~~`normalizeOpen5e` passa a ler também os campos novos.~~ **Feito** no passo 3 desta
+   tarefa, e **confirmado contra a resposta real da API** (não só suposição): `skills` é
+   `{nome: bônus}`, `languages` é string, `size` é string, `strength_save`/etc. são
+   números por atributo — bateu exatamente com o que já estava implementado.
+   **Achado rodando os 322 de verdade:** a lista de magia inata do Open5e tem uma linha
+   em branco *dentro* da própria descrição (antes de "At will:"), igual ao separador
+   entre traços — `parseInnateSpellcasting` cortava ali e perdia a lista inteira. Corrigido
+   (a fronteira certa é a próxima "Nome." de verdade, não qualquer linha em branco); com
+   os 322, foi de 8 pra **20 monstros com magia inata reconhecida**. Teste de regressão
+   com o texto real em `tests/monster-convert.test.mjs`.
+3. ~~Reconverter é atualizar, não recriar.~~ **Feito** —
+   [.local/reconverter-monstros-dnd.js](../.local/reconverter-monstros-dnd.js). Casa o
+   Actor pelo `flags.quedaco.sourceName`, troca só `system` e os Itens (apaga e recria
+   via `deleteEmbeddedDocuments`/`createEmbeddedDocuments` — é como Itens embutidos se
+   trocam, `Actor.update({items:...})` não funciona), e **preserva** nome, retrato, token,
+   pasta e `flags.quedaco.monster` (região/habitat — não é tocado porque a macro nunca
+   grava a chave `flags.quedaco.monster`). Prévia com `APLICAR=false`. O arquivo escolhido
+   vem de um seletor de arquivo do navegador — não precisa subir nada pro Foundry.
+
+**Falta:**
+- **Publicar a versão nova do módulo antes de rodar a macro** — ela importa
+  `/modules/quedaco/src/monster-convert.mjs` (o instalado), que ainda é o de antes desta
+  rodada. A macro detecta isso e avisa, mas não trava sozinha; confira.
+- **Rodar de verdade no mundo do Yuri.** `node tools/buscar-srd.mjs` roda no computador
+  dele (fora do Foundry) antes.
 
 ---
 
@@ -170,12 +188,14 @@ que está no mundo não recupera isso. Caminho:
    (`adapter.mjs: attachCreatureRoleItems`, 3 testes com compêndio falso) — **mas não
    verificado contra o compêndio de verdade dentro do Foundry.**
 6. **Falta:** biografia em ficha de campo (sem o arquivo de fichas, os blocos saem vazios).
-7. **Falta:** ferramenta SRD + macro de reconversão para os 326 já importados.
+7. ~~Ferramenta SRD + macro de reconversão para os 326 já importados.~~ **Feito 17/09** —
+   rodado de verdade contra a API (322 monstros, 0 erros na conversão). Ver seção 4.
 
 **Pronto quando:** o Gigante das Nuvens reconvertido mostra, na ficha do Skyfall,
-"Complexo (Bruto)", CON/SAB/CAR treinadas, Intuição e Percepção, Comum nos idiomas, Olfato
+"Bruto", CON/SAB/CAR treinadas, Intuição e Percepção, Comum nos idiomas, Olfato
 Aguçado, três itens de Magia Inata com usos, Ataque Múltiplo, Estrela da Manhã a 3 m e
-Rocha a 18 m. **Confirmado em código e testes (221, `npm test`), mas nunca visto na tela
-do Foundry** — os passos 4 e 5 dependem de compêndio real (`skyfall-core.npc-creation`),
-e só foram testados com um compêndio falso. Os passos 6 e 7 seguem pendentes; não bloqueiam
-o uso do conversor no dia a dia — o Gigante já sai bem melhor do que antes desta rodada.
+Rocha a 18 m. **Confirmado em código, testes (226, `npm test`) e contra os 322 monstros
+reais do SRD — mas nunca visto na tela do Foundry.** O passo 5 (hierarquia/arquétipo)
+depende de compêndio real (`skyfall-core.npc-creation`) e só foi testado com um compêndio
+falso; o passo 7 (reconversão) precisa da versão nova publicada antes de rodar no mundo.
+O passo 6 (biografia em ficha de campo) segue pendente; não bloqueia o uso do conversor.

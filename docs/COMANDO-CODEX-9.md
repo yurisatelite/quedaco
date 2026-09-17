@@ -293,6 +293,7 @@ Não são tarefas próprias; faça **só quando já estiver mexendo naquela part
 | Macros que gravam no mundo | Fazer backup do mundo antes de rodar. |
 | ~~JSON de comparação de monstro~~ | **Feito 17/09.** A tarefa 11 já usa a ficha real; leia `docs/T24-MONSTROS-COMPLETOS.md` antes de continuar — parte já está pronta (tamanho, proteções, perícias, idiomas, arquétipo, alcance), falta traços/magia/ataque múltiplo como Itens e os Itens de hierarquia/arquétipo copiados do compêndio. |
 | Monstros por região | Conferir a prévia de `.local/distribuir-monstros-por-regiao.js` e aplicar. A tarefa 10 mostra o resultado no painel. |
+| Reconverter os 326 monstros de D&D | Depois de publicar a versão nova: `node tools/buscar-srd.mjs` (fora do Foundry) e depois `.local/reconverter-monstros-dnd.js` (prévia primeiro). Backup do mundo antes. |
 
 ---
 

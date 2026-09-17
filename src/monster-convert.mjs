@@ -214,13 +214,19 @@ export function buildMultiattackItem(mob,attackNames){
  * frequência (à vontade / X por dia), com uses.max/per pros limitados. As magias ficam
  * listadas pelo nome de D&D — o mestre troca pelo equivalente do compêndio se houver. */
 export function parseInnateSpellcasting(text){
-  const m=String(text||'').match(/Innate Spellcasting\.([\s\S]*?)(?:\n\n|$)/i);
+  // Não corta no primeiro "\n\n": o próprio Open5e bota uma linha em branco DENTRO da
+  // descrição, entre a frase de abertura e "At will:" — cortar ali perdia a lista toda.
+  // Só para numa quebra que vem seguida de um novo bloco de verdade ("Nome.", com
+  // maiúscula e ponto — "At will:" não bate porque tem ":" no meio, não ".").
+  const m=String(text||'').match(/Innate Spellcasting\.([\s\S]*?)(?=\n{2,}[A-Z][A-Za-z' -]{2,60}?\.\s|$)/i);
   if(!m)return [];
   const body=m[1];
   const groups=[];
-  const atWill=body.match(/at will:\s*([^.]+)\./i);
+  // Termina em ponto final OU em quebra de linha — o Open5e separa "At will:" de
+  // "3/day each:" por \n, sem ponto nenhum (só descobri rodando contra a API de verdade).
+  const atWill=body.match(/at will:\s*([^\n.]+)/i);
   if(atWill)groups.push({label:'à vontade',max:null,per:null,spells:atWill[1].split(',').map(s=>s.trim()).filter(Boolean)});
-  const perDay=[...body.matchAll(/(\d+)\/day(?: each)?:\s*([^.]+)\./gi)];
+  const perDay=[...body.matchAll(/(\d+)\/day(?: each)?:\s*([^\n.]+)/gi)];
   for(const [,n,list] of perDay){
     groups.push({label:`${n}/dia`,max:Number(n),per:'day',spells:list.split(',').map(s=>s.trim()).filter(Boolean)});
   }

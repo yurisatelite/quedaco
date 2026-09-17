@@ -302,6 +302,16 @@ test('parseInnateSpellcasting separa por frequência (à vontade, X/dia) com a l
   assert.equal(groups[2].max,1);
 });
 
+test('parseInnateSpellcasting não perde a lista quando o Open5e bota uma linha em branco antes de "At will:" (achado rodando contra a API de verdade)',()=>{
+  const text='Keen Smell. The giant has advantage.\n\nInnate Spellcasting. The giant\'s innate spellcasting ability is Charisma. It can innately cast the following spells, requiring no material components:\n\nAt will: detect magic, fog cloud, light\n3/day each: feather fall, fly, misty step, telekinesis\n1/day each: control weather, gaseous form\n\nMultiattack. The giant makes two morningstar attacks.';
+  const groups=parseInnateSpellcasting(text);
+  assert.equal(groups.length,3);
+  assert.deepEqual(groups[0].spells,['detect magic','fog cloud','light']);
+  assert.deepEqual(groups[2].spells,['control weather','gaseous form']);
+  // não pode ter engolido o próximo bloco
+  assert.ok(!groups.some(g=>g.spells.some(s=>s.includes('Multiattack'))));
+});
+
 test('sem "Innate Spellcasting" no texto, não gera nenhum grupo de magia',()=>{
   assert.deepEqual(parseInnateSpellcasting('Bite. Melee Weapon Attack: +4 to hit.'),[]);
 });
