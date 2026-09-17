@@ -371,7 +371,11 @@ export class CampaignLibrary {
     ];
     const semente=`${regionId}|${npcs.length}`;
     let h=2166136261;for(let i=0;i<semente.length;i++){h^=semente.charCodeAt(i);h=Math.imul(h,16777619);}
-    return MOLDES.map((molde,i)=>({id:`auto-${i}`,text:molde((h>>>0)+i*7),auto:true}));
+    const source=i=>npcs[((h>>>0)+i*7)%npcs.length];
+    return MOLDES.map((molde,i)=>{
+      const npc=source(i);
+      return {id:`auto-${i}`,text:molde((h>>>0)+i*7),auto:true,actorId:npc.actor.uuid,placeId:npc.flag.placeId||''};
+    });
   }
   rollRegionRumors(regionId){
     const escritos=this.regionRumors[regionId]||[];
@@ -1830,6 +1834,58 @@ export class CampaignLibrary {
     else{const entries=mapView==='places'?PLACES:mapView==='beyond'?BEYOND:REGIONS;body=`${this.filters(mapView==='places'?REGIONS.map(i=>[i.id,i.name]):[],`Buscar ${mapView==='regions'?'região':'local'}`)}<div class="sy-library-grid">${entries.map(i=>this.card(i,mapView==='regions'?'region':'place',mapView==='beyond'?null:'map')).join('')}</div>`;}
     return `${fallback}${banner}<div class="sy-library-share-row">${shareArea}</div><nav class="sy-library-tabs" aria-label="Mapa">${tabs.map(([id,label])=>`<button data-op="lib-map" data-id="${id}" aria-current="${mapView===id?'page':'false'}">${label}</button>`).join('')}</nav>${body}`;
   }
+  /** Conferência somente-leitura para fechar uma região antes de usá-la como modelo.
+   * Cada lista contém o documento que a Mestra deve completar; nunca cria ou atualiza nada. */
+  regionReadiness(region){
+    const regionId=region?.id??'';
+    const places=PLACES.filter(place=>place.regionId===regionId);
+    const placeIds=new Set(places.map(place=>place.id));
+    const npcs=this.npcActors().map(actor=>({actor,flag:npcFlag(actor)??adoptNpcFlag(actor)})).filter(({actor,flag})=>{
+      const actorRegion=flag.regionId||PLACES.find(place=>place.id===flag.placeId)?.regionId||inferRegionId(actor);
+      return actorRegion===regionId;
+    });
+    const guilds=this.guildActors();
+    const scenes=Array.from(this.game.scenes??[]);
+    const scenesById=new Map(scenes.map(scene=>[scene.id,scene]));
+    const sceneFor=value=>typeof value==='string'?value:Array.isArray(value)?value[0]:'';
+    const missingScenePlaces=places.filter(place=>!scenesById.has(sceneFor(this.placeScenes[place.id])));
+    const regionSceneIds=Array.isArray(this.regionScenes[regionId])?this.regionScenes[regionId]:[];
+    const scenesOutsideAtlas=[...new Set(regionSceneIds)].filter(id=>{
+      const locality=resolveSceneLocality(this.sceneAtlas,id,{includeLegacy:false});
+      return locality?.regionId!==regionId;
+    }).map(id=>({id,name:scenesById.get(id)?.name??`Cena removida (${id})`}));
+    const seedPlaces=new Set(this.rumorSeeds(regionId).map(seed=>seed.placeId).filter(Boolean));
+    const writtenPlaces=new Set((this.regionRumors[regionId]??[]).map(rumor=>rumor.placeId).filter(Boolean));
+    const localitiesWithoutRumor=places.filter(place=>npcs.some(({flag})=>flag.placeId===place.id)&&!seedPlaces.has(place.id)&&!writtenPlaces.has(place.id));
+    const list=predicate=>npcs.filter(predicate).map(row=>row.actor);
+    return {
+      noLegacy:list(({actor})=>!this.npcLegacy(actor).legacy),
+      noHeritage:list(({actor})=>!this.npcLegacy(actor).heritage),
+      noPlace:list(({flag})=>!placeIds.has(flag.placeId)),
+      noGuild:list(({flag})=>!npcGuildLabel(flag,guilds).trim()),
+      placeholderPortrait:list(({actor})=>/mystery-man(?:\.svg)?(?:$|[?#])/i.test(String(actor.img??''))),
+      merchantEmptyStock:list(({flag})=>flag.role==='merchant'&&!(Array.isArray(flag.shop?.stock)&&flag.shop.stock.length)),
+      missingScenePlaces,
+      scenesOutsideAtlas,
+      localitiesWithoutRumor
+    };
+  }
+  renderRegionReadiness(region){
+    const report=this.regionReadiness(region);
+    const npcLinks=actors=>actors.map(actor=>button('npc-edit',actor.id,actor.name)).join('');
+    const placeLinks=places=>places.map(place=>button('place',place.id,place.name)).join('');
+    const sceneLinks=scenes=>scenes.map(scene=>button('open-scene',scene.id,scene.name)).join('');
+    const rows=[
+      ['NPC sem legado',report.noLegacy,npcLinks],['NPC sem herança',report.noHeritage,npcLinks],
+      ['NPC sem local',report.noPlace,npcLinks],['NPC sem guilda',report.noGuild,npcLinks],
+      ['NPC com retrato provisório',report.placeholderPortrait,npcLinks],['Mercador com estoque vazio',report.merchantEmptyStock,npcLinks],
+      ['Localidade sem cena',report.missingScenePlaces,placeLinks],['Cena regional fora do Mapa Imersivo',report.scenesOutsideAtlas,sceneLinks],
+      ['Localidade com NPC sem rumor possível',report.localitiesWithoutRumor,placeLinks]
+    ];
+    const pending=rows.reduce((total,[,entries])=>total+entries.length,0);
+    const row=([label,entries,links])=>`<li class="sy-region-readiness-row ${entries.length?'is-pending':'is-ready'}"><strong>${e(label)}</strong><span>${entries.length}</span>${entries.length?`<div>${links(entries)}</div>`:'<small>pronto</small>'}</li>`;
+    return `<section class="sy-region-readiness"><header><div><small>CONFERÊNCIA DA REGIÃO</small><h3>${pending?'Pendências para o modelo':'Região pronta para servir de modelo'}</h3></div><span class="sy-region-readiness-badge ${pending?'is-pending':'is-ready'}">${pending?`${pending} pendência${pending===1?'':'s'}`:'✓ pronta'}</span></header><p>Listas de leitura: clique num NPC para editar a ficha, numa localidade para abri-la ou numa cena para conferi-la.</p><ul>${rows.map(row).join('')}</ul></section>`;
+  }
   renderRegionView(region){
     const resolved=this.image('region',region.id,'','icons/svg/mountain.svg');
     const heroImg=this.regionImages[region.id]||resolved.src;
@@ -1879,7 +1935,7 @@ export class CampaignLibrary {
     const sceneActions=selScene?`<div class="sy-library-share-row">${button('open-scene',selScene.id,`Abrir ${selScene.name}`)}${button('activate-scene',selScene.id,'Ativar p/ jogadores')}${button('region-main-scene',`${region.id}:${selScene.id}`,mainId===selScene.id?'★ Já é o principal':'Tornar principal')}${button('region-scene',`${region.id}:${selScene.id}`,'Desvincular')}</div><div class="sy-region-scene-info"><label>Anotações deste mapa<textarea name="regionSceneInfo" data-id="${e(selScene.id)}" rows="3">${e(this.regionSceneInfo[selScene.id]??'')}</textarea></label>${button('region-scene-info',selScene.id,'Salvar anotação')}</div>`:(mainId?`<div class="sy-library-share-row">${button('open-scene',mainId,'Abrir mapa principal')}</div>`:'');
     const heroSceneId=selScene?.id||mainId||null;
     const heroFigure=`<div class="sy-region-hero">${cardFigure(heroSrc,region.name,'wide',resolved.fallbacks,{op:'region-img',id:region.id})}${heroSceneId?`<button class="sy-region-hero-open" data-op="lib-open-scene" data-id="${e(heroSceneId)}" title="Abrir esta cena"><i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i> Abrir</button>`:''}</div>`;
-    return `<div class="sy-region-view" style="--sy-region:${e(color)}"><div class="sy-region-top">${button('region-back','','← Voltar')}<h2>${e(region.name)}</h2>${button('region-img',region.id,this.regionImages[region.id]?'Trocar imagem':'Definir imagem')}${this.regionImages[region.id]?button('region-img',`${region.id}:`,'Remover imagem'):''}${button('map-focus',region.id,'⌖ Ver no mapa de Opath')}</div><div class="sy-region-body"><div class="sy-region-main">${heroFigure}${sceneActions}<h4>Mapas da região ${selScene?`· ${e(selScene.name)}`:'· principal'}</h4>${carousel}<nav class="sy-library-tabs" aria-label="Detalhe da região">${[['rumores','Rumores'],['mapas','Mapas e cenas']].map(([id,l])=>`<button data-op="lib-region-tab" data-id="${id}" aria-current="${tab===id?'page':'false'}">${l}</button>`).join('')}</nav>${tab==='rumores'?rumoresHtml:mapasHtml}</div><aside class="sy-region-npcs"><h4>NPCs ${selScene?`· ${e(selScene.name)}`:selNone?'· sem cena':'· toda a região'} <span class="sy-region-npc-count">${listNpcs.length}</span></h4>${npcRoleFilter}<p class="sy-note">Use o seletor de cada linha para pôr o NPC num mapa. “Sem cena” lista quem falta.</p><div class="sy-region-npc-list">${npcRows}</div>${this.renderNpcEditor(this.actorById(this.state.npcActor))}</aside></div></div>`;
+    return `<div class="sy-region-view" style="--sy-region:${e(color)}"><div class="sy-region-top">${button('region-back','','← Voltar')}<h2>${e(region.name)}</h2>${button('region-img',region.id,this.regionImages[region.id]?'Trocar imagem':'Definir imagem')}${this.regionImages[region.id]?button('region-img',`${region.id}:`,'Remover imagem'):''}${button('map-focus',region.id,'⌖ Ver no mapa de Opath')}</div>${this.renderRegionReadiness(region)}<div class="sy-region-body"><div class="sy-region-main">${heroFigure}${sceneActions}<h4>Mapas da região ${selScene?`· ${e(selScene.name)}`:'· principal'}</h4>${carousel}<nav class="sy-library-tabs" aria-label="Detalhe da região">${[['rumores','Rumores'],['mapas','Mapas e cenas']].map(([id,l])=>`<button data-op="lib-region-tab" data-id="${id}" aria-current="${tab===id?'page':'false'}">${l}</button>`).join('')}</nav>${tab==='rumores'?rumoresHtml:mapasHtml}</div><aside class="sy-region-npcs"><h4>NPCs ${selScene?`· ${e(selScene.name)}`:selNone?'· sem cena':'· toda a região'} <span class="sy-region-npc-count">${listNpcs.length}</span></h4>${npcRoleFilter}<p class="sy-note">Use o seletor de cada linha para pôr o NPC num mapa. “Sem cena” lista quem falta.</p><div class="sy-region-npc-list">${npcRows}</div>${this.renderNpcEditor(this.actorById(this.state.npcActor))}</aside></div></div>`;
   }
   regionNpcCard(actor,region){
     const flag=npcFlag(actor)??adoptNpcFlag(actor);

@@ -790,3 +790,41 @@ test('shouldAskReleaseOnActivate (T7): configuração desligada, sem localidade 
   assert.equal(shouldAskReleaseOnActivate({askEnabled:true,locality:{regionId:'thurthur',placeId:''},npcLocalities:new Set(['region:thurthur'])}),false);
   assert.equal(shouldAskReleaseOnActivate({askEnabled:true,locality:{regionId:'thurthur',placeId:''},npcLocalities:vazio}),true);
 });
+
+test('conferência da região conta cada pendência, abre os documentos certos e marca a região pronta',()=>{
+  const region=REGIONS.find(entry=>entry.id==='thurthur'),places=PLACES.filter(place=>place.regionId===region.id);
+  const guild={id:'guilda',uuid:'Actor.guilda',name:'Companhia',type:'guild',system:{members:[]},flags:{quedaco:{appendix:{}}}};
+  const flag=(placeId,extra={})=>({role:'extra',regionId:region.id,placeId,guildUuid:guild.uuid,guild:'',shop:{stock:[{uuid:'Item.x'}]},...extra});
+  const actor=(id,items,placeId,extra={},img='retrato.webp')=>({id,uuid:`Actor.${id}`,name:id,type:'character',img,items,system:{level:{value:2}},flags:{quedaco:{npc:flag(placeId,extra)}}});
+  const complete=[{type:'legacy',name:'Legado'},{type:'heritage',name:'Herança'}];
+  const cases=[
+    actor('sem-legado',[{type:'heritage',name:'Herança'}],places[0].id),
+    actor('sem-heranca',[{type:'legacy',name:'Legado'}],places[0].id),
+    actor('sem-local',complete,''),
+    actor('sem-guilda',complete,places[1].id,{guildUuid:'',guild:''}),
+    actor('retrato-provisorio',complete,places[2].id,{},'icons/svg/mystery-man.svg'),
+    actor('mercador-vazio',complete,places[3].id,{role:'merchant',shop:{stock:[]}})
+  ];
+  const sceneByPlace=Object.fromEntries(places.map((place,index)=>[place.id,`cena-${index}`]));
+  const scenes=Object.values(sceneByPlace).map(id=>({id,name:id}));scenes.push({id:'fora-atlas',name:'Cena fora do atlas'});
+  const store={placeScenes:sceneByPlace,regionScenes:{[region.id]:['fora-atlas']},regionRumors:{},sceneAtlas:{schema:1,providers:{stairways:false,native:false},scenes:{},edges:{}}};
+  const game={user:{isGM:true},actors:[...cases,guild],scenes,settings:{get:(_m,key)=>store[key]??{}}};
+  const library=new CampaignLibrary(game,{items:[]});
+  library.rumorSeeds=()=>[];
+  const report=library.regionReadiness(region);
+  assert.deepEqual(report.noLegacy.map(actor=>actor.id),['sem-legado']);
+  assert.deepEqual(report.noHeritage.map(actor=>actor.id),['sem-heranca']);
+  assert.deepEqual(report.noPlace.map(actor=>actor.id),['sem-local']);
+  assert.deepEqual(report.noGuild.map(actor=>actor.id),['sem-guilda']);
+  assert.deepEqual(report.placeholderPortrait.map(actor=>actor.id),['retrato-provisorio']);
+  assert.deepEqual(report.merchantEmptyStock.map(actor=>actor.id),['mercador-vazio']);
+  assert.equal(report.missingScenePlaces.length,0);
+  assert.deepEqual(report.scenesOutsideAtlas.map(scene=>scene.id),['fora-atlas']);
+  assert.ok(report.localitiesWithoutRumor.some(place=>place.id===places[0].id));
+  const html=library.renderRegionReadiness(region);
+  assert.match(html,/CONFERÊNCIA DA REGIÃO/);assert.match(html,/data-op="lib-npc-edit" data-id="sem-legado"/);assert.match(html,/data-op="lib-place"/);assert.match(html,/data-op="lib-open-scene" data-id="fora-atlas"/);
+
+  const readyStore={placeScenes:sceneByPlace,regionScenes:{},regionRumors:{},sceneAtlas:{schema:1,providers:{stairways:false,native:false},scenes:{},edges:{}}};
+  const ready=new CampaignLibrary({user:{isGM:true},actors:[],scenes,settings:{get:(_m,key)=>readyStore[key]??{}}},{items:[]});
+  assert.match(ready.renderRegionReadiness(region),/Região pronta para servir de modelo/);
+});

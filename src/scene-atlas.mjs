@@ -376,7 +376,7 @@ function addNodeCounts(node,edges){
  * `place:`/`region:`), depois os mapas legados `placeScenes`/`regionScenes`. Devolve
  * `{regionId,placeId}` (`placeId` vazio quando só a região é conhecida) ou `null` — cena
  * fora do atlas e sem mapa legado. Usado pelo painel da cena ativa (T6). */
-export function resolveSceneLocality(atlas,sceneId,{placeScenes={},regionScenes={},places=PLACES,regions=REGIONS}={}){
+export function resolveSceneLocality(atlas,sceneId,{placeScenes={},regionScenes={},places=PLACES,regions=REGIONS,includeLegacy=true}={}){
   const value=normalizeSceneAtlas(atlas);
   const id=cleanId(sceneId);
   if(!id)return null;
@@ -394,6 +394,7 @@ export function resolveSceneLocality(atlas,sceneId,{placeScenes={},regionScenes=
     if(parsed?.type==='scene'){cursor=parsed.id;continue;}
     break; // 'unassigned' ou parentId inválido: não sobe mais, cai no legado abaixo
   }
+  if(!includeLegacy)return null;
   const {placeByScene,regionByScene}=legacyParentMaps(places,regions,placeScenes,regionScenes);
   const legacy=parseParentId(placeByScene.get(id)??regionByScene.get(id)??'');
   if(legacy?.type==='place'){

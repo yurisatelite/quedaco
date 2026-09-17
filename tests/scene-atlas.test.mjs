@@ -128,5 +128,6 @@ test('resolveSceneLocality cai nos mapas legados (placeScenes/regionScenes) quan
   const atlas=createSceneAtlas();
   assert.deepEqual(resolveSceneLocality(atlas,'cena-antiga',{placeScenes:{foice:'cena-antiga'}}),{regionId:'huma',placeId:'foice'});
   assert.deepEqual(resolveSceneLocality(atlas,'cena-regiao',{regionScenes:{huma:['cena-regiao']}}),{regionId:'huma',placeId:''});
+  assert.equal(resolveSceneLocality(atlas,'cena-antiga',{placeScenes:{foice:'cena-antiga'},includeLegacy:false}),null,'auditoria distingue vínculo legado de cena organizada no atlas');
   assert.equal(resolveSceneLocality(atlas,'nunca-vinculada'),null);
 });

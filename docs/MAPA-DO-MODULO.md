@@ -76,6 +76,7 @@ de progresso, não repita aqui: **[PROGRESSO-MAPA-IMERSIVO.md](PROGRESSO-MAPA-IM
 | Cor de região/pasta | [regions.mjs](../src/regions.mjs) |
 | Pesos de localidade (capital sempre lidera) | [locality.mjs](../src/locality.mjs) |
 | Moedas | `book-world.mjs: COIN_COMMON, COIN_FACES` |
+| Conferência da região-espelho | `library.mjs: regionReadiness, renderRegionReadiness`, no topo de `renderRegionView`; cruza NPCs, cenas, atlas e rumores sem gravar. `scene-atlas.mjs: resolveSceneLocality({includeLegacy:false})` separa cena apenas vinculada pelos settings de uma realmente organizada no Mapa Imersivo. |
 
 ## Itens e Imbuir
 
