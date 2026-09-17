@@ -115,3 +115,10 @@ Formato de cada entrada:
 **Não funcionou / deixei de fora:** a aparência e os atalhos ainda precisam de conferência visual num mundo de teste do Foundry. Rumores escritos à mão continuam regionais; para a checagem por localidade, os ganchos automáticos agora carregam o NPC e a localidade de origem.
 **Checklist da regra 1:** tela ✔ · ações ✔ (somente ações existentes) · app.mjs ✔ (encaminhamento existente) · CSS ✔ · teste ✔
 **Precisa de decisão:** nenhuma.
+
+### 17/09/2026 — Tarefa 8
+**Fiz:** retirei da tela a cobertura regional de NPCs, a importação de guildas já concluída e a instrução “Onde colocar as imagens” do Mapa. Criei um cabeçalho compartilhado para NPCs, Guildas, Monstros e Itens: pesquisa vem antes, filtros vêm em seguida, e Guildas mantém abas à esquerda e ações à direita na mesma faixa. “Guardar as sem membro” agora tem a aparência de ação secundária.
+**Funcionou:** testes confirmam que os blocos retirados não voltam a ser renderizados, que NPCs e Guildas usam o cabeçalho com “Pesquisar” e “Filtrar por”, e que o mapa configurado não mostra mais a instrução removida. O CSS reserva uma quebra segura para 700 px, levando as ações abaixo das abas sem sobreposição.
+**Não funcionou / deixei de fora:** a geração por cobertura permanece como ação interna porque ainda há automação e teste para ela; somente o painel antigo foi removido da interface.
+**Checklist da regra 1:** tela ✔ · ações ✔ (as existentes preservadas) · app.mjs ✔ (encaminhamento existente) · CSS ✔ · teste ✔
+**Precisa de decisão:** nenhuma.

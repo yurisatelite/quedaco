@@ -22,12 +22,13 @@ test('escopo normaliza contagem e preserva todos os campos esperados pela macro'
   });
 });
 
-test('botão de cobertura chama a macro com o contexto completo',async()=>{
+test('ação de geração preservada chama a macro com o contexto completo',async()=>{
   const calls=[],game={user:{isGM:true},actors:[],macros:{getName:()=>({execute:async scope=>calls.push(scope)})},settings:{get:()=>''}};
   const library=new CampaignLibrary(game,{items:[]});
   await library.action('lib-generate-npc','mirmir||ferreiro');
   assert.equal(calls.length,1);assert.equal(calls[0].quedaco.regionName,'Deserto de Mirmir');assert.equal(calls[0].quedaco.placeId,'');assert.match(calls[0].quedaco.prompt,/ferreiro/i);
-  assert.match(library.render('npcs'),/data-op="lib-generate-npc-batch"/);
+  assert.doesNotMatch(library.render('npcs'),/Cobertura regional de NPCs/);
+  assert.doesNotMatch(library.render('npcs'),/data-op="lib-generate-npc-batch"/);
 });
 
 test('lote limita a cinco lacunas e informa cada chamada à macro',async()=>{

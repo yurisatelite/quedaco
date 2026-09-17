@@ -105,6 +105,7 @@ test('mapa configurado usa visor único, foca região e abre detalhe de cidade',
   const settings={get:(_module,key)=>store[key],set:async(_module,key,value)=>{store[key]=value;}};
   const gm=new CampaignLibrary({user:{isGM:true},settings,actors:[],scenes:[]},{items:[]});
   assert.match(gm.render('map'),/data-map-viewport/);
+  assert.doesNotMatch(gm.render('map'),/Onde colocar as imagens/);
   assert.match(gm.render('map'),/data-op="lib-map-focus" data-id="mirmir"/);
   await gm.action('lib-map-focus','mirmir',{viewW:800,viewH:500});
   assert.equal(gm.state.map.focus,'mirmir');
@@ -789,6 +790,18 @@ test('shouldAskReleaseOnActivate (T7): configuração desligada, sem localidade 
   // só região (sem local): confere pela chave region:
   assert.equal(shouldAskReleaseOnActivate({askEnabled:true,locality:{regionId:'thurthur',placeId:''},npcLocalities:new Set(['region:thurthur'])}),false);
   assert.equal(shouldAskReleaseOnActivate({askEnabled:true,locality:{regionId:'thurthur',placeId:''},npcLocalities:vazio}),true);
+});
+
+test('topos de NPCs e Guildas separam pesquisa e filtros sem os menus de criação antigos',()=>{
+  const npc={id:'n1',uuid:'Actor.n1',name:'Brida',type:'character',items:[],system:{level:{value:2}},flags:{quedaco:{npc:{role:'merchant',regionId:'thurthur',placeId:'alberich',shop:{stock:[]}}}}};
+  const guild={id:'g1',uuid:'Actor.g1',name:'Guilda do Porto',type:'guild',items:[],system:{motto:'',abilities:{},members:[]},flags:{quedaco:{appendix:{kind:'guilda',seals:[]}}}};
+  const game={user:{isGM:true},actors:[npc,guild],users:[],packs:[],folders:[],scenes:[],settings:{get:(_m,key)=>key==='sharedContent'?{}:(key==='guildArchived'?[]:'')}};
+  const library=new CampaignLibrary(game,{items:[],entry:()=>null});
+  const npcs=library.render('npcs'),guilds=library.render('guilds');
+  for(const html of [npcs,guilds]){assert.match(html,/sy-panel-header/);assert.match(html,/>Pesquisar</);assert.match(html,/>Filtrar por</);}
+  assert.doesNotMatch(npcs,/Cobertura regional de NPCs/);
+  assert.doesNotMatch(guilds,/Importar guildas do apêndice/);
+  assert.match(guilds,/sy-panel-header-top[\s\S]*sy-panel-header-actions/);
 });
 
 test('conferência da região conta cada pendência, abre os documentos certos e marca a região pronta',()=>{

@@ -35,6 +35,20 @@
 .sy-creator .sy-library-filters{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:18px 0}
 .sy-creator .sy-library-filters label{flex:1 1 230px;margin:0}
 .sy-creator .sy-library-filters small{padding-bottom:10px;min-width:80px}
+.sy-creator .sy-visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.sy-creator .sy-panel-header{display:grid;gap:10px;margin:16px 0}
+.sy-creator .sy-panel-header-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sy-creator .sy-panel-header-top .sy-library-tabs{margin:0}
+.sy-creator .sy-panel-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-left:auto}
+.sy-creator .sy-panel-header-actions button{width:auto;margin:0}
+.sy-creator .sy-panel-header-actions .sy-secondary{background:#2a3039;border-color:#69798a;color:#d7e0e8}
+.sy-creator .sy-panel-search,.sy-creator .sy-panel-filter{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.sy-creator .sy-panel-search>strong,.sy-creator .sy-panel-filter>strong{flex:0 0 92px;color:#9fc4d8;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.sy-creator .sy-panel-search>div,.sy-creator .sy-panel-filter>div{display:flex;align-items:flex-end;gap:10px;flex:1 1 260px;flex-wrap:wrap}
+.sy-creator .sy-panel-search-input{flex:1 1 260px;margin:0}.sy-creator .sy-panel-search-input input{margin:0}
+.sy-creator .sy-panel-search .sy-library-count{padding:0;min-width:80px;color:#9fc4d8}
+.sy-creator .sy-panel-filter-select{width:auto;margin:0}.sy-creator .sy-panel-filter-select select{margin:0}
+@media(max-width:700px){.sy-creator .sy-panel-header-top{align-items:flex-start}.sy-creator .sy-panel-header-actions{margin-left:0;flex-basis:100%;justify-content:flex-start}.sy-creator .sy-panel-search>strong,.sy-creator .sy-panel-filter>strong{flex-basis:100%}}
 .sy-creator .sy-library-detail,.sy-creator .sy-library-guide{position:relative;padding:18px;border:1px solid #4da1b4;border-radius:9px;background:#182630;margin:14px 0}
 .sy-creator .sy-library-detail h3{font-size:27px}
 .sy-creator .sy-library-detail p{line-height:1.65;max-width:100ch}
