@@ -1,11 +1,13 @@
 import {CreatorApp} from './app.mjs';
 import {MODULE_ID,assertCompatible} from './adapter.mjs';
 import {registerBranding,loadBranding} from './branding.mjs';
-import {registerLibrarySettings} from './library.mjs';
+import {ASK_RELEASE_ON_ACTIVATE_KEY,CampaignLibrary,NPC_LOCALITIES_KEY,REGION_SCENES_KEY,SCENES_KEY,SCENE_ATLAS_KEY,registerLibrarySettings,shouldAskReleaseOnActivate} from './library.mjs';
 import {CHANGELOG,entriesSince,isNewer} from './changelog.mjs';
 import {bindForienQuestHooks} from './forien-quests.mjs';
 import {registerArcaneOverload} from './arcane-overload.mjs';
 import {guildLevel} from './guilds.mjs';
+import {resolveSceneLocality} from './scene-atlas.mjs';
+import {PLACES,REGIONS} from './book-world.mjs';
 let app;
 const LAST_SEEN_VERSION='lastSeenVersion';
 const escape=value=>String(value??'').replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
@@ -70,4 +72,36 @@ async function syncGuildLevels(){
 Hooks.on('updateActor',(actor,changed)=>{
   if(actor.type==='guild'&&foundry.utils.hasProperty(changed,'system.members'))void syncGuildLevels();
   else if(actor.type==='character'&&foundry.utils.hasProperty(changed,'system.level'))void syncGuildLevels();
+});
+// T6 (Mapa Imersivo): o painel da cena ativa lê a Scene ativa do canvas; ela só muda
+// depois que o canvas troca de verdade. Nada abre sozinho — só re-renderiza quem já
+// está com a janela aberta na aba Mapa.
+Hooks.on('canvasReady',()=>{
+  if(app?.rendered&&app.area==='map'&&game.user?.isGM)app.render(false);
+});
+// T7 (Mapa Imersivo): ao ativar uma cena cuja localidade ainda não foi liberada,
+// pergunta antes de liberar. Nunca libera sozinho, e uma configuração desliga a
+// pergunta. Funciona sem o painel do QUEDAÇO estar aberto — a leitura/gravação usa os
+// settings direto, e o `setNpcLocality` de uma instância descartável faz a gravação.
+Hooks.on('updateScene',(scene,changed)=>{
+  if(!game.user?.isGM||changed?.active!==true)return;
+  const askEnabled=Boolean(game.settings.get(MODULE_ID,ASK_RELEASE_ON_ACTIVATE_KEY));
+  const atlas=game.settings.get(MODULE_ID,SCENE_ATLAS_KEY);
+  const placeScenes=game.settings.get(MODULE_ID,SCENES_KEY)||{};
+  const regionScenes=game.settings.get(MODULE_ID,REGION_SCENES_KEY)||{};
+  const locality=resolveSceneLocality(atlas,scene.id,{placeScenes,regionScenes});
+  const npcLocalities=new Set(game.settings.get(MODULE_ID,NPC_LOCALITIES_KEY)||[]);
+  if(!shouldAskReleaseOnActivate({askEnabled,locality,npcLocalities}))return;
+  const place=locality.placeId?PLACES.find(p=>p.id===locality.placeId):null;
+  const region=REGIONS.find(r=>r.id===locality.regionId);
+  const nome=place?.name??region?.name??'esta localidade';
+  foundry.applications.api.DialogV2.confirm({
+    window:{title:'Liberar localidade'},
+    content:`<p>O grupo chegou em <strong>${escape(nome)}</strong>. Liberar aos jogadores?</p>`,
+    yes:{label:'Liberar',callback:async()=>{
+      const kind=locality.placeId?'place':'region';
+      await (app?.library??new CampaignLibrary(game,null)).setNpcLocality(kind,locality.placeId||locality.regionId,true);
+    }},
+    no:{label:'Agora não'}
+  });
 });

@@ -6,7 +6,7 @@
 >
 > **Atualize esta tabela sempre que criar ou mexer numa área** — é o que faz o próximo
 > pedido ("melhorar a loja", "mexer nas guildas"...) começar direto na implementação, sem
-> perder uma rodada só relendo o código. Ver também `docs/PROGRESSO-MAPA-CENAS.md` (a
+> perder uma rodada só relendo o código. Ver também `docs/PROGRESSO-MAPA-IMERSIVO.md` (a
 > versão "por etapas" disto, pra uma funcionalidade grande em andamento) e
 > `docs/REFERENCIA-SKYFALL.md` (o sistema por baixo, não o módulo).
 
@@ -40,7 +40,7 @@ por atitude, condições do livro e pechincha.
 | Cobertura regional (arquétipos esperados x existentes) | `npcs.mjs: npcCoverage` — **a exibição na tela some na tarefa 8** |
 | Cartão de NPC na tela | `library.mjs: npcCard` (aba NPCs, e reaproveitado em `npcsForLocation`) |
 | Geração de NPC novo | macro `.local/Skyfall-Criador-de-Conteudo.js` (fora do git) |
-| Falta conhecido | painel da cena ativa (T6) ainda não reaproveita `npcsForLocation` no lugar certo — ver `docs/PROGRESSO-MAPA-CENAS.md` |
+| Falta conhecido | nada pendente aqui — o painel da cena ativa (T6) já reaproveita `npcsForLocation`; ver `docs/PROGRESSO-MAPA-IMERSIVO.md` |
 
 ## Guildas e Hansas
 
@@ -53,10 +53,10 @@ por atitude, condições do livro e pechincha.
 | Macro (antes da T4 existir na tela) | `.local/guildas-em-jogo.js` |
 | Testes | [guilds.test.mjs](../tests/guilds.test.mjs) — cobre os casos de proteção da P.I.P.I. |
 
-## Mapa, atlas de cenas e teletransporte
+## Mapa Imersivo (mapa, atlas de cenas, teletransporte, cena ativa)
 
-Funcionalidade grande, em andamento — tem doc próprio de progresso, não repita aqui:
-**[PROGRESSO-MAPA-CENAS.md](PROGRESSO-MAPA-CENAS.md)**.
+Nome dado pelo Yuri em 17/09/2026. Funcionalidade grande, em andamento — tem doc próprio
+de progresso, não repita aqui: **[PROGRESSO-MAPA-IMERSIVO.md](PROGRESSO-MAPA-IMERSIVO.md)**.
 
 ## Monstros (catálogo do livro + importados de outros jogos)
 

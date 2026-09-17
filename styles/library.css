@@ -516,6 +516,17 @@
 .sy-creator .sy-guild-tabs{margin:10px 0 6px}
 .sy-creator .sy-guild-mesa{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;background:#2a2114;border:1px solid #d8ad4c;color:#f0d795;font-size:11px;font-weight:700;white-space:nowrap;cursor:help}
 
+/* ── Cena ativa (T6, Mapa Imersivo): tudo da localidade da cena que está rodando agora ── */
+.sy-creator .sy-active-scene{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;padding:10px 12px;border:1px solid var(--sy-region,#4a5a6b);border-left:4px solid var(--sy-region,#4a5a6b);border-radius:8px;background:#161f27}
+.sy-creator .sy-active-scene-empty{padding:8px 12px;border-radius:8px;background:#161f27;color:#b9cbdb}
+.sy-creator .sy-active-scene-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.sy-creator .sy-active-scene-head small{color:#8ea6bb;letter-spacing:.08em}
+.sy-creator .sy-active-scene-head h3{margin:0;flex:1 1 auto;color:var(--sy-region,#cfe6ff)}
+.sy-creator .sy-active-scene-head button{width:auto;padding:5px 10px;font-size:12px}
+.sy-creator .sy-active-scene-body{display:flex;flex-direction:column;gap:10px}
+.sy-creator .sy-active-scene-merchant{display:flex;flex-direction:column;gap:4px;padding:6px 8px;border:1px solid #2c3947;border-radius:6px}
+.sy-creator .sy-active-scene-rumors .sy-rumor{margin:6px 0 0}
+
 /* ── Atlas de cenas: região → local → mapas internos, e as ligações entre eles ── */
 .sy-creator .sy-map-display{margin:4px 0 12px}
 .sy-creator .sy-scene-atlas{display:grid;gap:12px}

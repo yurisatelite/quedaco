@@ -141,7 +141,12 @@ Cada linha com número; clicar abre o editor do NPC ou o local. Quando tudo zera
 **Pronto quando:** checklist da regra 1 e um teste com uma região falsa cobrindo cada
 contagem, inclusive o selo de pronta.
 
-### Tarefa 6 — Painel da cena ativa  · *grande — especificada abaixo*
+### Tarefa 6 — Painel da cena ativa  · **concluída em 17/09/2026, não verificada no Foundry**
+
+> Feita como parte do **Mapa Imersivo** (nome dado pelo Yuri em 17/09/2026). Ver
+> `docs/PROGRESSO-MAPA-IMERSIVO.md` (etapa D) e `src/library.mjs: renderActiveScenePanel`.
+> A especificação abaixo continua valendo como registro do que foi pedido e construído —
+> **não codifique de novo**; se algo estiver errado, é ajuste, não reescrita.
 
 **Por quê:** durante a sessão, o que o mestre precisa está espalhado em abas. O atlas
 agora sabe em que região e localidade cada cena fica, então dá para juntar tudo no momento
@@ -171,7 +176,10 @@ libere nada sem clique.
 **Pronto quando:** checklist da regra 1; teste com `canvas.scene` falso cobrindo cena
 dentro de outra cena, cena direto numa localidade, cena só com região e cena fora do atlas.
 
-### Tarefa 7 — Perguntar se libera ao ativar cena  · *média — depende da 6*
+### Tarefa 7 — Perguntar se libera ao ativar cena  · **concluída em 17/09/2026, não verificada no Foundry**
+
+> Ver `docs/PROGRESSO-MAPA-IMERSIVO.md` (etapa E), `src/library.mjs: shouldAskReleaseOnActivate`
+> e o `Hooks.on('updateScene')` em `src/main.mjs`. **Não codifique de novo.**
 
 Quando o mestre **ativa** uma cena (`Hooks.on('updateScene')` com `active` passando a
 `true`) cuja localidade ainda não está liberada, um `DialogV2.confirm`: "O grupo chegou em
@@ -323,3 +331,10 @@ Mesmo formato da 8ª, no mesmo commit da tarefa:
 **Não funcionou / deixei de fora:** o roteiro ainda não foi executado dentro do Foundry; essa conferência depende da cópia do mundo oficial e das duas sessões Mestra/jogador que ficam com o Yuri.
 **Checklist da regra 1:** tela — · ações — · app.mjs — · CSS — · teste — (tarefa somente documental)
 **Precisa de decisão:** nenhuma.
+
+### 17/09/2026 — Tarefas 6 e 7 (Claude/Sonnet) — nome dado: "Mapa Imersivo"
+**Fiz:** o Yuri batizou a funcionalidade de "Mapa Imersivo" (antes só "atlas de cenas"); renomeei o rótulo na tela ("Atlas de cenas" → "Mapa Imersivo") e nos documentos. `src/scene-atlas.mjs: resolveSceneLocality` acha a localidade de uma cena subindo a cadeia `scene:` até `place:`/`region:`, com fallback pros mapas legados `placeScenes`/`regionScenes`. `src/library.mjs: renderActiveScenePanel` monta o bloco no topo da aba Mapa quando há cena ativa — NPCs (`npcsForLocation`), guildas (`guildsForPlace`), mercadores com atitude ao vivo (`npcGmStrip`), rumor da região (`rollRegionRumors`) e o botão de liberar a localidade (`setNpcLocality`), lendo `game.scenes.active`. `main.mjs` ganhou `Hooks.on('canvasReady')` pra re-renderizar o painel só quando a janela já está aberta na aba Mapa. Pra tarefa 7: `shouldAskReleaseOnActivate` (puro, em `library.mjs`) decide quando perguntar; `main.mjs: Hooks.on('updateScene')` chama o `DialogV2.confirm` e, num "sim", `setNpcLocality` — usando uma `CampaignLibrary` descartável quando a janela não está aberta, já que a pergunta não pode depender disso. Nova configuração do módulo "Perguntar ao ativar uma cena" desliga a pergunta.
+**Funcionou:** 225 testes (`npm test`), 10 novos — os 4 casos do "pronto quando" da T6 (cena aninhada, direto numa localidade, só região, fora do atlas), os 3 da T7 (localidade já liberada, sem localidade, configuração desligada não perguntam), e um teste de tela cobrindo NPC, guilda, mercador, rumor e o aviso de "cena fora do Mapa Imersivo". `npm run package` ok.
+**Não funcionou / deixei de fora:** **nada disto foi visto no Foundry.** `game.scenes.active`, o `Hooks.on('canvasReady')` e o `DialogV2.confirm` só existem em tempo de execução real — os testes usam cenas e `game` falsos. Ver `docs/PROGRESSO-MAPA-IMERSIVO.md`, etapas D e E.
+**Checklist da regra 1:** tela ✔ (painel no topo da aba Mapa) · ações ✔ (reaproveita ops que já existiam, nenhuma nova) · app.mjs — (não precisou de campo de formulário novo) · CSS ✔ (`.sy-active-scene*`) · teste ✔
+**Precisa de decisão:** nenhuma — só falta a conferência do Yuri no Foundry (etapas C, D e E do `PROGRESSO-MAPA-IMERSIVO.md`).

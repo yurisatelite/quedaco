@@ -133,7 +133,7 @@ metade; um NPC apenas conhecido e fora de alcance permitir a venda.
 
 ## 5. Atlas e teletransporte pelos dois mecanismos (7 a 9 minutos)
 
-1. Na sessão da Mestra, abra **Mapa** → **Atlas de cenas**.
+1. Na sessão da Mestra, abra **Mapa** → **Mapa Imersivo**.
 2. Em **Construções automáticas**, ligue **Stairways** e **Regiões nativas**. O
    Stairways deve mostrar a versão 0.11.1 e as Regiões, Foundry 13. Se aparecer
    **indisponível agora**, corrija a instalação antes de continuar.

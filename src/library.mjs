@@ -2,7 +2,7 @@ import {REGIONS,PLACES,BEYOND,COIN_COMMON,coinFaces} from './book-world.mjs';
 import {BASE_ITEMS,MODIFICATION_GUIDES,SIGIL_COSTS,IMBUE_COSTS} from './book-items.mjs';
 import {SIGILS} from './book-sigils.mjs';
 import {MONSTERS} from './book-monsters.mjs';
-import {MODULE_ID,purchaseCart,purchaseItem,sellItem,baixarArquivo,safeImage,ensureStairways,ensureNativeRegions,setRuntimeProvider} from './adapter.mjs';
+import {MODULE_ID,purchaseCart,purchaseItem,sellItem,baixarArquivo,safeImage,ensureStairways,ensureNativeRegions,setRuntimeProvider,attachCreatureRoleItems} from './adapter.mjs';
 import {NPC_LINK_TYPES,NPC_ROLES,NPC_ROLE_STYLE,adoptNpcFlag,inferPlaceId,inferRegionId,isGeneratedNpc,linksFromBio,itemTypeForCategory,npcCardOutline,npcCoverage,normalizeNpcLinks,npcFlag,npcLinkSummary,npcVisibility,stripTags,roleFromText} from './npcs.mjs';
 import {modifiedItemSheet} from './item-mod.mjs';
 import {clampPan,focusRegion,resolveHotspot,zoomToPoint} from './map-view.mjs';
@@ -12,7 +12,7 @@ import {localityStock} from './locality.mjs';
 import {ImageResolver} from './images.mjs';
 import {sealStyle} from './seal-style.mjs';
 import {placeLayer,defaultHiddenPlaces,regionDossier} from './atlas.mjs';
-import {assignAtlasScene,buildSceneAtlasTree,createAtlasEdge,normalizeSceneAtlas,removeAtlasEdge,setAtlasEndpoint,setAtlasProvider,syncAtlasScenes,updateAtlasEdge} from './scene-atlas.mjs';
+import {assignAtlasScene,buildSceneAtlasTree,createAtlasEdge,normalizeSceneAtlas,removeAtlasEdge,resolveSceneLocality,setAtlasEndpoint,setAtlasProvider,syncAtlasScenes,updateAtlasEdge} from './scene-atlas.mjs';
 import {regionColor} from './regions.mjs';
 import {ForienQuestIntegration,QUEST_STATUSES,questCounts} from './forien-quests.mjs';
 import {generatorScope} from './generator.mjs';
@@ -21,7 +21,7 @@ import {normalizeItemList,toSkyfallItemSource} from './item-convert.mjs';
 import {rollLevel} from './npc-level.mjs';
 import {ATTITUDES,DEFAULT_ATTITUDE,buyerConditions,itemKind,quote as priceQuote,sellQuote} from './negotiation.mjs';
 import {HERITAGES,LEGACIES,MELANCOLIA,CLASS_STYLE,heritagesOf,legacyOfHeritage} from './book-heritages.mjs';
-import {guildKind,guildsForPlace,npcGuildLabel,cleanSeal,guildThemes,GUILD_STANCES,guildMembers,guildLevel} from './guilds.mjs';
+import {guildKind,guildsForPlace,npcGuildLabel,cleanSeal,guildThemes,GUILD_STANCES,guildMembers,guildLevel,guildProtectionReasons,planGuildRedistribution} from './guilds.mjs';
 
 export const BOOK_ITEMS=[...BASE_ITEMS,...SIGILS];
 
@@ -62,9 +62,18 @@ export const NPC_GRAPH_KEY='npcGraph';
 /** Grafo conceitual das Scenes. Regiões e localidades continuam vindo do índice do livro. */
 export const SCENE_ATLAS_KEY='sceneAtlas';
 export const GENERATOR_MACRO_KEY='generatorMacro';
+export const ASK_RELEASE_ON_ACTIVATE_KEY='askReleaseOnActivate';
 export const DEFAULT_GENERATOR_MACRO='Skyfall — Criador de Conteúdo';
 export const emptyShare=()=>({areas:[],map:[],monsters:[],items:[],npcs:[],guilds:[]});
 export const generatorMacroName=settings=>String(settings?.get?.(MODULE_ID,GENERATOR_MACRO_KEY)||DEFAULT_GENERATOR_MACRO);
+/** T7 (Mapa Imersivo): decide se pergunta antes de liberar a localidade ao ativar uma
+ * cena. Puro, sem Foundry — o hook em main.mjs só chama isto; se vier `true`, mostra o
+ * DialogV2.confirm e, num "sim", chama `setNpcLocality`. Um "não" ou fechar não faz nada. */
+export function shouldAskReleaseOnActivate({askEnabled,locality,npcLocalities}){
+  if(!askEnabled||!locality)return false;
+  const key=locality.placeId?`place:${locality.placeId}`:(locality.regionId?`region:${locality.regionId}`:'');
+  return key?!npcLocalities.has(key):false;
+}
 export function registerLibrarySettings(game,onChange){
   game.settings.register(MODULE_ID,SHARED_KEY,{scope:'world',config:false,type:Object,default:emptyShare(),onChange});
   game.settings.register(MODULE_ID,SCENES_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
@@ -94,6 +103,8 @@ export function registerLibrarySettings(game,onChange){
   game.settings.register(MODULE_ID,SCENE_ATLAS_KEY,{scope:'world',config:false,type:Object,default:normalizeSceneAtlas(),onChange});
   game.settings.register(MODULE_ID,GENERATOR_MACRO_KEY,{scope:'world',config:true,type:String,default:DEFAULT_GENERATOR_MACRO,
     name:'Macro geradora de conteúdo',hint:'Nome da macro do mestre que o QUEDAÇO abre quando uma ameaça não existe na biblioteca.',onChange});
+  game.settings.register(MODULE_ID,ASK_RELEASE_ON_ACTIVATE_KEY,{scope:'world',config:true,type:Boolean,default:true,
+    name:'Perguntar ao ativar uma cena',hint:'Ao ativar uma cena do Mapa Imersivo cuja localidade ainda não foi liberada, pergunta se libera aos jogadores. Desligue para nunca perguntar.'});
 }
 const e=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 // Um compêndio travado (rede, mundo corrompido, Forge fora do ar) não pode travar o
@@ -485,11 +496,8 @@ export class CampaignLibrary {
    *  `hasPlayerOwner` e não `isOwner` — para o mestre, `isOwner` é verdadeiro em TODA
    *  ficha, e aí qualquer guilda com membro parecia ser a do grupo. */
   tableGuildIds(){
-    const ids=new Set();
-    for(const guild of this.guildActors()){
-      const membros=Array.isArray(guild.system?.members)?guild.system.members:[];
-      if(membros.some(entry=>this.resolveActor(entry?.uuid)?.hasPlayerOwner))ids.add(guild.uuid);
-    }
+    const resolve=uuid=>this.resolveActor(uuid),ids=new Set();
+    for(const guild of this.guildActors())if(guildProtectionReasons(guild,resolve).length)ids.add(guild.uuid);
     return ids;
   }
   playerGuild(){
@@ -724,6 +732,7 @@ export class CampaignLibrary {
     if(op==='lib-guild-stance')await this.setGuildStance(id,data.stance);
     if(op==='lib-guild-archive'){const cut=String(id).lastIndexOf('|');await this.setGuildArchived(String(id).slice(0,cut),String(id).slice(cut+1)!=='off');}
     if(op==='lib-guild-archive-empty')await this.archiveEmptyGuilds();
+    if(op==='lib-guild-redistribute')await this.redistributeGuildMembers();
     if(op==='lib-guild-tab')this.state.guildTab=id==='guardadas'?'guardadas':'ativas';
     if(op==='lib-guild-open'){const guild=this.guildActors().find(entry=>entry.uuid===id||entry.id===id);if(!guild)throw Error('Guilda não encontrada.');const propria=this.playerGuild()?.uuid===guild.uuid;if(!this.game.user?.isGM&&!propria&&!this.shared.guilds.includes(guild.uuid))throw Error('Esta guilda não foi liberada.');guild.sheet?.render(true);}
     if(op==='lib-region-rumor-add')await this.addRegionRumor(id,data.text);
@@ -1039,7 +1048,8 @@ export class CampaignLibrary {
     if(mobs.length===1){
       const mob=mobs[0];
       if(!Object.keys(mob.abilities||{}).length&&!mob.cr&&!mob.ac)throw Error(`Li o nome "${mob.name}" mas não achei atributos, CR nem CA. Confira se o JSON está completo (sem faltar o "]" ou "}" no fim).`);
-      const source=toSkyfallNpc(mob),token={actorLink:true,texture:{src:'icons/svg/mystery-man.svg'}};
+      let source=toSkyfallNpc(mob);const token={actorLink:true,texture:{src:'icons/svg/mystery-man.svg'}};
+      source=await attachCreatureRoleItems(this.game,source); // T24: Itens de hierarquia/arquétipo do compêndio, quando existirem
       const actor=await Actor.create({...source,prototypeToken:token});
       if(!actor?.id)throw Error('O Foundry não criou a ficha.');
       globalThis.ui?.notifications?.info?.(`"${actor.name}" criado como ND ${source.system.level.value}. Revise PV, RD e ataques na ficha.`);
@@ -1055,7 +1065,8 @@ export class CampaignLibrary {
       if(!Object.keys(mob.abilities||{}).length&&!mob.cr&&!mob.ac)continue;
       if(existentes.has(nameKey(mob.name)))continue;
       existentes.add(nameKey(mob.name));
-      const source=toSkyfallNpc(mob);if(folder?.id)source.folder=folder.id;
+      let source=toSkyfallNpc(mob);if(folder?.id)source.folder=folder.id;
+      source=await attachCreatureRoleItems(this.game,source); // T24: idem, no lote
       source.prototypeToken={texture:{src:'icons/svg/mystery-man.svg'}};
       fontes.push(source);
     }
@@ -1445,14 +1456,44 @@ export class CampaignLibrary {
   }
   resolveActor(uuid){try{return globalThis.fromUuidSync?.(uuid)??this.actorById(uuid);}catch{return this.actorById(uuid);}}
   get archivedGuilds(){try{return new Set(this.game.settings?.get(MODULE_ID,GUILD_ARCHIVED_KEY)||[]);}catch{return new Set();}}
-  async setGuildArchived(uuid,on){this.assertGM();if(!uuid)return;const set=this.archivedGuilds;if(on)set.add(uuid);else set.delete(uuid);await this.game.settings.set(MODULE_ID,GUILD_ARCHIVED_KEY,[...set]);}
+  async setGuildArchived(uuid,on){
+    this.assertGM();if(!uuid)return;
+    const guild=this.guildActors().find(entry=>entry.uuid===uuid||entry.id===uuid);
+    if(on&&guild){
+      const reasons=guildProtectionReasons(guild,id=>this.resolveActor(id));
+      if(reasons.length)throw Error(`${guild.name} é a guilda da mesa e não pode ser guardada (${reasons.join(' + ')}).`);
+    }
+    const set=this.archivedGuilds;if(on)set.add(uuid);else set.delete(uuid);
+    await this.game.settings.set(MODULE_ID,GUILD_ARCHIVED_KEY,[...set]);
+  }
   async archiveEmptyGuilds(){
     this.assertGM();const resolve=uuid=>this.resolveActor(uuid);
-    const set=this.archivedGuilds;let n=0;
-    for(const guild of this.guildActors()){if(guildMembers(guild,resolve).length===0&&!set.has(guild.uuid)){set.add(guild.uuid);n++;}}
+    const set=this.archivedGuilds,protectedIds=this.tableGuildIds();let n=0;
+    for(const guild of this.guildActors()){if(!protectedIds.has(guild.uuid)&&guildMembers(guild,resolve).length===0&&!set.has(guild.uuid)){set.add(guild.uuid);n++;}}
     await this.game.settings.set(MODULE_ID,GUILD_ARCHIVED_KEY,[...set]);
     globalThis.ui?.notifications?.info?.(`${n} guilda(s)/hansa(s) sem membro guardada(s). Reative pela lista quando forem receber gente.`);
     return n;
+  }
+  async redistributeGuildMembers(){
+    this.assertGM();
+    const guilds=this.guildActors(),protectedIds=this.tableGuildIds();
+    if(!protectedIds.size)throw Error('Não achei a guilda da mesa por nome, ficha de jogador nem selo Dragão prateado. Nada foi alterado.');
+    const plan=planGuildRedistribution({guilds,npcs:this.npcActors(),archived:this.archivedGuilds,protectedIds,parts:{guild:.6,hansa:.2}});
+    const counts=plan?.counts??{},protections=guilds.filter(guild=>protectedIds.has(guild.uuid)).map(guild=>{
+      const reasons=guildProtectionReasons(guild,id=>this.resolveActor(id));
+      return `<li><strong>${e(guild.name)}</strong> — ${e(reasons.join(' + ')||'protegida')}</li>`;
+    }).join('');
+    const content=`<p><strong>${e(counts.changedNpcs??0)}</strong> NPC(s) mudam de vínculo: <strong>${e(counts.inGuild??0)}</strong> em guilda, <strong>${e(counts.inHansa??0)}</strong> em hansa e <strong>${e(counts.unassigned??0)}</strong> sem nenhuma.</p><p>Depois: ${e(counts.activeGuilds??0)} guilda(s) e ${e(counts.activeHansas??0)} hansa(s) em jogo; ${e(counts.archivedGuilds??0)} guardada(s). ${e(counts.changedGuilds??0)} ficha(s) de guilda mudam.</p><p><strong>Guilda(s) protegida(s), intocada(s):</strong></p><ul>${protections}</ul><p>Nenhuma ficha será criada ou apagada. Redistribuir agora?</p>`;
+    const confirmed=await foundry.applications.api.DialogV2.confirm({window:{title:'Redistribuir membros das guildas'},content,yes:{label:'Redistribuir'},no:{label:'Cancelar'}});
+    if(!confirmed)return null;
+    const npcUpdates=(plan.npcPlans??[]).filter(entry=>entry.changed).map(entry=>({_id:entry.actor.id,[`flags.${MODULE_ID}.npc`]:{...entry.flag,guildUuid:entry.newGuildUuid??'',guild:''}}));
+    const guildUpdates=(plan.guildPlans??[]).filter(entry=>entry.membersChanged&&!protectedIds.has(entry.guild.uuid)).map(entry=>({_id:entry.guild.id,'system.members':entry.afterMembers,...(entry.levelAfter==null?{}:{'system.level':entry.levelAfter})}));
+    const writeBatches=async updates=>{for(let index=0;index<updates.length;index+=50)await Actor.updateDocuments(updates.slice(index,index+50));};
+    await writeBatches(npcUpdates);
+    await writeBatches(guildUpdates);
+    await this.game.settings.set(MODULE_ID,GUILD_ARCHIVED_KEY,Array.from(plan.archivedAfter??[]));
+    globalThis.ui?.notifications?.info?.(`Redistribuição concluída: ${counts.changedNpcs??npcUpdates.length} NPC(s) mudaram; ${counts.archivedGuilds??0} guilda(s)/hansa(s) guardada(s).`);
+    return plan;
   }
   findSealImage(name){
     const key=nameKey(name),map=this._sealImages||{};
@@ -1494,7 +1535,7 @@ export class CampaignLibrary {
       return `<img class="sy-guild-seal" src="${e(img.src)}" alt="" title="${e(name)}" loading="lazy"${img.fallbacks.length?` data-fallback-srcs="${e(img.fallbacks.join('||'))}"`:''}>`;
     };
     const emJogoCount=allGuilds.length-archivedCount;
-    const archiveBar=readonly?'':`<nav class="sy-library-tabs sy-guild-tabs" aria-label="Guildas em jogo ou guardadas"><button data-op="lib-guild-tab" data-id="ativas" aria-current="${aba==='ativas'?'page':'false'}">Em jogo · ${emJogoCount}</button><button data-op="lib-guild-tab" data-id="guardadas" aria-current="${aba==='guardadas'?'page':'false'}">Guardadas · ${archivedCount}</button></nav><div class="sy-library-share-row">${button('guild-archive-empty','','📦 Guardar as sem membro')}</div>${aba==='guardadas'?'<p class="sy-note">Guardadas ficam fora do caminho, com membros e ficha intactos. "↩ Pôr em jogo" traz de volta.</p>':''}`;
+    const archiveBar=readonly?'':`<nav class="sy-library-tabs sy-guild-tabs" aria-label="Guildas em jogo ou guardadas"><button data-op="lib-guild-tab" data-id="ativas" aria-current="${aba==='ativas'?'page':'false'}">Em jogo · ${emJogoCount}</button><button data-op="lib-guild-tab" data-id="guardadas" aria-current="${aba==='guardadas'?'page':'false'}">Guardadas · ${archivedCount}</button></nav><div class="sy-library-share-row">${button('guild-archive-empty','','📦 Guardar as sem membro')}${aba==='ativas'&&this.game.user?.isGM?button('guild-redistribute','','Redistribuir membros'):''}</div>${aba==='guardadas'?'<p class="sy-note">Guardadas ficam fora do caminho, com membros e ficha intactos. "↩ Pôr em jogo" traz de volta.</p>':''}`;
     const cards=guilds.map((guild,idx)=>{
       const system=guild.system??{},f=facets[idx],motto=stripTags(system.motto??'');
       const membros=guildMembers(guild,resolve).length,nivel=guildLevel(guild,resolve);
@@ -1506,9 +1547,9 @@ export class CampaignLibrary {
       const stancePick=readonly?'':`<select class="sy-guild-stance" name="guildStance" data-id="${e(guild.uuid)}" style="--sy-stance:${e(st.color)}" title="Relação com o grupo">${Object.entries(GUILD_STANCES).map(([k,v])=>`<option value="${k}" ${f.stance===k?'selected':''}>${v.label}</option>`).join('')}</select>`;
       const abilChips=`<div class="sy-guild-abils">${Object.entries(abilityLabels).map(([key,label])=>`<span class="sy-guild-abil sy-abil-${key}"><b>${e(label)}</b>${e(system.abilities?.[key]?.value??'—')}</span>`).join('')}</div>`;
       const isArchived=archived.has(guild.uuid);
-      const daMesa=mesa.has(guild.uuid);
+      const protection=guildProtectionReasons(guild,resolve),daMesa=mesa.has(guild.uuid);
       // a guilda do grupo não se guarda por engano: nem aparece o botão
-      const archiveBtn=readonly?'':(daMesa?'<span class="sy-guild-mesa" title="Tem ficha de jogador entre os membros">★ da mesa</span>':button('guild-archive',`${guild.uuid}|${isArchived?'off':'on'}`,isArchived?'↩ Pôr em jogo':'📦 Guardar'));
+      const archiveBtn=readonly?'':(daMesa?`<span class="sy-guild-mesa" title="${e(protection.join(' + '))}">★ da mesa</span>`:button('guild-archive',`${guild.uuid}|${isArchived?'off':'on'}`,isArchived?'↩ Pôr em jogo':'📦 Guardar'));
       return `<article class="sy-library-card sy-guild-card sy-guild-${f.kind} ${isArchived?'is-archived':''}" style="--sy-stance:${e(st.color)};--sy-kind:${e(kindColor)}" data-search="${e(nameKey(`${guild.name} ${motto} ${f.ap.creator??''} ${f.ap.description??''}`))}" data-category="${e(tokens)}"><div class="sy-library-card-content"><div class="sy-guild-head"><i class="fa-solid ${f.kind==='hansa'?'fa-flag':'fa-landmark'} sy-guild-icon" title="${f.kind==='hansa'?'Hansa (independente)':'Guilda (oficial)'}" aria-hidden="true"></i><div class="sy-guild-head-txt"><small><span class="sy-guild-kind">${f.kind==='hansa'?'Hansa':'Guilda'}</span> · Nível ${e(nivel)} · ${membros} membro(s) · <span class="sy-guild-rel" style="--sy-stance:${e(st.color)}">${e(st.label)}</span>${isArchived?' · <span class="sy-guild-archived-tag">arquivada</span>':''}</small><h3>${e(guild.name)}</h3></div>${selosCard.length?`<div class="sy-guild-seals">${selosCard.map(sealImg).join('')}</div>`:''}</div>${f.ap.symbol?`<p class="sy-guild-symbol"><i class="fa-solid fa-stamp"></i> ${e(f.ap.symbol)}</p>`:''}${motto?`<p>${e(motto)}</p>`:''}${f.tema.length?`<div class="sy-guild-temas">${f.tema.map(t=>`<span class="sy-guild-tema sy-tema-${t}">${e(({comercio:'Comércio',contrabando:'Contrabando',informacao:'Informação',militar:'Militar',arcano:'Arcano',maritimo:'Marítimo'})[t]||t)}</span>`).join('')}</div>`:''}${abilChips}<div class="sy-library-tabs">${stancePick}${button('guild-open',guild.uuid,'Abrir ficha')}${archiveBtn}${readonly?'':this.shareButton('guilds',guild.uuid,'✓ Liberada','Liberar aos jogadores')}</div></div></article>`;
     }).join('');
     const importer=readonly?'':`<details class="sy-library-guide"><summary>Importar guildas do apêndice</summary><p class="sy-note">Cole aqui o conteúdo de <code>.local/guildas-foundry.json</code> (gerado por <code>tools/parse-guilds.mjs</code>) ou deixe o arquivo em <code>Data/modules/quedaco/.local/</code> e clique sem colar nada. Cria os Actors <code>guild</code> numa pasta "Guildas · Apêndice B"; pula as que já existem.</p><textarea name="guildImport" rows="4" placeholder='[ { "type": "guild", "name": "...", ... } ]'></textarea><div class="sy-library-tabs">${button('guild-import','','Importar')}</div></details>`;
@@ -1714,15 +1755,43 @@ export class CampaignLibrary {
     const loose=(unassigned?.children??[]).map(scene=>this.renderSceneAtlasScene(scene,atlas)).join('');
     const edges=Object.values(atlas.edges).map(edge=>this.renderSceneAtlasEdge(edge,sceneMap)).join('');
     const summary=tree.summary;
-    return `<section class="sy-scene-atlas"><header class="sy-scene-atlas-head"><div><small>VISÃO CONCEITUAL</small><h2>Atlas de cenas</h2><p>Região → cidade ou local → mapas internos. Cenas novas aparecem automaticamente em “Sem local”.</p></div><div class="sy-scene-atlas-metrics"><span><b>${summary.actualScenes}</b> cenas</span><span><b>${summary.assignedScenes+summary.legacyAssignedScenes}</b> organizadas</span><span><b>${summary.edges}</b> ligações</span></div></header><section class="sy-scene-atlas-automation"><div><h3>Construções automáticas</h3><p>Ligue um ou os dois construtores. As duas versões podem ficar prontas; cada passagem usa só uma delas durante o jogo.</p></div>${toggle('stairways','Stairways',stairAvailable,`v${stairVersion}`)}${toggle('native','Regiões nativas',nativeAvailable,'Foundry 13')}<button data-op="lib-atlas-build-all" data-id="">Construir tudo que estiver pronto</button><button data-op="lib-atlas-thumbnails" data-id="${this.state.atlasThumbnails?'hide':'show'}"><i class="fa-solid fa-image" aria-hidden="true"></i> ${this.state.atlasThumbnails?'Ocultar':'Mostrar'} miniaturas</button></section>${edgeForm}<div class="sy-scene-atlas-layout"><div class="sy-scene-atlas-regions">${regions}</div><aside class="sy-scene-atlas-links"><h3>Ligações</h3>${edges||'<p class="sy-note">Nenhuma ligação criada.</p>'}<details class="sy-scene-atlas-unassigned" ${loose?'open':''}><summary>Sem local <span>${unassigned?.counts?.scenes??0}</span></summary>${loose||'<small>Todas as cenas estão organizadas.</small>'}</details></aside></div></section>`;
+    return `<section class="sy-scene-atlas"><header class="sy-scene-atlas-head"><div><small>VISÃO CONCEITUAL</small><h2>Mapa Imersivo</h2><p>Região → cidade ou local → mapas internos. Cenas novas aparecem automaticamente em “Sem local”.</p></div><div class="sy-scene-atlas-metrics"><span><b>${summary.actualScenes}</b> cenas</span><span><b>${summary.assignedScenes+summary.legacyAssignedScenes}</b> organizadas</span><span><b>${summary.edges}</b> ligações</span></div></header><section class="sy-scene-atlas-automation"><div><h3>Construções automáticas</h3><p>Ligue um ou os dois construtores. As duas versões podem ficar prontas; cada passagem usa só uma delas durante o jogo.</p></div>${toggle('stairways','Stairways',stairAvailable,`v${stairVersion}`)}${toggle('native','Regiões nativas',nativeAvailable,'Foundry 13')}<button data-op="lib-atlas-build-all" data-id="">Construir tudo que estiver pronto</button><button data-op="lib-atlas-thumbnails" data-id="${this.state.atlasThumbnails?'hide':'show'}"><i class="fa-solid fa-image" aria-hidden="true"></i> ${this.state.atlasThumbnails?'Ocultar':'Mostrar'} miniaturas</button></section>${edgeForm}<div class="sy-scene-atlas-layout"><div class="sy-scene-atlas-regions">${regions}</div><aside class="sy-scene-atlas-links"><h3>Ligações</h3>${edges||'<p class="sy-note">Nenhuma ligação criada.</p>'}<details class="sy-scene-atlas-unassigned" ${loose?'open':''}><summary>Sem local <span>${unassigned?.counts?.scenes??0}</span></summary>${loose||'<small>Todas as cenas estão organizadas.</small>'}</details></aside></div></section>`;
+  }
+  /** Tarefa 6 (Mapa Imersivo): a cena que está ativa agora, com quem e o que tem lá,
+   *  tudo junto — sem trocar de aba. Reaproveita os painéis que já existem; a novidade
+   *  é só reunir na hora certa. Nada libera nada sozinho: cada ação pede um clique. */
+  renderActiveScenePanel(){
+    if(!this.game.user?.isGM)return '';
+    const scenes=Array.from(this.game.scenes??[]);
+    const scene=this.game.scenes?.active??scenes.find(s=>s.active)??null;
+    if(!scene)return '';
+    const locality=resolveSceneLocality(this.sceneAtlas,scene.id,{placeScenes:this.placeScenes,regionScenes:this.regionScenes});
+    if(!locality)return `<section class="sy-active-scene sy-active-scene-empty"><p><strong>${e(scene.name)}</strong> está ativa, mas ainda não está no Mapa Imersivo. ${button('map-display','atlas','Organizar no Mapa Imersivo')}</p></section>`;
+    const {regionId,placeId}=locality;
+    const region=REGIONS.find(r=>r.id===regionId);
+    const place=placeId?PLACES.find(p=>p.id===placeId):null;
+    const localityKey=place?`place:${place.id}`:`region:${regionId}`;
+    const liberado=this.npcLocalities.has(localityKey);
+    const npcsAqui=this.npcActors().filter(actor=>{const flag=npcFlag(actor)??adoptNpcFlag(actor);return placeId?flag.placeId===placeId:flag.regionId===regionId;});
+    const flags=npcsAqui.map(actor=>npcFlag(actor)??adoptNpcFlag(actor));
+    const guilds=guildsForPlace({npcs:flags,guilds:this.guildActors(),placeId:placeId||'',regionId,places:PLACES});
+    const guildasHtml=guilds.length?`<section class="sy-active-scene-guilds"><h4>Guildas presentes</h4><div class="sy-library-tabs">${guilds.map(g=>`<button data-op="lib-guild-open" data-id="${e(g.uuid)}">${e(g.name)}</button>`).join('')}</div></section>`:'';
+    const mercadores=npcsAqui.filter(actor=>(npcFlag(actor)??{}).shop?.stock?.length);
+    const mercadoresHtml=mercadores.length?`<section class="sy-active-scene-merchants"><h4>Mercadores</h4>${mercadores.map(actor=>`<div class="sy-active-scene-merchant"><strong>${e(actor.name)}</strong>${this.npcGmStrip(actor,npcFlag(actor)??adoptNpcFlag(actor))}</div>`).join('')}</section>`:'';
+    const roll=this.state.regionRumorRoll&&this.state.regionRumorRoll.regionId===regionId?this.state.regionRumorRoll:null;
+    const rumorList=[...(this.regionRumors[regionId]||[]),...this.rumorSeeds(regionId)];
+    const rolados=roll?rumorList.filter(r=>roll.ids.includes(r.id)):[];
+    const rumoresHtml=`<section class="sy-active-scene-rumors">${button('region-rumor-roll',regionId,'🎲 Rumor da região')}${rolados.map(r=>`<p class="sy-rumor is-rolled">${e(r.text)}</p>`).join('')}</section>`;
+    const liberar=button('npc-locality',localityKey,liberado?'✓ Localidade liberada':'Liberar esta localidade aos jogadores',liberado?'':'sy-primary');
+    return `<section class="sy-active-scene" style="--sy-region:${e(this.regionColor(regionId))}"><header class="sy-active-scene-head"><small>CENA ATIVA</small><h3>${e(scene.name)} — ${e(place?.name??region?.name??'')}${place?` · ${e(region?.name??'')}`:''}</h3>${liberar}</header><div class="sy-active-scene-body">${this.npcsForLocation(regionId,placeId,false)}${guildasHtml}${mercadoresHtml}${rumoresHtml}</div></section>`;
   }
   /** O mestre tem duas vistas do Mapa: o mapa de Opath de sempre e o atlas de cenas.
    *  O jogador continua vendo só o mapa. */
   renderMap(readonly=false){
     if(readonly)return this.renderMapGeographic(true);
     const atlas=this.state.mapDisplay==='atlas';
-    const vista=`<nav class="sy-library-tabs sy-map-display" aria-label="Vista do mapa"><button data-op="lib-map-display" data-id="geographic" aria-current="${atlas?'false':'page'}"><i class="fa-solid fa-map" aria-hidden="true"></i> Mapa de Opath</button><button data-op="lib-map-display" data-id="atlas" aria-current="${atlas?'page':'false'}"><i class="fa-solid fa-sitemap" aria-hidden="true"></i> Atlas de cenas</button></nav>`;
-    return `${vista}${atlas?this.renderSceneAtlas():this.renderMapGeographic(false)}`;
+    const vista=`<nav class="sy-library-tabs sy-map-display" aria-label="Vista do mapa"><button data-op="lib-map-display" data-id="geographic" aria-current="${atlas?'false':'page'}"><i class="fa-solid fa-map" aria-hidden="true"></i> Mapa de Opath</button><button data-op="lib-map-display" data-id="atlas" aria-current="${atlas?'page':'false'}"><i class="fa-solid fa-sitemap" aria-hidden="true"></i> Mapa Imersivo</button></nav>`;
+    return `${this.renderActiveScenePanel()}${vista}${atlas?this.renderSceneAtlas():this.renderMapGeographic(false)}`;
   }
   renderMapGeographic(readonly=false){
     const {mapView,region:regionId,place:placeId}=this.state;

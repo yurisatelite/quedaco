@@ -10,6 +10,7 @@ import {
   registerAtlasScene,
   removeAtlasEdge,
   removeAtlasScene,
+  resolveSceneLocality,
   sceneAtlasCounts,
   setAtlasEdgeRuntimeProvider,
   setAtlasEndpointCoordinates,
@@ -107,4 +108,25 @@ test('árvore combina livro, cenas reais, hierarquia de Scene e settings legados
   assert.equal(tree.summary.conceptualScenes,6);
   assert.equal(tree.summary.legacyAssignedScenes,3);
   assert.equal(tree.counts.edges,1);
+});
+
+test('resolveSceneLocality (T6): local direto, cena aninhada, só região, e nada — nos quatro casos do "pronto quando"',()=>{
+  const atlas={schema:1,providers:{stairways:false,native:false},edges:{},scenes:{
+    praca:{parentId:'place:foice'},
+    taverna:{parentId:'scene:praca'}, // cena dentro de outra cena
+    posto:{parentId:'region:huma'},
+    solta:{parentId:'unassigned'}
+  }};
+  assert.deepEqual(resolveSceneLocality(atlas,'praca'),{regionId:'huma',placeId:'foice'});
+  assert.deepEqual(resolveSceneLocality(atlas,'taverna'),{regionId:'huma',placeId:'foice'});
+  assert.deepEqual(resolveSceneLocality(atlas,'posto'),{regionId:'huma',placeId:''});
+  assert.equal(resolveSceneLocality(atlas,'solta'),null);
+  assert.equal(resolveSceneLocality(atlas,'nao-cadastrada'),null);
+});
+
+test('resolveSceneLocality cai nos mapas legados (placeScenes/regionScenes) quando a cena não está no atlas',()=>{
+  const atlas=createSceneAtlas();
+  assert.deepEqual(resolveSceneLocality(atlas,'cena-antiga',{placeScenes:{foice:'cena-antiga'}}),{regionId:'huma',placeId:'foice'});
+  assert.deepEqual(resolveSceneLocality(atlas,'cena-regiao',{regionScenes:{huma:['cena-regiao']}}),{regionId:'huma',placeId:''});
+  assert.equal(resolveSceneLocality(atlas,'nunca-vinculada'),null);
 });

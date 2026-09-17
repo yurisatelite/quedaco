@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {REGIONS,PLACES,BEYOND,COIN_FACES,coinFaces} from '../src/book-world.mjs';
 import {MONSTERS} from '../src/book-monsters.mjs';
-import {BOOK_ITEMS,CampaignLibrary,DEFAULT_GENERATOR_MACRO,findMatches,generatorMacroName,itemCategoryStyle,itemDescriptors,itemFallback,itemProperties,monsterAudit,monsterCategory,monsterMatches} from '../src/library.mjs';
+import {BOOK_ITEMS,CampaignLibrary,DEFAULT_GENERATOR_MACRO,findMatches,generatorMacroName,itemCategoryStyle,itemDescriptors,itemFallback,itemProperties,monsterAudit,monsterCategory,monsterMatches,shouldAskReleaseOnActivate} from '../src/library.mjs';
 import {IMBUE_COSTS} from '../src/book-items.mjs';
 
 test('every region, capital and local breadcrumb resolves within the geographic index',()=>{
@@ -574,7 +574,7 @@ test('atlas de cenas: aba no Mapa, cada botão com ação, e as ações da liga�
   const library=new CampaignLibrary(game,{items:[],entry:()=>null});
   try{
     // o mestre alterna entre as duas vistas; o jogador nunca vê o atlas
-    assert.ok(library.renderMap(false).includes('Atlas de cenas'));
+    assert.ok(library.renderMap(false).includes('Mapa Imersivo'));
     assert.ok(!library.renderMap(true).includes('sy-scene-atlas'));
     await library.action('lib-map-display','atlas');
     assert.ok(library.renderMap(false).includes('sy-scene-atlas'));
@@ -654,4 +654,139 @@ test('todo data-op das abas do mestre e da visão do jogador tem ação',async()
   const tratadas=new Set([...fonte.matchAll(/\bop\s*===\s*(["'])(lib-[a-z0-9-]+)\1/g)].map(match=>match[2]));
   const ausentes=[...aparicoes].filter(([op])=>!tratadas.has(op)).sort(([a],[b])=>a.localeCompare(b));
   assert.equal(ausentes.length,0,`Ações ausentes em CampaignLibrary.action():\n${ausentes.map(([op,vistas])=>`- ${op} (${vistas.join(', ')})`).join('\n')}`);
+});
+
+const guildFixture=(id,name,{kind='guilda',members=[],seals=[]}={})=>({
+  id,uuid:`Actor.${id}`,name,type:'guild',items:[],hasPlayerOwner:false,
+  system:{level:2,motto:'',abilities:{},members:members.map(uuid=>({uuid,founder:false,retired:false}))},
+  flags:{quedaco:{appendix:{kind,seals}}}
+});
+const redistributionNpc=(id,guildUuid='Actor.antiga')=>({
+  id,uuid:`Actor.${id}`,name:`NPC ${id}`,type:'character',hasPlayerOwner:false,items:[],
+  system:{level:{value:1+(Number(id.replace(/\D/g,''))||0)%8}},
+  flags:{quedaco:{npc:{role:'extra',regionId:'thurthur',placeId:'',guildUuid,guild:'Antiga',shop:{stock:[]}}}}
+});
+
+test('guildas protegidas por nome, jogador ou selo nunca podem ser guardadas',async()=>{
+  const pc={id:'pc',uuid:'Actor.pc',name:'Jogador',type:'character',hasPlayerOwner:true,system:{level:{value:5}},flags:{}};
+  const porNome=guildFixture('pipi','P. I. P. I.'),porJogador=guildFixture('grupo','Companhia da Mesa',{members:['Actor.pc']});
+  const porSelo=guildFixture('prata','Sentinelas',{seals:['Dragão prateado']}),comum=guildFixture('comum','Guilda Vazia');
+  const store={guildArchived:[]},game={user:{isGM:true},actors:[pc,porNome,porJogador,porSelo,comum],settings:{get:(_m,k)=>store[k]??(k==='sharedContent'?{}:[]),set:async(_m,k,v)=>{store[k]=v;}}};
+  const library=new CampaignLibrary(game,{items:[]});
+  assert.deepEqual([...library.tableGuildIds()].sort(),['Actor.grupo','Actor.pipi','Actor.prata']);
+  await assert.rejects(library.setGuildArchived(porNome.uuid,true),/guilda da mesa/i);
+  await assert.rejects(library.setGuildArchived(porSelo.uuid,true),/Dragão prateado/i);
+  assert.deepEqual(store.guildArchived,[],'recusa não grava o setting');
+  assert.equal(await library.archiveEmptyGuilds(),1);
+  assert.deepEqual(store.guildArchived,['Actor.comum'],'guardar vazias pula todas as protegidas');
+});
+
+test('botão de redistribuir aparece somente para Mestra na aba Em jogo',async()=>{
+  const pipi=guildFixture('pipi','P.I.P.I.'),outra=guildFixture('g1','Guilda Um');
+  const store={guildArchived:['Actor.g1'],sharedContent:{guilds:['Actor.pipi','Actor.g1']}};
+  const game={user:{isGM:true},actors:[pipi,outra],settings:{get:(_m,k)=>store[k]??[]}};
+  const library=new CampaignLibrary(game,{items:[]});
+  assert.match(library.renderGuilds(false),/data-op="lib-guild-redistribute"[^>]*>Redistribuir membros/);
+  library.state.guildTab='guardadas';
+  assert.doesNotMatch(library.renderGuilds(false),/lib-guild-redistribute/);
+  game.user.isGM=false;library.state.guildTab='ativas';
+  assert.doesNotMatch(library.renderGuilds(true),/lib-guild-redistribute/);
+});
+
+test('cancelar redistribuição não grava Actor nem lista de guardadas',async()=>{
+  const pipi=guildFixture('pipi','P.I.P.I.'),ativa=guildFixture('g1','Guilda Um');
+  const npc=redistributionNpc('n1'),store={guildArchived:[]},writes=[];
+  const game={user:{isGM:true},actors:[pipi,ativa,npc],settings:{get:(_m,k)=>store[k]??(k==='sharedContent'?{}:[]),set:async(_m,k,v)=>{writes.push([k,v]);store[k]=v;}}};
+  const previousFoundry=globalThis.foundry,previousActor=globalThis.Actor;
+  let dialog=null,actorWrites=0;
+  globalThis.foundry={applications:{api:{DialogV2:{confirm:async options=>{dialog=options;return false;}}}}};
+  globalThis.Actor={updateDocuments:async()=>{actorWrites++;}};
+  try{
+    const result=await new CampaignLibrary(game,{items:[]}).action('lib-guild-redistribute');
+    assert.equal(result,undefined,'action encerra normalmente quando a Mestra cancela');
+    assert.match(dialog.window.title,/Redistribuir membros/);
+    assert.match(dialog.content,/P\.I\.P\.I\./);
+    assert.equal(actorWrites,0);assert.deepEqual(writes,[]);
+  }finally{globalThis.foundry=previousFoundry;globalThis.Actor=previousActor;}
+});
+
+test('redistribuição confirma resumo, grava NPCs e guildas em lotes de 50 e setting por último',async()=>{
+  const pc={id:'pc',uuid:'Actor.pc',name:'Jogador',type:'character',hasPlayerOwner:true,system:{level:{value:7}},flags:{}};
+  const pipi=guildFixture('pipi','P.I.P.I.',{members:['Actor.pc']}),guilds=Array.from({length:70},(_,i)=>guildFixture(`g${i}`,`Guilda ${i}`));
+  const hansas=Array.from({length:20},(_,i)=>guildFixture(`h${i}`,`Hansa ${i}`,{kind:'hansa'}));
+  const npcs=Array.from({length:120},(_,i)=>redistributionNpc(`n${i}`));
+  const store={guildArchived:[]},events=[],settingsWrites=[];
+  const game={user:{isGM:true},actors:[pc,pipi,...guilds,...hansas,...npcs],settings:{get:(_m,k)=>store[k]??(k==='sharedContent'?{}:[]),set:async(_m,k,v)=>{events.push('setting');settingsWrites.push([k,v]);store[k]=v;}}};
+  const previousFoundry=globalThis.foundry,previousActor=globalThis.Actor,previousUi=globalThis.ui;
+  const batches=[];let dialog=null;
+  globalThis.foundry={applications:{api:{DialogV2:{confirm:async options=>{dialog=options;return true;}}}}};
+  globalThis.Actor={updateDocuments:async batch=>{events.push('actors');batches.push(batch);return batch;}};
+  globalThis.ui={notifications:{info(){}}};
+  try{
+    const plan=await new CampaignLibrary(game,{items:[]}).redistributeGuildMembers();
+    assert.ok(plan?.counts?.changedNpcs>50);assert.ok(plan?.counts?.changedGuilds>50);
+    assert.ok(batches.length>=4,'há mais de um lote tanto para NPCs quanto para guildas');
+    assert.ok(batches.every(batch=>batch.length>0&&batch.length<=50),'nenhum lote ultrapassa 50 updates');
+    const npcBatches=batches.filter(batch=>Object.hasOwn(batch[0],'flags.quedaco.npc'));
+    const guildBatches=batches.filter(batch=>Object.hasOwn(batch[0],'system.members'));
+    assert.ok(npcBatches.length>=2);assert.ok(guildBatches.length>=2);
+    assert.equal(npcBatches.flat().length,plan.counts.changedNpcs);
+    assert.equal(guildBatches.flat().length,plan.counts.changedGuilds);
+    assert.equal(settingsWrites.length,1);assert.equal(settingsWrites[0][0],'guildArchived');
+    assert.equal(events.at(-1),'setting','lista de guardadas só grava depois de todos os Actors');
+    assert.match(dialog.content,new RegExp(`<strong>${plan.counts.changedNpcs}</strong> NPC`));
+    assert.match(dialog.content,/em guilda/);assert.match(dialog.content,/em hansa/);assert.match(dialog.content,/sem nenhuma/);
+    assert.match(dialog.content,/P\.I\.P\.I\./);assert.match(dialog.content,/ficha de jogador|nome/i);
+    const allNpcUpdates=npcBatches.flat();assert.ok(allNpcUpdates.every(update=>update['flags.quedaco.npc'].guild===''));
+    const allGuildUpdates=guildBatches.flat();assert.ok(allGuildUpdates.every(update=>Array.isArray(update['system.members'])&&Number.isFinite(update['system.level'])));
+  }finally{globalThis.foundry=previousFoundry;globalThis.Actor=previousActor;globalThis.ui=previousUi;}
+});
+
+test('painel da cena ativa (T6, Mapa Imersivo): junta NPCs, guilda, mercador e rumor da localidade da cena ativa',async()=>{
+  const mercador={id:'mercador',uuid:'Actor.mercador',name:'Brida',type:'character',isOwner:false,hasPlayerOwner:false,img:'brida.webp',items:[],ownership:{default:1},system:{level:{value:2}},sheet:{render(){}},
+    flags:{quedaco:{npc:{role:'merchant',regionId:'thurthur',placeId:'alberich',tokenVisible:true,note:'',shop:{markup:1,attitude:'indiferente',stock:[{uuid:'Compendium.teste.Item.espada',price:100,qty:2,qtyMax:2}]}}}}};
+  const guilda={id:'guilda',uuid:'Actor.guilda',name:'Companhia do Porto',type:'guild',img:'guilda.webp',items:[],system:{motto:'',abilities:{},members:[]},flags:{quedaco:{npc:{guildUuid:'Actor.guilda'}}}};
+  // a própria flag de guildUuid do mercador é o que o liga à guilda — guildsForPlace lê isso
+  mercador.flags.quedaco.npc.guildUuid='Actor.guilda';
+  const cenaInativa={id:'taverna',name:'Taverna do Porto',active:false};
+  const cenaAtiva={id:'praca',name:'Alberich — Praça',active:true};
+  const scenes=Object.assign([cenaAtiva,cenaInativa],{get:id=>[cenaAtiva,cenaInativa].find(s=>s.id===id)});
+  const store={
+    sceneAtlas:{schema:1,providers:{stairways:false,native:false},scenes:{praca:{parentId:'place:alberich'}},edges:{}},
+    npcLocalities:[],regionRumors:{thurthur:[{id:'r1',text:'Navios somem ao anoitecer.',shared:true}]},
+    regionRumorRoll:null,placeScenes:{},regionScenes:{}
+  };
+  const game={user:{isGM:true},actors:[mercador,guilda],users:[],packs:[],folders:[],version:'13.351',scenes,modules:{get:()=>null},
+    settings:{get:(_m,k)=>(k==='sharedContent'?{}:(store[k]??{})),set:async(_m,k,v)=>{store[k]=v;}}};
+  const library=new CampaignLibrary(game,{items:[]});
+  const painel=library.renderMap(false);
+  assert.match(painel,/CENA ATIVA/);
+  assert.match(painel,/Alberich — Praça/);
+  assert.match(painel,/Brida/); // NPC da localidade
+  assert.match(painel,/Companhia do Porto/); // guilda presente
+  assert.match(painel,/sy-active-scene-merchant/); // tira de atitude do mercador
+  assert.match(painel,/Liberar esta localidade/);
+  // sem cena ativa nenhuma: painel não aparece
+  cenaAtiva.active=false;
+  assert.doesNotMatch(library.renderMap(false),/CENA ATIVA/);
+  cenaAtiva.active=true;
+  // cena ativa fora do atlas: avisa e não quebra
+  store.sceneAtlas={schema:1,providers:{stairways:false,native:false},scenes:{},edges:{}};
+  const semAtlas=library.renderMap(false);
+  assert.match(semAtlas,/ainda não está no Mapa Imersivo/);
+  // jogador nunca vê o painel
+  assert.doesNotMatch(library.renderMap(true),/CENA ATIVA/);
+});
+
+test('shouldAskReleaseOnActivate (T7): configuração desligada, sem localidade e localidade já liberada não perguntam',()=>{
+  const locality={regionId:'thurthur',placeId:'alberich'};
+  const vazio=new Set();
+  const liberado=new Set(['place:alberich']);
+  assert.equal(shouldAskReleaseOnActivate({askEnabled:false,locality,npcLocalities:vazio}),false);
+  assert.equal(shouldAskReleaseOnActivate({askEnabled:true,locality:null,npcLocalities:vazio}),false);
+  assert.equal(shouldAskReleaseOnActivate({askEnabled:true,locality,npcLocalities:liberado}),false);
+  assert.equal(shouldAskReleaseOnActivate({askEnabled:true,locality,npcLocalities:vazio}),true);
+  // só região (sem local): confere pela chave region:
+  assert.equal(shouldAskReleaseOnActivate({askEnabled:true,locality:{regionId:'thurthur',placeId:''},npcLocalities:new Set(['region:thurthur'])}),false);
+  assert.equal(shouldAskReleaseOnActivate({askEnabled:true,locality:{regionId:'thurthur',placeId:''},npcLocalities:vazio}),true);
 });

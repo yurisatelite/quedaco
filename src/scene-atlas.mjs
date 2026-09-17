@@ -372,6 +372,38 @@ function addNodeCounts(node,edges){
 }
 
 /** Build the full conceptual hierarchy without reading Foundry globals. */
+/** Onde uma Scene fica em Opath: primeiro o atlas (subindo a cadeia `scene:` até achar
+ * `place:`/`region:`), depois os mapas legados `placeScenes`/`regionScenes`. Devolve
+ * `{regionId,placeId}` (`placeId` vazio quando só a região é conhecida) ou `null` — cena
+ * fora do atlas e sem mapa legado. Usado pelo painel da cena ativa (T6). */
+export function resolveSceneLocality(atlas,sceneId,{placeScenes={},regionScenes={},places=PLACES,regions=REGIONS}={}){
+  const value=normalizeSceneAtlas(atlas);
+  const id=cleanId(sceneId);
+  if(!id)return null;
+  const placesById=new Map(places.filter(p=>cleanId(p?.id)).map(p=>[p.id,p]));
+  const visited=new Set();
+  let cursor=id;
+  while(cursor&&!visited.has(cursor)){
+    visited.add(cursor);
+    const parsed=parseParentId(value.scenes[cursor]?.parentId??SCENE_ATLAS_UNASSIGNED);
+    if(parsed?.type==='place'){
+      const place=placesById.get(parsed.id);
+      return place?{regionId:place.regionId??'',placeId:place.id}:null;
+    }
+    if(parsed?.type==='region')return {regionId:parsed.id,placeId:''};
+    if(parsed?.type==='scene'){cursor=parsed.id;continue;}
+    break; // 'unassigned' ou parentId inválido: não sobe mais, cai no legado abaixo
+  }
+  const {placeByScene,regionByScene}=legacyParentMaps(places,regions,placeScenes,regionScenes);
+  const legacy=parseParentId(placeByScene.get(id)??regionByScene.get(id)??'');
+  if(legacy?.type==='place'){
+    const place=placesById.get(legacy.id);
+    return place?{regionId:place.regionId??'',placeId:place.id}:null;
+  }
+  if(legacy?.type==='region')return {regionId:legacy.id,placeId:''};
+  return null;
+}
+
 export function buildSceneAtlasTree({
   atlas,
   regions=REGIONS,
