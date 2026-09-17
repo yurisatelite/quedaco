@@ -273,6 +273,13 @@ Escreva no mesmo commit da tarefa. Formato por entrada:
 **Não funcionou / deixei de fora:** **`playerNpcCard` continua separada, de propósito.** Ela não é o mesmo cartão com menos seções — é outro conjunto (tag secundária editável, anotações, loja e venda). Unificar as duas numa função com meia dúzia de condicionais deixaria o código pior, não melhor. O que a T11 pedia de fato — a aba Mapas ter o mesmo cartão — está feito.
 **Precisa de decisão:** nada novo.
 
+### 17/09/2026 — Atlas de cenas e teleportes (começado pelo Codex, terminado pelo Claude)
+**Contexto:** o Codex começou uma funcionalidade fora da fila e ficou sem tokens no meio. Ficou sem commit e sem entrada neste diário.
+**Fiz:** liguei na tela o que ele construiu. O Mapa do mestre ganhou as abas *Mapa de Opath* e *Atlas de cenas*. Implementei as cinco ações que os botões chamavam e não existiam (construir uma, construir todas, marcar a ponta no mapa, escolher o mecanismo ativo, criar cena). Fiz construir passar por `ensureStairways`/`ensureNativeRegions`/`setRuntimeProvider` — que não eram chamadas — gravando de volta o que o adaptador confirma. O `app.mjs` passou a enviar os campos dos formulários. CSS inteiro.
+**Funcionou:** `npm test` (189), `npm run package`, render conferido com cenas falsas, e um teste que falha se algum botão desenhado pelo atlas ficar sem ação.
+**Não funcionou / deixei de fora:** **nada foi conferido no Foundry**. Os pontos de mais risco: marcar a ponta depende de clique no `canvas.stage` com a janela do QUEDAÇO aberta por cima; e o Stairways precisa estar na versão 0.11.x. Não está na 0.8.0 — o zip dela foi gerado antes.
+**Precisa de decisão:** não havia documento do pedido original. Se a ideia do Yuri era diferente do que o Codex montou, é aqui que ajusta.
+
 ---
 
 ## 5. Estado herdado — o que o Claude já entregou
