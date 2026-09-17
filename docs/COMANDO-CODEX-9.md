@@ -236,3 +236,10 @@ Mesmo formato da 8ª, no mesmo commit da tarefa:
 **Não funcionou / deixei de fora:** a abertura efetiva do diálogo só pode ser conferida dentro do Foundry. A pasta `.local/` é privada e ignorada pelo Git; por isso este commit público contém apenas este registro, sem expor a macro.
 **Checklist da regra 1:** tela — (macro, sem tela nova) · ações — · app.mjs — · CSS — · teste ✔ (sintaxe; conferência funcional pendente no Foundry)
 **Precisa de decisão:** nenhuma.
+
+### 17/09/2026 — Tarefa 3
+**Fiz:** criei `docs/ROTEIRO-CONFERENCIA.md`, um passe de 15 a 20 minutos para executar somente numa cópia do mundo oficial. O roteiro dá os cliques exatos e, em cada bloco, separa “Deve acontecer” de “É defeito se” para T9, T10, Guildas, carrinho, venda a NPC não mercador, regulador de miniaturas e Atlas com Stairways e Regiões nativas.
+**Funcionou:** conferi os rótulos e caminhos do roteiro contra a interface gerada por `src/main.mjs`, `src/app.mjs` e `src/library.mjs`; o passo do Atlas preserva a janela aberta durante o clique no canvas, exige Stairways 0.11.1 e testa a troca de mecanismo com um token. `git diff --check` passou nos arquivos desta tarefa.
+**Não funcionou / deixei de fora:** o roteiro ainda não foi executado dentro do Foundry; essa conferência depende da cópia do mundo oficial e das duas sessões Mestra/jogador que ficam com o Yuri.
+**Checklist da regra 1:** tela — · ações — · app.mjs — · CSS — · teste — (tarefa somente documental)
+**Precisa de decisão:** nenhuma.
