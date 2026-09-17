@@ -1,5 +1,28 @@
 export const CHANGELOG = [
   {
+    version:'0.8.0',
+    date:'2026-09-17',
+    title:'Guildas em jogo, NPC conhecido que não some e um cartão de NPC só em todo lugar',
+    notes:[
+      'A aba Guildas ganhou duas abas: Em jogo e Guardadas. As guardadas saem do caminho com ficha, lema e selos intactos, e um clique em "Pôr em jogo" traz de volta. A guilda da mesa — a que tem ficha de jogador entre os membros — ganha o selo ★ da mesa e não tem botão de guardar, pra não ir embora por engano.',
+      'Liberar uma região agora só conta aos jogadores que ela existe. As localidades, os NPCs, as cenas, o governo e o dossiê continuam fechados até você liberar cada um.',
+      'NPC que o grupo já conheceu não some mais quando você fecha a localidade dele: fica na aba dos jogadores em cinza, sem loja, venda nem botões. Reabrir o lugar devolve o cartão completo.',
+      'A aba Mapas passou a usar o mesmo cartão de NPC das outras abas, com retrato, nível, papel, classe, legado e herança. Antes era uma lista menor, com menos informação e outro tamanho.',
+      'Todo NPC mostra legado e herança em selos separados. Quando a ficha não tem um dos dois, o selo diz "sem herança" — pra você enxergar o buraco e corrigir.',
+      'A classe do NPC aparece como a imagem do próprio item de classe do Skyfall, e não mais como uma segunda etiqueta de texto que parecia outro papel.',
+      'A tag secundária que os jogadores dão aos NPCs passa a valer pela última marcação feita, aparece para todo o grupo e entra no editor do mestre.',
+      'Nova opção de filtro por guilda na aba NPCs, com "Sem guilda" para achar quem ainda não foi distribuído.',
+      'A lista de NPCs de cada região e localidade ganhou filtro por papel e por legado, e a imagem da localidade ficou grande de verdade.',
+      'O editor de NPC mostra o selo da região, o dinheiro da ficha nas três moedas dentro do inventário, e o seletor de mapa oferece só as cenas de localidades daquela região.',
+      'O filtro de selos das guildas usa ícone colorido: o mesmo dragão para as Dragonesas, com cor por Corte; gema para os Necários. O Dragão Prateado aparece marcado como caseiro, pra não ser confundido com conteúdo do livro.',
+      'A aba Monstros virou uma lista alfabética só, com um selo dizendo se a criatura é Oficial do livro ou Adaptada — antes os convertidos ficavam todos no fim.',
+      'Cada monstro e item tem um único botão "Abrir no Foundry", no documento principal. Antes o mesmo monstro aparecia duas vezes, uma no Mundo e outra no compêndio.',
+      'As caixas de importar não esticam mais até a borda da tela, e nas abas Monstros e Itens os botões ficam todos na mesma linha.',
+      'O regulador de miniaturas encolheu, foi para a direita e parou de mostrar o número em pixels.',
+      'Corrigido: o regulador de miniaturas não funcionava na aba Guildas.'
+    ]
+  },
+  {
     version:'0.7.0',
     date:'2026-09-14',
     title:'Preço em três moedas, carrinho de compras, venda pra qualquer NPC e atitude editável na hora',
