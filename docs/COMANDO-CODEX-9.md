@@ -181,6 +181,73 @@ Nunca libere sem confirmação. Uma opção nas configurações do módulo desli
 **Pronto quando:** checklist da regra 1 e teste da decisão (localidade já liberada não
 pergunta; sem localidade não pergunta; configuração desligada não pergunta).
 
+### Tarefa 8 — Limpar o topo das abas  · *média — depois da 4, que mexe na mesma linha*
+
+Pedido do Yuri com print (17/09/2026): "esse monte de menu tem que sumir e eu tenho que ter
+clareza de onde é filtro e onde é pesquisa".
+
+- **NPCs:** tirar da tela o bloco "Cobertura regional de NPCs · N lacunas" (`sy-npc-coverage`,
+  perto de `renderNpcs`). Foi para um momento da criação e acabou. Pode apagar a renderização.
+  A ação "Criar N próximos" vai junto se ninguém mais chamar.
+- **Guildas:** tirar o bloco "Importar guildas do apêndice" (`importer` em `renderGuilds`). A
+  importação já foi feita.
+- **Mapa:** tirar "Onde colocar as imagens" (o `<details>` em `renderMap`). O botão de pôr
+  imagem já existe.
+- **Guildas — uma linha só no topo:** à esquerda as abas *Em jogo · N* e *Guardadas · N*. Os
+  botões de ação (*Guardar as sem membro*, *Redistribuir membros*) ficam **na mesma linha,
+  grudados à direita** (`margin-left:auto`), acompanhando a largura quando a janela estica ou
+  encolhe. *Guardar as sem membro* ganha **outra cor**: ação secundária, sem o ciano dos
+  filtros.
+- **Pesquisa e filtro separados de verdade**, nesta ordem:
+  1. linha de **pesquisa**: rótulo "Pesquisar", campo, contagem "N entradas";
+  2. linha de **filtros**: rótulo "Filtrar por" antes dos chips (*Tipo*, *Campo de atuação*...);
+  3. o aviso "Nenhuma entrada corresponde aos filtros" vai **abaixo** dos filtros, junto da
+     lista. Hoje ele fica entre a pesquisa e os filtros e parece fazer parte da busca.
+- Faça isso num helper só (ex.: `panelHeader({tabs, actions, search, filters})`) e use nas
+  abas que já têm barra: Guildas, NPCs, Monstros, Itens. Não crie um visual novo por aba.
+
+**Pronto quando:** checklist da regra 1; o teste da tarefa 1 continua passando; um teste
+confere que Guildas não renderiza mais "Importar guildas do apêndice" e NPCs não renderiza
+"Cobertura regional"; em 700 px de largura os botões não quebram por cima das abas.
+
+### Tarefa 9 — Os 404 de imagem no console  · *pequena*
+
+Ao abrir Itens, o console mostra dezenas de `404 (Not Found)` em `assets/itens/*.webp|png`. As
+imagens aparecem, então **não quebra nada**, mas é ruído, pedido de rede à toa e esconde
+erro de verdade. Causa: `resolveImage` (`src/images.mjs`) monta candidatos por convenção
+(`<slug>.webp`, depois `.png`) e o navegador **tenta cada um** até achar; os que não existem
+viram 404.
+
+Correção: o **Mestre** lista as pastas de imagem uma vez (`FilePicker.browse`) e grava um
+índice dos arquivos que existem numa configuração de mundo. Jogador não tem permissão de
+listar, então lê o índice. `resolveImage` só oferece candidato que está no índice. Sem índice
+(primeira abertura), mantém o comportamento de hoje. Um botão "Reindexar imagens" no topo
+do Mestre para quando ele subir arquivo novo.
+
+**Pronto quando:** teste de `resolveImage` com índice (só candidatos existentes) e sem índice
+(igual a hoje); abrir Itens com índice não gera 404.
+
+### Tarefa 10 — Monstros por região no painel  · *média*
+
+A macro `.local/distribuir-monstros-por-regiao.js` (feita pelo Claude) grava
+`flags.quedaco.monster = {regionId, placeId, beyondId, habitat}` nos monstros do mundo. O
+painel ainda não lê isso.
+
+- `src/book-monsters.mjs`: acrescentar `placeId` aos 44 monstros do livro. Os valores já
+  estão na tabela `HABITAT` da macro (bloco "Skyfall (livro)", com as páginas). Copie de lá;
+  é índice de referência, não regra nova.
+- Aba Monstros: faceta **Região** (e "Além de Opath" para `beyondId`), chip da região na cor
+  da região (`regionColor`) no cartão, e a linha de habitat no detalhe.
+- Monstro sem região aparece no filtro como "Sem região", nunca some.
+
+**Pronto quando:** checklist da regra 1; teste de `monsterFacetValues` com as três situações
+(livro com `placeId`, mundo com flag, sem nada).
+
+### Tarefa 11 — Conversor de monstros completo  · *grande — especificada em `docs/T24-MONSTROS-COMPLETOS.md`*
+
+Leia o documento inteiro. **Passo 1 é do Yuri** (exportar o JSON de comparação). Os passos 2
+(arquétipo e alcance) podem começar antes. Os demais esperam o JSON: não invente campo.
+
 ---
 
 ## 2. Enquanto trabalha — melhorias de estrutura
@@ -205,6 +272,8 @@ Não são tarefas próprias; faça **só quando já estiver mexendo naquela part
 | **T8b** — ficha de profissão do NPC | Protótipo em `.local/criar-vendedor-prototipo.js`; falta o brainstorm. |
 | Imagens das moedas | 33 prompts prontos em `docs/T17-PROMPTS-MOEDAS.md`. |
 | Macros que gravam no mundo | Fazer backup do mundo antes de rodar. |
+| JSON de comparação de monstro | Rodar `.local/exportar-comparacao-monstro.js` e guardar o arquivo baixado em `.local/`. Destrava a tarefa 11. |
+| Monstros por região | Conferir a prévia de `.local/distribuir-monstros-por-regiao.js` e aplicar. A tarefa 10 mostra o resultado no painel. |
 
 ---
 
