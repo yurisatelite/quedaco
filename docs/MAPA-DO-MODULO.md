@@ -62,11 +62,11 @@ de progresso, não repita aqui: **[PROGRESSO-MAPA-IMERSIVO.md](PROGRESSO-MAPA-IM
 
 | Peça | Onde |
 |---|---|
-| Catálogo do livro (bestiário, ND, página) | [book-monsters.mjs](../src/book-monsters.mjs) |
+| Catálogo do livro (bestiário, ND, página e índice de habitat) | [book-monsters.mjs](../src/book-monsters.mjs) — cada entrada do livro traz `placeId`, `regionId` ou `beyondId` conforme a tabela da macro |
 | Conversor D&D 5e → Skyfall | [monster-convert.mjs](../src/monster-convert.mjs) — ver `docs/T24-MONSTROS-COMPLETOS.md` pro estado exato |
-| Filtro/facetas na tela (tipo, papel, porte, ND) | `library.mjs: monsterFacetValues, monsterMatches` |
-| Região/habitat de cada monstro do mundo | macro `.local/distribuir-monstros-por-regiao.js` → `flags.quedaco.monster` |
-| Falta conhecido | traços/magia/hierarquia/arquétipo já viram Itens (T24, passos 4–5, feito 17/09) — mas **não verificado no Foundry**; reconverter os 326 já importados (perderam dado na 1ª importação); filtro de região na tela ainda não lê a flag (tarefa 10) |
+| Filtro/facetas na tela (tipo, papel, porte, ND, região e além de Opath) | `library.mjs: monsterLocation, monsterFacetValues, monsterMatches` |
+| Região/habitat de cada monstro do mundo | macro `.local/distribuir-monstros-por-regiao.js` → `flags.quedaco.monster`; a flag prevalece sobre o índice do livro |
+| Falta conhecido | traços/magia/hierarquia/arquétipo já viram Itens (T24, passos 4–5, feito 17/09) — mas **não verificado no Foundry**; reconverter os 326 já importados (perderam dado na 1ª importação) |
 
 ## Mundo do livro (regiões, locais, moedas)
 

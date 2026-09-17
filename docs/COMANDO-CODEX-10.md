@@ -116,6 +116,13 @@ Formato de cada entrada:
 **Checklist da regra 1:** tela ✔ · ações ✔ (somente ações existentes) · app.mjs ✔ (encaminhamento existente) · CSS ✔ · teste ✔
 **Precisa de decisão:** nenhuma.
 
+### 17/09/2026 — Tarefa 10
+**Fiz:** incluí no catálogo do bestiário o local, região ou além de Opath de cada uma das 44 ameaças do livro, seguindo a tabela da macro de distribuição. A aba Monstros ganhou facetas de Região e Além de Opath, chip de localização no cartão e linha de habitat no detalhe. Uma flag `flags.quedaco.monster` de uma ficha do mundo prevalece sobre o índice do livro; sem qualquer origem, a ameaça entra em “Sem região”.
+**Funcionou:** o teste cobre as três origens da faceta (local do livro, flag do mundo e ausência), além de confirmar as novas facetas e a linha de habitat na tela. A seleção continua usando o filtro já existente e não grava Actor nem setting.
+**Não funcionou / deixei de fora:** “Aranha gigante” e “Gavião gigante” ficaram somente no nível regional porque a tabela da macro aponta Túneis/Dunas, que não são localidades cadastradas no índice público do módulo; não criei localidade fictícia.
+**Checklist da regra 1:** tela ✔ · ações ✔ (reaproveita filtros e edição de habitat) · app.mjs ✔ (encaminhamento existente) · CSS ✔ · teste ✔
+**Precisa de decisão:** nenhuma.
+
 ### 17/09/2026 — Tarefa 9
 **Fiz:** adicionei o índice de imagens do mundo. A Mestra usa “Reindexar imagens”; o módulo lista as pastas conhecidas uma vez e guarda os caminhos existentes. Com índice da mesma pasta de imagens, o resolvedor oferece apenas os arquivos listados, evitando as tentativas `.webp`/`.png` inexistentes. Sem índice, ou se a pasta mudou, ele conserva o fallback antigo.
 **Funcionou:** o teste cobre um índice com só `.png` existente e confirma que `.webp` não entra na cadeia; também confirma a cadeia completa no primeiro uso, sem índice. O botão é uma ação de Mestra e o jogador apenas lê o setting de mundo.

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {REGIONS,PLACES,BEYOND,COIN_FACES,coinFaces} from '../src/book-world.mjs';
 import {MONSTERS} from '../src/book-monsters.mjs';
-import {BOOK_ITEMS,CampaignLibrary,DEFAULT_GENERATOR_MACRO,findMatches,generatorMacroName,itemCategoryStyle,itemDescriptors,itemFallback,itemProperties,monsterAudit,monsterCategory,monsterMatches,shouldAskReleaseOnActivate} from '../src/library.mjs';
+import {BOOK_ITEMS,CampaignLibrary,DEFAULT_GENERATOR_MACRO,findMatches,generatorMacroName,itemCategoryStyle,itemDescriptors,itemFallback,itemProperties,monsterAudit,monsterCategory,monsterFacetValues,monsterMatches,shouldAskReleaseOnActivate} from '../src/library.mjs';
 import {IMBUE_COSTS} from '../src/book-items.mjs';
 
 test('every region, capital and local breadcrumb resolves within the geographic index',()=>{
@@ -790,6 +790,16 @@ test('shouldAskReleaseOnActivate (T7): configuração desligada, sem localidade 
   // só região (sem local): confere pela chave region:
   assert.equal(shouldAskReleaseOnActivate({askEnabled:true,locality:{regionId:'thurthur',placeId:''},npcLocalities:new Set(['region:thurthur'])}),false);
   assert.equal(shouldAskReleaseOnActivate({askEnabled:true,locality:{regionId:'thurthur',placeId:''},npcLocalities:vazio}),true);
+});
+test('faceta de região usa local do livro, flag da ficha e preserva sem região',()=>{
+  const livro=MONSTERS.find(monster=>monster.name==='Kraken');
+  assert.deepEqual(monsterFacetValues(livro).regiao,['tatsumari']);
+  const mundo={creatureType:'Monstro',role:'Simples · Bruto',movement:['walk'],nd:2,status:'found',monster:{regionId:'thurthur',placeId:'alberich',habitat:'Ruas'}};
+  assert.deepEqual(monsterFacetValues(mundo).regiao,['thurthur']);
+  assert.deepEqual(monsterFacetValues({creatureType:'Monstro',role:'Simples · Bruto',movement:['walk'],nd:2}).regiao,['none']);
+  const library=new CampaignLibrary({user:{isGM:true},actors:[],settings:{get:()=>({})}},{items:[]});
+  const html=library.render('monsters');
+  assert.match(html,/Região/);assert.match(html,/Além de Opath/);assert.match(html,/Habitat:/);
 });
 
 test('topos de NPCs e Guildas separam pesquisa e filtros sem os menus de criação antigos',()=>{
