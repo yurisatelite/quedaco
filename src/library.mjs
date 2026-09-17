@@ -12,7 +12,7 @@ import {localityStock} from './locality.mjs';
 import {ImageResolver} from './images.mjs';
 import {sealStyle} from './seal-style.mjs';
 import {placeLayer,defaultHiddenPlaces,regionDossier} from './atlas.mjs';
-import {assignAtlasScene,buildSceneAtlasTree,createAtlasEdge,normalizeSceneAtlas,removeAtlasEdge,resolveSceneLocality,setAtlasEndpoint,setAtlasProvider,syncAtlasScenes,updateAtlasEdge} from './scene-atlas.mjs';
+import {assignAtlasScene,buildSceneAtlasTree,createAtlasEdge,normalizeSceneAtlas,removeAtlasEdge,removeAtlasScene,resolveSceneLocality,setAtlasEndpoint,setAtlasProvider,syncAtlasScenes,updateAtlasEdge} from './scene-atlas.mjs';
 import {regionColor} from './regions.mjs';
 import {ForienQuestIntegration,QUEST_STATUSES,questCounts} from './forien-quests.mjs';
 import {generatorScope} from './generator.mjs';
@@ -250,7 +250,7 @@ const CUSTOM_TIER_LABEL={simple:'Simples',complex:'Complexo',boss:'Chefão'};
 const CUSTOM_ARCHETYPE_LABEL={flanker:'Flanqueador',sentinel:'Sentinela',defender:'Defensor',brute:'Bruto',leader:'Líder',mount:'Cavalaria',ranged:'Atirador',group:'Coletivo'};
 
 export class CampaignLibrary {
-  constructor(game,catalog){this.game=game;this.catalog=catalog;this.images=new ImageResolver(game,MODULE_ID,ASSET_ROOT_KEY);this.quests=new ForienQuestIntegration(game);this.actors=[];this.failures=[];this.loaded=false;this.state={mapDisplay:'geographic',mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null,layer:'auto',movingPins:false},atlasThumbnails:false,npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcLevelMin:0,npcLevelMax:12,npcDragonOnly:false,npcMilitarOnly:false,npcActor:null,npcSaved:null,npcEditRole:null,npcEditRegion:null,npcEditPlace:null,monsterFacets:{},monsterCardSize:270,itemCardSize:270,guildCardSize:270,npcCardSize:270,npcPlayerRegion:null,npcAsPlayer:false,npcLegacyFilter:'all',npcHeritageFilter:'all',npcGuildFilter:'all',localNpcRole:'all',localNpcLegacy:'all',guildFacets:{},guildTab:'ativas',questStatus:'all',regionTakeover:false,regionScene:null,regionTab:'rumores',regionRumorRoll:null,regionRumorEdit:null,regionNpcRoleFilter:'all',cart:{actorId:'',lines:[]},sellActorId:''};this.modBuilder={baseId:'',materialId:'',sigils:[],tab:'prefixo'};this.forgeBuilder={smithId:'',baseUuid:'',materialId:'',sigils:[],tab:'prefixo'};}
+  constructor(game,catalog){this.game=game;this.catalog=catalog;this.images=new ImageResolver(game,MODULE_ID,ASSET_ROOT_KEY);this.quests=new ForienQuestIntegration(game);this.actors=[];this.failures=[];this.loaded=false;this.state={mapDisplay:'atlas',mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null,layer:'auto',movingPins:false},atlasThumbnails:true,atlasOpen:new Set(),npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcLevelMin:0,npcLevelMax:12,npcDragonOnly:false,npcMilitarOnly:false,npcActor:null,npcSaved:null,npcEditRole:null,npcEditRegion:null,npcEditPlace:null,monsterFacets:{},monsterCardSize:270,itemCardSize:270,guildCardSize:270,npcCardSize:270,npcPlayerRegion:null,npcAsPlayer:false,npcLegacyFilter:'all',npcHeritageFilter:'all',npcGuildFilter:'all',localNpcRole:'all',localNpcLegacy:'all',guildFacets:{},guildTab:'ativas',questStatus:'all',regionTakeover:false,regionScene:null,regionTab:'rumores',regionRumorRoll:null,regionRumorEdit:null,regionNpcRoleFilter:'all',cart:{actorId:'',lines:[]},sellActorId:''};this.modBuilder={baseId:'',materialId:'',sigils:[],tab:'prefixo'};this.forgeBuilder={smithId:'',baseUuid:'',materialId:'',sigils:[],tab:'prefixo'};}
   image(kind,id,documentImg='',fallback='icons/svg/mystery-man.svg'){return this.images.resolve(kind,id,documentImg,fallback);}
   async reindexImages(){
     this.assertGM();
@@ -270,6 +270,7 @@ export class CampaignLibrary {
   async saveSceneAtlas(atlas){this.assertGM();await this.game.settings.set(MODULE_ID,SCENE_ATLAS_KEY,normalizeSceneAtlas(atlas));}
   async setSceneAtlasProvider(provider,enabled){this.assertGM();await this.saveSceneAtlas(setAtlasProvider(this.sceneAtlas,provider,enabled));}
   async assignSceneAtlas(sceneId,parentId){this.assertGM();await this.saveSceneAtlas(assignAtlasScene(this.sceneAtlas,sceneId,parentId));}
+  async removeSceneAtlasScene(sceneId){this.assertGM();await this.saveSceneAtlas(removeAtlasScene(this.sceneAtlas,sceneId));}
   async addSceneAtlasEdge({fromSceneId,toSceneId,label='',bidirectional=true}={}){
     this.assertGM();if(!fromSceneId||!toSceneId)throw Error('Escolha a cena de origem e a cena de destino.');
     const atlas=this.sceneAtlas;let id=`ligacao-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`;
@@ -696,6 +697,7 @@ export class CampaignLibrary {
     if(op==='lib-atlas-thumbnails')this.state.atlasThumbnails=id==='show';
     if(op==='lib-atlas-provider'){const [provider,mode]=String(id).split(':');await this.setSceneAtlasProvider(provider,mode==='on');}
     if(op==='lib-atlas-assign')await this.assignSceneAtlas(id,data.parentId);
+    if(op==='lib-atlas-scene-remove')await this.removeSceneAtlasScene(id);
     if(op==='lib-atlas-edge-add')await this.addSceneAtlasEdge(data);
     if(op==='lib-atlas-edge-remove')await this.removeSceneAtlasEdge(id);
     if(op==='lib-atlas-scene-create')await this.createSceneAtlasScene(id,data.name);
@@ -1743,8 +1745,11 @@ export class CampaignLibrary {
     const positioned=node.edgeIds?.length??0;
     const children=(node.children??[]).map(child=>this.renderSceneAtlasScene(child,atlas,depth+1)).join('');
     const image=this.state.atlasThumbnails&&node.img?`<img src="${e(node.img)}" alt="" loading="lazy">`:'';
-    const title=node.missing?`<strong>${e(node.label)}</strong>`:`<button data-op="lib-open-scene" data-id="${e(node.key)}">${e(node.label)}</button>`;
-    return `<article class="sy-scene-atlas-scene ${node.missing?'is-missing':''}" style="--sy-atlas-depth:${Math.min(6,depth)}">${image}<div class="sy-scene-atlas-scene-body"><div class="sy-scene-atlas-scene-title"><i class="fa-solid ${node.missing?'fa-triangle-exclamation':'fa-map'}" aria-hidden="true"></i>${title}<span>${node.missing?'cena ausente':`${positioned} ligação${positioned===1?'':'ões'}`}</span></div><div class="sy-scene-atlas-scene-tools"><select name="atlasSceneParent" data-scene="${e(node.key)}" aria-label="Onde este mapa fica">${this.sceneAtlasParentOptions(stored,node.key)}</select><button data-op="lib-atlas-assign" data-id="${e(node.key)}">Mover</button></div>${node.missing?'':this.sceneAtlasAddForm(`scene:${node.key}`)}${children?`<div class="sy-scene-atlas-children">${children}</div>`:''}</div></article>`;
+    const placeId=String(node.parentId??'').startsWith('place:')?String(node.parentId).slice(6):'';
+    const placeName=PLACES.find(place=>place.id===placeId)?.name;
+    const label=placeName===node.label?`Mapa: ${node.label}`:node.label;
+    const title=node.missing?`<strong>${e(label)}</strong>`:`<button data-op="lib-open-scene" data-id="${e(node.key)}">${e(label)}</button>`;
+    return `<article class="sy-scene-atlas-scene ${node.missing?'is-missing':''}" style="--sy-atlas-depth:${Math.min(6,depth)}">${image}<div class="sy-scene-atlas-scene-body"><div class="sy-scene-atlas-scene-title"><i class="fa-solid ${node.missing?'fa-triangle-exclamation':'fa-map'}" aria-hidden="true"></i>${title}<span>${node.missing?'cena ausente':`${positioned} ligação${positioned===1?'':'ões'}`}</span></div><div class="sy-scene-atlas-scene-tools">${node.missing?`<button data-op="lib-atlas-scene-remove" data-id="${e(node.key)}">Remover esta entrada</button>`:`<select name="atlasSceneParent" data-scene="${e(node.key)}" aria-label="Onde este mapa fica">${this.sceneAtlasParentOptions(stored,node.key)}</select><button data-op="lib-atlas-assign" data-id="${e(node.key)}">Mover</button>`}</div>${node.missing?'':this.sceneAtlasAddForm(`scene:${node.key}`)}${children?`<div class="sy-scene-atlas-children">${children}</div>`:''}</div></article>`;
   }
   renderSceneAtlasPlace(node,atlas){
     const directScenes=(node.children??[]).filter(child=>child.type==='scene');
@@ -1753,7 +1758,8 @@ export class CampaignLibrary {
     const count=node.counts?.scenes??0;
     const label=first?`<button data-op="lib-open-scene" data-id="${e(first.key)}" title="Abrir ${e(first.label)}">${e(node.label)}</button>`:`<strong>${e(node.label)}</strong>`;
     const contents=`${this.sceneAtlasAddForm(node.id)}${directScenes.map(scene=>this.renderSceneAtlasScene(scene,atlas)).join('')}${subPlaces.map(place=>this.renderSceneAtlasPlace(place,atlas)).join('')}`;
-    return `<details class="sy-scene-atlas-place" ${count?'open':''}><summary><i class="fa-solid ${placeLayer(node.data?.kind)==='cidade'?'fa-city':'fa-location-dot'}" aria-hidden="true"></i>${label}<span class="sy-scene-atlas-count ${count?'has-maps':''}">${count} mapa${count===1?'':'s'}</span></summary><div class="sy-scene-atlas-place-body">${contents}</div></details>`;
+    const open=this.state.atlasOpen?.has(node.id)?'open':'';
+    return `<details class="sy-scene-atlas-place" data-atlas-open="${e(node.id)}" ${open}><summary><i class="fa-solid ${placeLayer(node.data?.kind)==='cidade'?'fa-city':'fa-location-dot'}" aria-hidden="true"></i>${label}<span class="sy-scene-atlas-count ${count?'has-maps':''}">${count} mapa${count===1?'':'s'}</span></summary><div class="sy-scene-atlas-place-body">${contents}</div></details>`;
   }
   renderSceneAtlasEdge(edge,sceneMap){
     const from=sceneMap.get(edge.from.sceneId),to=sceneMap.get(edge.to.sceneId);
@@ -1771,7 +1777,7 @@ export class CampaignLibrary {
     const toggle=(id,label,available,detail)=>{const on=atlas.providers[id];return `<button class="sy-scene-atlas-toggle ${on?'is-on':''}" data-op="lib-atlas-provider" data-id="${id}:${on?'off':'on'}" aria-pressed="${on}"><i class="fa-solid ${on?'fa-toggle-on':'fa-toggle-off'}" aria-hidden="true"></i><span>${e(label)}<small>${e(available?detail:'indisponível agora')}</small></span></button>`;};
     const sceneOptions=sortByName(scenes).map(scene=>`<option value="${e(scene.id)}">${e(scene.name)}</option>`).join('');
     const edgeForm=scenes.length>=2?`<section class="sy-scene-atlas-editor"><h3>Nova ligação jogável</h3><div class="sy-scene-atlas-edge-form"><label>Origem<select name="atlasEdgeFrom"><option value="">Escolha…</option>${sceneOptions}</select></label><label>Destino<select name="atlasEdgeTo"><option value="">Escolha…</option>${sceneOptions}</select></label><label>Nome<input name="atlasEdgeLabel" placeholder="Ex.: Porta da taverna"></label><label class="sy-inline-check"><input name="atlasEdgeBidirectional" type="checkbox" checked> Ida e volta</label><button data-op="lib-atlas-edge-add" data-id="">Adicionar ligação</button></div></section>`:'<p class="sy-note">Crie ou vincule pelo menos duas cenas para montar uma ligação jogável.</p>';
-    const regions=tree.children.filter(node=>node.type==='region').map(region=>`<details class="sy-scene-atlas-region" ${region.counts?.scenes?'open':''} style="--sy-region:${e(this.regionColor(region.key))}"><summary><span class="sy-atlas-dot"></span><strong>${e(region.label)}</strong><span>${region.counts?.scenes??0} mapa${region.counts?.scenes===1?'':'s'} · ${region.counts?.edges??0} ligações</span></summary><div class="sy-scene-atlas-region-body">${this.sceneAtlasAddForm(region.id)}${(region.children??[]).map(place=>this.renderSceneAtlasPlace(place,atlas)).join('')||'<small>Nenhuma localidade cadastrada.</small>'}</div></details>`).join('');
+    const regions=tree.children.filter(node=>node.type==='region').map(region=>`<details class="sy-scene-atlas-region" data-atlas-open="${e(region.id)}" ${this.state.atlasOpen?.has(region.id)?'open':''} style="--sy-region:${e(this.regionColor(region.key))}"><summary><span class="sy-atlas-dot"></span><strong>${e(region.label)}</strong><span>${region.counts?.scenes??0} mapa${region.counts?.scenes===1?'':'s'} · ${region.counts?.edges??0} ligações</span></summary><div class="sy-scene-atlas-region-body">${this.sceneAtlasAddForm(region.id)}${(region.children??[]).map(place=>this.renderSceneAtlasPlace(place,atlas)).join('')||'<small>Nenhuma localidade cadastrada.</small>'}</div></details>`).join('');
     const unassigned=tree.children.find(node=>node.type==='group');
     const loose=(unassigned?.children??[]).map(scene=>this.renderSceneAtlasScene(scene,atlas)).join('');
     const edges=Object.values(atlas.edges).map(edge=>this.renderSceneAtlasEdge(edge,sceneMap)).join('');
@@ -1811,7 +1817,7 @@ export class CampaignLibrary {
   renderMap(readonly=false){
     if(readonly)return this.renderMapGeographic(true);
     const atlas=this.state.mapDisplay==='atlas';
-    const vista=`<nav class="sy-library-tabs sy-map-display" aria-label="Vista do mapa"><button data-op="lib-map-display" data-id="geographic" aria-current="${atlas?'false':'page'}"><i class="fa-solid fa-map" aria-hidden="true"></i> Mapa de Opath</button><button data-op="lib-map-display" data-id="atlas" aria-current="${atlas?'page':'false'}"><i class="fa-solid fa-sitemap" aria-hidden="true"></i> Mapa Imersivo</button></nav>`;
+    const vista=`<nav class="sy-library-tabs sy-map-display" aria-label="Vista do mapa"><button data-op="lib-map-display" data-id="atlas" aria-current="${atlas?'page':'false'}"><i class="fa-solid fa-sitemap" aria-hidden="true"></i> Mapa Imersivo</button><button data-op="lib-map-display" data-id="geographic" aria-current="${atlas?'false':'page'}"><i class="fa-solid fa-map" aria-hidden="true"></i> Mapa de Opath</button></nav>`;
     return `${this.renderActiveScenePanel()}${vista}${atlas?this.renderSceneAtlas():this.renderMapGeographic(false)}`;
   }
   renderMapGeographic(readonly=false){

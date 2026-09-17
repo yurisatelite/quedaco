@@ -64,6 +64,7 @@ test('GM sharing exposes only the chosen entries to players',async()=>{
 });
 test('region and city navigation produces working breadcrumbs; no image or scene import',async()=>{
   const library=new CampaignLibrary({user:{isGM:true}},{items:[]});
+  library.state.mapDisplay='geographic';
   assert.doesNotMatch(library.render('map'),/data-map-viewport/);
   assert.match(library.render('map'),/Configure “Imagem do mapa de Opath”/);
   await library.action('lib-region','mirmir');assert.match(library.render('map'),/Ir à capital: Kravokia/);
@@ -82,6 +83,7 @@ test('imagens de região e local ficam em settings separados e aparecem nos cart
   const store={regionImages:{},placeImages:{}};
   const settings={get:(_m,key)=>store[key]??{},set:async(_m,key,value)=>{store[key]=value;}};
   const library=new CampaignLibrary({user:{isGM:true},settings},{items:[]});
+  library.state.mapDisplay='geographic';
   await library.setRegionImage('mirmir','worlds/teste/mirmir.webp');
   await library.setPlaceImage('kravokia','worlds/teste/kravokia.webp');
   assert.equal(store.regionImages.mirmir,'worlds/teste/mirmir.webp');
@@ -104,6 +106,7 @@ test('mapa configurado usa visor único, foca região e abre detalhe de cidade',
   const store={opathMapImage:'worlds/teste/opath.webp',regionImages:{mirmir:'worlds/teste/mirmir.webp'},placeImages:{},sharedContent:{areas:['map'],map:['mirmir'],monsters:[],items:[],npcs:[]}};
   const settings={get:(_module,key)=>store[key],set:async(_module,key,value)=>{store[key]=value;}};
   const gm=new CampaignLibrary({user:{isGM:true},settings,actors:[],scenes:[]},{items:[]});
+  gm.state.mapDisplay='geographic';
   assert.match(gm.render('map'),/data-map-viewport/);
   assert.doesNotMatch(gm.render('map'),/Onde colocar as imagens/);
   assert.match(gm.render('map'),/data-op="lib-map-focus" data-id="mirmir"/);
@@ -244,6 +247,7 @@ test('camadas do mapa revelam cidades no zoom e compartilhamento em massa',async
  const store={opathMapImage:'opath.webp',mapHotspots:{regions:{},places:{}},sharedContent:{areas:[],map:[],monsters:[],items:[],npcs:[]}};
  const game={user:{isGM:true},actors:[],folders:[],settings:{get:(_m,key)=>store[key],set:async(_m,key,value)=>store[key]=value}};
  const library=new CampaignLibrary(game,{items:[]});library.state.map.scale=2;
+ library.state.mapDisplay='geographic';
  assert.match(library.render('map'),/data-pin-kind="places"/);
  await library.action('lib-map-layer','regions');assert.doesNotMatch(library.render('map'),/data-pin-kind="places"/);
  await library.action('lib-map-share-all','all');assert.ok(store.sharedContent.map.includes('kravokia'));assert.ok(store.sharedContent.map.includes('mirmir'));
@@ -574,8 +578,9 @@ test('atlas de cenas: aba no Mapa, cada botão com ação, e as ações da liga�
     settings:{get:(_m,k)=>(k==='sharedContent'?{}:(store[k]??(k==='placeScenes'||k==='regionScenes'?{}:[]))),set:async(_m,k,v)=>{store[k]=v;}}};
   const library=new CampaignLibrary(game,{items:[],entry:()=>null});
   try{
-    // o mestre alterna entre as duas vistas; o jogador nunca vê o atlas
+    // o mestre já abre na visão imersiva; o jogador nunca vê o atlas
     assert.ok(library.renderMap(false).includes('Mapa Imersivo'));
+    assert.ok(library.renderMap(false).includes('aria-current="page"'));
     assert.ok(!library.renderMap(true).includes('sy-scene-atlas'));
     await library.action('lib-map-display','atlas');
     assert.ok(library.renderMap(false).includes('sy-scene-atlas'));

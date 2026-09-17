@@ -6,7 +6,7 @@ import {CHANGELOG,entriesSince,isNewer} from './changelog.mjs';
 import {bindForienQuestHooks} from './forien-quests.mjs';
 import {registerArcaneOverload} from './arcane-overload.mjs';
 import {guildLevel} from './guilds.mjs';
-import {resolveSceneLocality} from './scene-atlas.mjs';
+import {removeAtlasScene,resolveSceneLocality} from './scene-atlas.mjs';
 import {PLACES,REGIONS} from './book-world.mjs';
 let app;
 const LAST_SEEN_VERSION='lastSeenVersion';
@@ -78,6 +78,16 @@ Hooks.on('updateActor',(actor,changed)=>{
 // está com a janela aberta na aba Mapa.
 Hooks.on('canvasReady',()=>{
   if(app?.rendered&&app.area==='map'&&game.user?.isGM)app.render(false);
+});
+// A entrada é administrativa, não a Scene em si. Ao apagar a Scene no Foundry,
+// removemos somente essa entrada e mantemos as ligações para poder repará-las depois.
+Hooks.on('deleteScene',(scene)=>{
+  if(!game.user?.isGM||!scene?.id)return;
+  try{
+    const atlas=game.settings.get(MODULE_ID,SCENE_ATLAS_KEY);
+    if(!atlas?.scenes?.[scene.id])return;
+    void game.settings.set(MODULE_ID,SCENE_ATLAS_KEY,removeAtlasScene(atlas,scene.id)).catch(error=>console.error(MODULE_ID,'não foi possível atualizar o Mapa Imersivo após apagar a Scene.',error));
+  }catch(error){console.error(MODULE_ID,'não foi possível ler o Mapa Imersivo após apagar a Scene.',error);}
 });
 // T7 (Mapa Imersivo): ao ativar uma cena cuja localidade ainda não foi liberada,
 // pergunta antes de liberar. Nunca libera sozinho, e uma configuração desliga a
