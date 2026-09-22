@@ -233,6 +233,13 @@ Formato de cada entrada:
 **Checklist da regra 1:** tela ✖ · ações ✖ · app.mjs ✖ · CSS ✖ · teste ✔ · Foundry ✖
 **Precisa de decisão:** nenhuma.
 
+### 22/09/2026 — Tarefa 17
+**Fiz:** movi as funções de tela do Mapa Imersivo e da Cena Atual para `src/panels/mapa-imersivo.mjs`. `CampaignLibrary` conserva métodos delegadores, portanto as ações e chamadas existentes continuam com a mesma assinatura.
+**Funcionou:** `npm test` passou com 241 testes e `npm run package` gerou o pacote de desenvolvimento. A extração preserva as mesmas funções auxiliares e strings de HTML; a conferência é de Node, não de Foundry.
+**Não funcionou / deixei de fora:** a aparência e o arrasto ainda precisam da conferência no Foundry já registrada para a T13; não há mundo de teste nesta execução.
+**Checklist da regra 1:** tela ✔ (HTML testado) · ações ✔ · app.mjs ✔ (inalterado) · CSS ✔ (inalterado) · teste ✔ · Foundry ✖
+**Precisa de decisão:** nenhuma.
+
 ### 17/09/2026 — Tarefa 13 (§1.1–1.5 e aba Cena Atual) · Codex — *registrado pelo Claude a partir dos commits*
 **Fiz:** `a34ea0a` — acordeões lembram estado (`state.atlasOpen` + evento `toggle` em `app.mjs`), prefixo "Mapa:" quando a cena tem o nome do local, botão "Remover esta entrada" em cena ausente (`lib-atlas-scene-remove`) e `Hooks.on('deleteScene')` em `main.mjs`, miniaturas ligadas por padrão, Mapa Imersivo como primeira aba e vista padrão. `60c706d` — área nova `activeScene` ("Cena Atual") na barra do mestre; o painel saiu de dentro do Mapa.
 **Funcionou:** testes de `library.test.mjs` ajustados; 230 passando naquele ponto.

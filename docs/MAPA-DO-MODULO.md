@@ -62,9 +62,9 @@ Atalho pra achar código (22/09/2026):
 | Peça | Onde |
 |---|---|
 | Dado puro do atlas (hierarquia, arestas, posição das caixas) | [scene-atlas.mjs](../src/scene-atlas.mjs) — `buildSceneAtlasTree`, `resolveSceneLocality`; `atlas.layout[regionId]['place:x'|'scene:y'|'region:z']={x,y}` em pixels, gravado por `setAtlasLayoutPosition` |
-| Quebra-cabeça por região (arranjo inicial, linhas, portais pra fora) | `scene-atlas.mjs: buildRegionPuzzle` (dado) → `library.mjs: renderAtlasPuzzle, puzzleBoard` (tela) → `app.mjs: _bindPuzzle` (arrastar caixa = grava posição; arrastar cena da bandeja pra uma caixa = `dropAtlasScene`) |
+| Quebra-cabeça por região (arranjo inicial, linhas, portais pra fora) | `scene-atlas.mjs: buildRegionPuzzle` (dado) → `panels/mapa-imersivo.mjs` (tela) → `app.mjs: _bindPuzzle` (arrastar caixa = grava posição; arrastar cena da bandeja pra uma caixa = `dropAtlasScene`) |
 | Lista (árvore de `<details>`) | `library.mjs: renderSceneAtlas` com `state.atlasView='list'`; acordeões lembram estado em `state.atlasOpen` via evento `toggle` em `app.mjs` |
-| Aba Cena Atual | `library.mjs: renderActiveScenePanel` (área `activeScene`) + `activeSceneDiagram` (vizinhança: `scene-atlas.mjs: sceneNeighborhood`) + `activeSceneNpcTree` (`scene-atlas.mjs: regionLocalityTree`) |
+| Aba Cena Atual | `panels/mapa-imersivo.mjs: renderActiveScenePanel` (área `activeScene`) + `activeSceneDiagram` (vizinhança: `scene-atlas.mjs: sceneNeighborhood`) + `activeSceneNpcTree` (`scene-atlas.mjs: regionLocalityTree`) |
 | World Explorer (módulo de terceiros) | [world-explorer.mjs](../src/world-explorer.mjs) — tudo blindado; `library.mjs: explorationButton`. Formato do dado dele: `docs/REFERENCIA-SKYFALL.md`, seção "Módulos de terceiros" |
 | Hooks | `main.mjs`: `canvasReady` (re-render), `deleteScene` (limpa entrada e posição), `updateScene` (pergunta ao ativar) |
 | Testes | [scene-atlas.test.mjs](../tests/scene-atlas.test.mjs), [world-explorer.test.mjs](../tests/world-explorer.test.mjs), `library.test.mjs` ("quebra-cabeça do Mapa Imersivo", "painel da cena ativa") |

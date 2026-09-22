@@ -20,6 +20,7 @@ import {generatorScope} from './generator.mjs';
 import {normalizeMonsterInput,normalizeMonsterList,toSkyfallNpc} from './monster-convert.mjs';
 import {normalizeItemList,toSkyfallItemSource} from './item-convert.mjs';
 import {rollLevel} from './npc-level.mjs';
+import * as immersive from './panels/mapa-imersivo.mjs';
 import {ATTITUDES,DEFAULT_ATTITUDE,buyerConditions,itemKind,quote as priceQuote,sellQuote} from './negotiation.mjs';
 import {HERITAGES,LEGACIES,MELANCOLIA,CLASS_STYLE,heritagesOf,legacyOfHeritage} from './book-heritages.mjs';
 import {guildKind,guildsForPlace,npcGuildLabel,cleanSeal,guildThemes,GUILD_STANCES,guildMembers,guildLevel,guildProtectionReasons,planGuildRedistribution} from './guilds.mjs';
@@ -109,7 +110,7 @@ export function registerLibrarySettings(game,onChange){
   game.settings.register(MODULE_ID,ASK_RELEASE_ON_ACTIVATE_KEY,{scope:'world',config:true,type:Boolean,default:true,
     name:'Perguntar ao ativar uma cena',hint:'Ao ativar uma cena do Mapa Imersivo cuja localidade ainda não foi liberada, pergunta se libera aos jogadores. Desligue para nunca perguntar.'});
 }
-const e=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+export const e=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 // Um compêndio travado (rede, mundo corrompido, Forge fora do ar) não pode travar o
 // painel inteiro pra sempre — todo pack.getIndex() usa esse limite de tempo.
 const PACK_TIMEOUT_MS=8000;
@@ -128,7 +129,7 @@ const originBadge=entry=>entry.custom
 // Preço sempre nas três moedas do livro: um item de 5.000 T$ vira "K$ 5" em vez
 // de um número que ninguém lê. A conversão em si mora em rules.mjs.
 const currency=value=>precoFormatado(value);
-const button=(op,id,label,className='')=>`<button${className?` class="${e(className)}"`:''} data-op="lib-${op}" data-id="${e(id)}">${e(label)}</button>`;
+export const button=(op,id,label,className='')=>`<button${className?` class="${e(className)}"`:''} data-op="lib-${op}" data-id="${e(id)}">${e(label)}</button>`;
 const chips=values=>`<div class="sy-library-chips">${values.filter(v=>v!==null&&v!==undefined&&v!=='').map(v=>`<span>${e(v)}</span>`).join('')}</div>`;
 const thumb=image=>{
   const src=typeof image==='string'?image:image?.src||'';
@@ -138,11 +139,11 @@ const thumb=image=>{
   return `<img class="sy-library-thumb" src="${e(chain[0])}" alt="" loading="lazy"${chain.length>1?` data-fallback-srcs="${e(chain.slice(1).join('||'))}"`:''}>`;
 };
 const avatarThumb=(src,fallbacks=[])=>{const list=(Array.isArray(fallbacks)?fallbacks:[fallbacks]).filter(Boolean);return `<img class="sy-library-thumb" src="${e(src||'icons/svg/mystery-man.svg')}" alt="" loading="lazy"${list.length?` data-fallback-srcs="${e(list.join('||'))}"`:''}>`;};
-const avatarFor=img=>avatarThumb(img.src,img.fallbacks);
-const npcRoleChip=role=>{const style=NPC_ROLE_STYLE[role]??NPC_ROLE_STYLE.extra;return tagChip(style.icon,style.color,style.label);};
+export const avatarFor=img=>avatarThumb(img.src,img.fallbacks);
+export const npcRoleChip=role=>{const style=NPC_ROLE_STYLE[role]??NPC_ROLE_STYLE.extra;return tagChip(style.icon,style.color,style.label);};
 /** Mesmo visual do chip de papel (.sy-npc-role), pra tags extras como Dragão/Militar não vir diferente. */
 function tagChip(icon,color,label){return `<span class="sy-npc-role" style="--sy-role:${e(color)}"><i class="fa-solid ${e(icon)}" aria-hidden="true"></i>${e(label)}</span>`;}
-const sortByName=list=>[...(list??[])].sort((a,b)=>String(a?.name??'').localeCompare(String(b?.name??''),'pt-BR'));
+export const sortByName=list=>[...(list??[])].sort((a,b)=>String(a?.name??'').localeCompare(String(b?.name??''),'pt-BR'));
 const NPC_ASPECTS=[['legacy','Legado'],['heritage','Herança'],['class','Classe'],['path','Trilha'],['curse','Maldição'],['background','Antecedente']];
 /** Resumo em texto puro da descrição do item, pro balão de ajuda do chip. */
 const aspectSummary=item=>{
@@ -1742,175 +1743,19 @@ export class CampaignLibrary {
     }).join('');
     return `<aside class="sy-atlas"><div class="sy-atlas-mass">${button('map-share-all','regions','Liberar regiões')}${button('map-share-all','all','Liberar tudo')}${button('map-share-all','none','Recolher')}</div>${tree}</aside>`;
   }
-  sceneAtlasParentOptions(selected='',currentSceneId=''){
-    const option=(value,label)=>`<option value="${e(value)}" ${selected===value?'selected':''}>${e(label)}</option>`;
-    const regions=sortByName(REGIONS).map(region=>option(`region:${region.id}`,`Região · ${region.name}`)).join('');
-    const places=sortByName(PLACES).map(place=>option(`place:${place.id}`,`${REGIONS.find(region=>region.id===place.regionId)?.name??'Opath'} · ${place.name}`)).join('');
-    const scenes=sortByName(Array.from(this.game.scenes??[]).filter(scene=>scene.id!==currentSceneId)).map(scene=>option(`scene:${scene.id}`,`Dentro do mapa · ${scene.name}`)).join('');
-    return `${option('unassigned','Sem região/local definido')}<optgroup label="Regiões">${regions}</optgroup><optgroup label="Cidades e locais">${places}</optgroup>${scenes?`<optgroup label="Dentro de outro mapa">${scenes}</optgroup>`:''}`;
-  }
-  sceneAtlasAddForm(parentId){
-    return `<div class="sy-scene-atlas-add"><input name="atlasSceneName" placeholder="Nome do novo mapa"><button data-op="lib-atlas-scene-create" data-id="${e(parentId)}"><i class="fa-solid fa-plus" aria-hidden="true"></i> Criar cena aqui</button></div>`;
-  }
-  sceneAtlasFirstScene(node){
-    if(node?.type==='scene'&&!node.missing)return node;
-    for(const child of node?.children??[]){const found=this.sceneAtlasFirstScene(child);if(found)return found;}
-    return null;
-  }
-  renderSceneAtlasScene(node,atlas,depth=0){
-    const stored=atlas.scenes[node.key]?.parentId??node.parentId??'unassigned';
-    const positioned=node.edgeIds?.length??0;
-    const children=(node.children??[]).map(child=>this.renderSceneAtlasScene(child,atlas,depth+1)).join('');
-    const image=this.state.atlasThumbnails&&node.img?`<img src="${e(node.img)}" alt="" loading="lazy">`:'';
-    const placeId=String(node.parentId??'').startsWith('place:')?String(node.parentId).slice(6):'';
-    const placeName=PLACES.find(place=>place.id===placeId)?.name;
-    const label=placeName===node.label?`Mapa: ${node.label}`:node.label;
-    const title=node.missing?`<strong>${e(label)}</strong>`:`<button data-op="lib-open-scene" data-id="${e(node.key)}">${e(label)}</button>`;
-    return `<article class="sy-scene-atlas-scene ${node.missing?'is-missing':''}" style="--sy-atlas-depth:${Math.min(6,depth)}">${image}<div class="sy-scene-atlas-scene-body"><div class="sy-scene-atlas-scene-title"><i class="fa-solid ${node.missing?'fa-triangle-exclamation':'fa-map'}" aria-hidden="true"></i>${title}<span>${node.missing?'cena ausente':`${positioned} ligação${positioned===1?'':'ões'}`}</span></div><div class="sy-scene-atlas-scene-tools">${node.missing?`<button data-op="lib-atlas-scene-remove" data-id="${e(node.key)}">Remover esta entrada</button>`:`<select name="atlasSceneParent" data-scene="${e(node.key)}" aria-label="Onde este mapa fica">${this.sceneAtlasParentOptions(stored,node.key)}</select><button data-op="lib-atlas-assign" data-id="${e(node.key)}">Mover</button>`}</div>${node.missing?'':this.sceneAtlasAddForm(`scene:${node.key}`)}${children?`<div class="sy-scene-atlas-children">${children}</div>`:''}</div></article>`;
-  }
-  renderSceneAtlasPlace(node,atlas){
-    const directScenes=(node.children??[]).filter(child=>child.type==='scene');
-    const subPlaces=(node.children??[]).filter(child=>child.type==='place');
-    const first=this.sceneAtlasFirstScene(node);
-    const count=node.counts?.scenes??0;
-    const label=first?`<button data-op="lib-open-scene" data-id="${e(first.key)}" title="Abrir ${e(first.label)}">${e(node.label)}</button>`:`<strong>${e(node.label)}</strong>`;
-    const contents=`${this.sceneAtlasAddForm(node.id)}${directScenes.map(scene=>this.renderSceneAtlasScene(scene,atlas)).join('')}${subPlaces.map(place=>this.renderSceneAtlasPlace(place,atlas)).join('')}`;
-    const open=this.state.atlasOpen?.has(node.id)?'open':'';
-    return `<details class="sy-scene-atlas-place" data-atlas-open="${e(node.id)}" ${open}><summary><i class="fa-solid ${placeLayer(node.data?.kind)==='cidade'?'fa-city':'fa-location-dot'}" aria-hidden="true"></i>${label}<span class="sy-scene-atlas-count ${count?'has-maps':''}">${count} mapa${count===1?'':'s'}</span></summary><div class="sy-scene-atlas-place-body">${contents}</div></details>`;
-  }
-  renderSceneAtlasEdge(edge,sceneMap){
-    const from=sceneMap.get(edge.from.sceneId),to=sceneMap.get(edge.to.sceneId);
-    const pos=endpoint=>Number.isFinite(endpoint?.x)&&Number.isFinite(endpoint?.y);
-    const stair=edge.implementations?.stairways,native=edge.implementations?.native;
-    const badge=(id,label,impl)=>`<span class="sy-scene-atlas-provider ${edge.runtimeProvider===id?'is-runtime':''} ${impl?'is-built':''}">${edge.runtimeProvider===id?'●':'○'} ${e(label)} · ${e(impl?.status??(impl?'preparado':'não construído'))}</span>`;
-    return `<article class="sy-scene-atlas-edge"><header><div><strong>${e(edge.label)}</strong><small>${e(from?.name??edge.from.sceneId)} ${edge.bidirectional?'↔':'→'} ${e(to?.name??edge.to.sceneId)}</small></div><button data-op="lib-atlas-edge-remove" data-id="${e(edge.id)}" title="Remover ligação" ${stair||native?'disabled':''}><i class="fa-solid fa-trash" aria-hidden="true"></i></button></header><div class="sy-scene-atlas-endpoints"><button data-op="lib-atlas-place" data-id="${e(edge.id)}|from" class="${pos(edge.from)?'is-ready':''}">${pos(edge.from)?'✓':'⌖'} Entrada · ${e(from?.name??edge.from.sceneId)}</button><button data-op="lib-atlas-place" data-id="${e(edge.id)}|to" class="${pos(edge.to)?'is-ready':''}">${pos(edge.to)?'✓':'⌖'} Saída · ${e(to?.name??edge.to.sceneId)}</button></div><div class="sy-scene-atlas-provider-row">${badge('stairways','Stairways',stair)}${badge('native','Regiões',native)}</div><div class="sy-scene-atlas-edge-actions"><button data-op="lib-atlas-build" data-id="${e(edge.id)}" ${pos(edge.from)&&pos(edge.to)?'':'disabled'}>Construir opções ligadas</button>${stair?button('atlas-runtime',`${edge.id}|stairways`,'Usar Stairways'):''}${native?button('atlas-runtime',`${edge.id}|native`,'Usar Regiões'):''}</div></article>`;
-  }
-  renderSceneAtlas(){
-    const atlas=this.sceneAtlas,scenes=Array.from(this.game.scenes??[]),sceneMap=new Map(scenes.map(scene=>[scene.id,scene]));
-    const tree=buildSceneAtlasTree({atlas,regions:REGIONS,places:PLACES,scenes,placeScenes:this.placeScenes,regionScenes:this.regionScenes});
-    const stairModule=this.game.modules?.get?.('stairways'),stairVersion=String(stairModule?.version??'');
-    const stairAvailable=Boolean(stairModule?.active&&/^0\.11\./.test(stairVersion));
-    const nativeAvailable=Number(String(this.game.version??globalThis.game?.version??'13').split('.')[0])===13;
-    const toggle=(id,label,available,detail)=>{const on=atlas.providers[id];return `<button class="sy-scene-atlas-toggle ${on?'is-on':''}" data-op="lib-atlas-provider" data-id="${id}:${on?'off':'on'}" aria-pressed="${on}"><i class="fa-solid ${on?'fa-toggle-on':'fa-toggle-off'}" aria-hidden="true"></i><span>${e(label)}<small>${e(available?detail:'indisponível agora')}</small></span></button>`;};
-    const sceneOptions=sortByName(scenes).map(scene=>`<option value="${e(scene.id)}">${e(scene.name)}</option>`).join('');
-    const edgeForm=scenes.length>=2?`<section class="sy-scene-atlas-editor"><h3>Nova ligação jogável</h3><div class="sy-scene-atlas-edge-form"><label>Origem<select name="atlasEdgeFrom"><option value="">Escolha…</option>${sceneOptions}</select></label><label>Destino<select name="atlasEdgeTo"><option value="">Escolha…</option>${sceneOptions}</select></label><label>Nome<input name="atlasEdgeLabel" placeholder="Ex.: Porta da taverna"></label><label class="sy-inline-check"><input name="atlasEdgeBidirectional" type="checkbox" checked> Ida e volta</label><button data-op="lib-atlas-edge-add" data-id="">Adicionar ligação</button></div></section>`:'<p class="sy-note">Crie ou vincule pelo menos duas cenas para montar uma ligação jogável.</p>';
-    const regions=tree.children.filter(node=>node.type==='region').map(region=>`<details class="sy-scene-atlas-region" data-atlas-open="${e(region.id)}" ${this.state.atlasOpen?.has(region.id)?'open':''} style="--sy-region:${e(this.regionColor(region.key))}"><summary><span class="sy-atlas-dot"></span><strong>${e(region.label)}</strong><span>${region.counts?.scenes??0} mapa${region.counts?.scenes===1?'':'s'} · ${region.counts?.edges??0} ligações</span></summary><div class="sy-scene-atlas-region-body">${this.sceneAtlasAddForm(region.id)}${(region.children??[]).map(place=>this.renderSceneAtlasPlace(place,atlas)).join('')||'<small>Nenhuma localidade cadastrada.</small>'}</div></details>`).join('');
-    const unassigned=tree.children.find(node=>node.type==='group');
-    const loose=(unassigned?.children??[]).map(scene=>this.renderSceneAtlasScene(scene,atlas)).join('');
-    const edges=Object.values(atlas.edges).map(edge=>this.renderSceneAtlasEdge(edge,sceneMap)).join('');
-    const summary=tree.summary;
-    const puzzleView=this.state.atlasView!=='list';
-    const viewNav=`<nav class="sy-library-tabs sy-scene-atlas-views" aria-label="Vista do Mapa Imersivo"><button data-op="lib-atlas-view" data-id="puzzle" aria-current="${puzzleView?'page':'false'}"><i class="fa-solid fa-puzzle-piece" aria-hidden="true"></i> Quebra-cabeça</button><button data-op="lib-atlas-view" data-id="list" aria-current="${puzzleView?'false':'page'}"><i class="fa-solid fa-list" aria-hidden="true"></i> Lista</button></nav>`;
-    return `<section class="sy-scene-atlas"><header class="sy-scene-atlas-head"><div><small>VISÃO CONCEITUAL</small><h2>Mapa Imersivo</h2><p>Região → cidade ou local → mapas internos. Cenas novas aparecem automaticamente em “Sem local”.</p></div><div class="sy-scene-atlas-metrics"><span><b>${summary.actualScenes}</b> cenas</span><span><b>${summary.assignedScenes+summary.legacyAssignedScenes}</b> organizadas</span><span><b>${summary.edges}</b> ligações</span>${this.explorationButton(this.state.atlasRegion||'')}</div></header><section class="sy-scene-atlas-automation"><div><h3>Construções automáticas</h3><p>Ligue um ou os dois construtores. As duas versões podem ficar prontas; cada passagem usa só uma delas durante o jogo.</p></div>${toggle('stairways','Stairways',stairAvailable,`v${stairVersion}`)}${toggle('native','Regiões nativas',nativeAvailable,'Foundry 13')}<button data-op="lib-atlas-build-all" data-id="">Construir tudo que estiver pronto</button><button data-op="lib-atlas-thumbnails" data-id="${this.state.atlasThumbnails?'hide':'show'}"><i class="fa-solid fa-image" aria-hidden="true"></i> ${this.state.atlasThumbnails?'Ocultar':'Mostrar'} miniaturas</button></section>${viewNav}${puzzleView?`${this.renderAtlasPuzzle(tree,atlas)}${edgeForm}`:`${edgeForm}<div class="sy-scene-atlas-layout"><div class="sy-scene-atlas-regions">${regions}</div><aside class="sy-scene-atlas-links"><h3>Ligações</h3>${edges||'<p class="sy-note">Nenhuma ligação criada.</p>'}<details class="sy-scene-atlas-unassigned" ${loose?'open':''}><summary>Sem local <span>${unassigned?.counts?.scenes??0}</span></summary>${loose||'<small>Todas as cenas estão organizadas.</small>'}</details></aside></div>`}</section>`;
-  }
-  /** T15 — botão "Abrir mapa de exploração" do World Explorer. Só existe com o módulo
-   *  ativo e uma cena que já tenha dado dele; a contagem de hexágonos é opcional e some
-   *  se o formato não for o esperado (ver src/world-explorer.mjs). */
-  explorationButton(regionId=''){
-    if(!worldExplorerActive(this.game))return '';
-    const scene=explorationScene(this.game.scenes??[],regionId?this.regionMainScene[regionId]:'');
-    if(!scene)return '';
-    const hexes=sceneRevealedHexes(scene);
-    const count=hexes?`<small>${hexes.revealed} revelado${hexes.revealed===1?'':'s'}${hexes.partial?` · ${hexes.partial} parcia${hexes.partial===1?'l':'is'}`:''}</small>`:'';
-    return `<button class="sy-explore-open" data-op="lib-explore-open" data-id="${e(scene.id)}" title="Abrir ${e(scene.name)} (World Explorer)"><i class="fa-solid fa-compass" aria-hidden="true"></i> Mapa de exploração${count}</button>`;
-  }
-  /** Desenho comum do quebra-cabeça e do mini-diagrama: caixas absolutas + linhas SVG.
-   *  As linhas guardam de qual caixa a qual caixa vão, pro arrastar redesenhar ao vivo. */
-  puzzleBoard(nodes,links,{width,height,box,regionId='',draggable=false,cls=''}){
-    const byId=new Map(nodes.map(node=>[node.id,node]));
-    const center=node=>({x:node.x+box.w/2,y:node.y+box.h/2});
-    const lines=links.map(link=>{const a=byId.get(link.from),b=byId.get(link.to);if(!a||!b)return '';const p=center(a),q=center(b);const label=link.kind==='portal'?`<title>${e(link.label||'Teletransporte')}${link.bidirectional?' (ida e volta)':''}</title>`:'';return `<line class="sy-puzzle-link is-${link.kind}" data-link-from="${e(link.from)}" data-link-to="${e(link.to)}" x1="${p.x}" y1="${p.y}" x2="${q.x}" y2="${q.y}">${label}</line>`;}).join('');
-    const icon={region:'fa-earth-americas',place:'fa-location-dot',scene:'fa-map'};
-    const boxes=nodes.map(node=>{
-      const action=node.type==='scene'&&!node.current?(node.missing?`<button data-op="lib-atlas-scene-remove" data-id="${e(node.key)}" title="Cena apagada no Foundry — remover esta entrada"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>`:`<button data-op="lib-open-scene" data-id="${e(node.key)}" title="Abrir ${e(node.label)}"><i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i></button>`):'';
-      return `<div class="sy-puzzle-box is-${node.type} ${node.missing?'is-missing':''} ${node.current?'is-current':''}" data-puzzle-node="${e(node.id)}" style="left:${node.x}px;top:${node.y}px" title="${e(node.missing?`${node.label} — cena ausente`:node.label)}"><i class="fa-solid ${node.missing?'fa-triangle-exclamation':icon[node.type]??'fa-map'}" aria-hidden="true"></i><span>${e(node.label)}</span>${action}</div>`;
-    }).join('');
-    return `<div class="sy-puzzle-board ${cls}" ${draggable?`data-puzzle-region="${e(regionId)}"`:''} style="width:${width}px;height:${height}px;--sy-box-w:${box.w}px;--sy-box-h:${box.h}px"><svg class="sy-puzzle-lines" width="${width}" height="${height}" aria-hidden="true">${lines}</svg>${boxes}</div>`;
-  }
-  /** T13 §2 — o quebra-cabeça de uma região. Caixas que já existem vêm prontas e ligadas
-   *  (hierarquia fixa); arrastar só muda a posição. Cena solta entra arrastando da bandeja
-   *  pra cima de uma caixa; caixa nova nasce pelo formulário, dentro da caixa escolhida. */
-  renderAtlasPuzzle(tree,atlas){
-    const regions=tree.children.filter(node=>node.type==='region');
-    if(!regions.length)return '<p class="sy-note">Nenhuma região cadastrada.</p>';
-    const selected=regions.find(region=>region.key===this.state.atlasRegion)??regions.find(region=>region.counts?.scenes)??regions[0];
-    const chips=`<nav class="sy-puzzle-regions" aria-label="Região a montar">${regions.map(region=>`<button data-op="lib-atlas-region" data-id="${e(region.key)}" aria-current="${region.key===selected.key?'page':'false'}" style="--sy-region:${e(this.regionColor(region.key))}"><span class="sy-atlas-dot"></span>${e(region.label)}<small>${region.counts?.scenes??0}</small></button>`).join('')}</nav>`;
-    const puzzle=buildRegionPuzzle({tree,regionId:selected.key,atlas});
-    const placeNames=new Map(PLACES.map(place=>[`place:${place.id}`,place.name]));
-    const nodes=puzzle.nodes.map(node=>node.type==='scene'&&placeNames.get(node.parentId)===node.label?{...node,label:`Mapa: ${node.label}`}:node);
-    const board=this.puzzleBoard(nodes,puzzle.links,{width:puzzle.width,height:puzzle.height,box:puzzle.box,regionId:selected.key,draggable:true});
-    const unassigned=tree.children.find(node=>node.type==='group');
-    const loose=(unassigned?.children??[]).filter(node=>!node.missing);
-    const tray=`<div class="sy-puzzle-tray"><strong>Cenas sem local</strong>${loose.length?`<small>Arraste uma para cima de uma caixa para colocá-la ali dentro.</small><div class="sy-puzzle-tray-list">${loose.map(node=>`<span class="sy-puzzle-loose" data-puzzle-loose="${e(node.key)}" title="Arraste para uma caixa">${e(node.label)}</span>`).join('')}</div>`:'<small>Todas as cenas já estão em algum lugar.</small>'}</div>`;
-    const parentOptions=nodes.filter(node=>!node.missing).map(node=>`<option value="${e(node.id)}">${node.type==='region'?'Região':node.type==='place'?'Local':'Dentro do mapa'} · ${e(node.label)}</option>`).join('');
-    const create=`<div class="sy-puzzle-create"><input name="puzzleSceneName" placeholder="Nome da caixa nova (cria uma cena)"><select name="puzzleSceneParent" aria-label="Dentro de qual caixa">${parentOptions}</select><button data-op="lib-atlas-puzzle-create" data-id=""><i class="fa-solid fa-plus" aria-hidden="true"></i> Criar caixa</button></div>`;
-    const sceneName=id=>this.game.scenes?.get?.(id)?.name??id;
-    const externals=puzzle.externals.length?`<p class="sy-puzzle-externals"><i class="fa-solid fa-door-open" aria-hidden="true"></i> Portais para fora desta região: ${puzzle.externals.map(link=>`${e(nodes.find(node=>node.id===link.nodeId)?.label??'')} → ${e(sceneName(link.otherSceneId))}`).join(' · ')}</p>`:'';
-    const legend=`<div class="sy-puzzle-legend"><span class="is-region">Região</span><span class="is-place">Local</span><span class="is-scene">Cena</span><span class="is-portal">- - - teletransporte</span><button data-op="lib-atlas-layout-reset" data-id="${e(selected.key)}" title="Esquecer as posições desta região"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i> Reorganizar caixas</button></div>`;
-    return `<section class="sy-puzzle" style="--sy-region:${e(this.regionColor(selected.key))}">${chips}${legend}<div class="sy-puzzle-scroll">${board}</div>${externals}<div class="sy-puzzle-tools">${create}${tray}</div></section>`;
-  }
-  /** T13 §1.7 — a cena ativa no centro e, em volta, as cenas ligadas a ela: portais
-   *  (tracejado), o mapa onde ela fica e os mapas internos dela (linha cheia). */
-  activeSceneDiagram(scene){
-    const {portals,parentSceneId,childSceneIds}=sceneNeighborhood(this.sceneAtlas,scene.id);
-    const around=[...(parentSceneId?[{sceneId:parentSceneId,kind:'hierarchy',hint:'fica dentro de'}]:[]),...childSceneIds.map(sceneId=>({sceneId,kind:'hierarchy',hint:'mapa interno'})),...portals.map(portal=>({...portal,kind:'portal'}))];
-    const seen=new Set();
-    const unique=around.filter(item=>{if(item.sceneId===scene.id||seen.has(item.sceneId))return false;seen.add(item.sceneId);return true;});
-    if(!unique.length)return `<section class="sy-active-scene-diagram"><h4>Cenas ligadas</h4><p class="sy-note">Nenhuma cena ligada a esta ainda — ligue pelo Mapa Imersivo.</p></section>`;
-    const box={w:150,h:40},width=560,height=unique.length>6?300:240;
-    const cx=width/2,cy=height/2,rx=width/2-box.w/2-14,ry=height/2-box.h/2-10;
-    const nodes=[{id:`scene:${scene.id}`,key:scene.id,type:'scene',label:scene.name,current:true,x:Math.round(cx-box.w/2),y:Math.round(cy-box.h/2)}];
-    unique.forEach((item,index)=>{const angle=-Math.PI/2+index*2*Math.PI/unique.length;const target=this.game.scenes?.get?.(item.sceneId);nodes.push({id:`scene:${item.sceneId}`,key:item.sceneId,type:'scene',label:target?.name??item.sceneId,missing:!target,x:Math.round(cx+rx*Math.cos(angle)-box.w/2),y:Math.round(cy+ry*Math.sin(angle)-box.h/2)});});
-    const links=unique.map(item=>({from:`scene:${scene.id}`,to:`scene:${item.sceneId}`,kind:item.kind,label:item.label||item.hint,bidirectional:item.direction==='both'}));
-    return `<section class="sy-active-scene-diagram"><h4>Cenas ligadas</h4><div class="sy-puzzle-scroll">${this.puzzleBoard(nodes,links,{width,height,box,cls:'is-mini'})}</div></section>`;
-  }
-  /** T13 §1.7 — NPCs da região em árvore: região → local → sub-local → NPCs daquele
-   *  local. Os acordeões começam fechados e lembram o estado (mesmo mecanismo do atlas). */
-  activeSceneNpcTree(regionId,currentPlaceId){
-    const entries=this.npcActors().map(actor=>{const flag=npcFlag(actor)??adoptNpcFlag(actor);return {id:actor.id,name:actor.name,img:actor.img,uuid:actor.uuid,role:flag.role,placeId:flag.placeId,regionId:flag.regionId||PLACES.find(place=>place.id===flag.placeId)?.regionId||inferRegionId(actor)};});
-    const tree=regionLocalityTree({regionId,places:PLACES,entries});
-    const npcBtn=n=>`<button class="sy-location-npc" data-op="lib-npc-open" data-id="${e(n.id)}" draggable="true" data-drag-actor="${e(n.uuid)}" title="Abrir ficha ou arrastar">${avatarFor(this.image('npc',n.name,n.img,'icons/svg/mystery-man.svg'))}<span><strong>${e(n.name)}</strong>${npcRoleChip(n.role)}</span></button>`;
-    const renderNode=node=>{
-      if(!node.total&&node.place.id!==currentPlaceId)return '';
-      const key=`npc-tree:${node.place.id}`;
-      const current=node.place.id===currentPlaceId;
-      const inner=`${node.entries.map(npcBtn).join('')}${node.children.map(renderNode).join('')}`;
-      return `<details class="sy-npc-tree-place ${current?'is-current':''}" data-atlas-open="${e(key)}" ${this.state.atlasOpen?.has(key)?'open':''}><summary><i class="fa-solid ${placeLayer(node.place.kind)==='cidade'?'fa-city':'fa-location-dot'}" aria-hidden="true"></i>${e(node.place.name)}${current?' <em>você está aqui</em>':''}<span>${node.total}</span></summary><div class="sy-npc-tree-body">${inner||'<small>Ninguém mora aqui ainda.</small>'}</div></details>`;
-    };
-    const places=tree.places.map(renderNode).join('');
-    const looseKey=`npc-tree:${regionId}:loose`;
-    const loose=tree.loose.length?`<details class="sy-npc-tree-place" data-atlas-open="${e(looseKey)}" ${this.state.atlasOpen?.has(looseKey)?'open':''}><summary><i class="fa-solid fa-route" aria-hidden="true"></i>Pela região, sem local fixo<span>${tree.loose.length}</span></summary><div class="sy-npc-tree-body">${tree.loose.map(npcBtn).join('')}</div></details>`:'';
-    return `<section class="sy-npc-tree"><h4>NPCs da região por local <small>${tree.total}</small></h4>${places||loose?`${places}${loose}`:'<p class="sy-note">Nenhum NPC nesta região ainda.</p>'}</section>`;
-  }
-  /** Aba Cena Atual (Tarefa 6, reorganizada na T13 §1.7): a cena que está ativa agora,
-   *  com quem e o que tem lá, tudo junto. Reaproveita os painéis que já existem. Nada
-   *  libera nada sozinho: cada ação pede um clique. */
-  renderActiveScenePanel(){
-    if(!this.game.user?.isGM)return '';
-    const scenes=Array.from(this.game.scenes??[]);
-    const scene=this.game.scenes?.active??scenes.find(s=>s.active)??null;
-    if(!scene)return `<section class="sy-active-scene sy-active-scene-empty"><p>Nenhuma cena ativa agora. Ative uma cena no Foundry para ver aqui quem e o que tem nela.</p></section>`;
-    const locality=resolveSceneLocality(this.sceneAtlas,scene.id,{placeScenes:this.placeScenes,regionScenes:this.regionScenes});
-    if(!locality)return `<section class="sy-active-scene sy-active-scene-empty"><p><strong>${e(scene.name)}</strong> está ativa, mas ainda não está no Mapa Imersivo. ${button('map-display','atlas','Organizar no Mapa Imersivo')}</p></section>`;
-    const {regionId,placeId}=locality;
-    const region=REGIONS.find(r=>r.id===regionId);
-    const place=placeId?PLACES.find(p=>p.id===placeId):null;
-    const localityKey=place?`place:${place.id}`:`region:${regionId}`;
-    const liberado=this.npcLocalities.has(localityKey);
-    const npcsAqui=this.npcActors().filter(actor=>{const flag=npcFlag(actor)??adoptNpcFlag(actor);return placeId?flag.placeId===placeId:flag.regionId===regionId;});
-    const flags=npcsAqui.map(actor=>npcFlag(actor)??adoptNpcFlag(actor));
-    const guilds=guildsForPlace({npcs:flags,guilds:this.guildActors(),placeId:placeId||'',regionId,places:PLACES});
-    const guildasHtml=guilds.length?`<section class="sy-active-scene-guilds"><h4>Guildas presentes</h4><div class="sy-library-tabs">${guilds.map(g=>`<button data-op="lib-guild-open" data-id="${e(g.uuid)}">${e(g.name)}</button>`).join('')}</div></section>`:'';
-    const mercadores=npcsAqui.filter(actor=>(npcFlag(actor)??{}).shop?.stock?.length);
-    const mercadoresHtml=mercadores.length?`<section class="sy-active-scene-merchants"><h4>Mercadores</h4>${mercadores.map(actor=>`<div class="sy-active-scene-merchant"><strong>${e(actor.name)}</strong>${this.npcGmStrip(actor,npcFlag(actor)??adoptNpcFlag(actor))}</div>`).join('')}</section>`:'';
-    const roll=this.state.regionRumorRoll&&this.state.regionRumorRoll.regionId===regionId?this.state.regionRumorRoll:null;
-    const rumorList=[...(this.regionRumors[regionId]||[]),...this.rumorSeeds(regionId)];
-    const rolados=roll?rumorList.filter(r=>roll.ids.includes(r.id)):[];
-    const rumoresHtml=`<section class="sy-active-scene-rumors">${button('region-rumor-roll',regionId,'🎲 Rumor da região')}${rolados.map(r=>`<p class="sy-rumor is-rolled">${e(r.text)}</p>`).join('')}</section>`;
-    const liberar=button('npc-locality',localityKey,liberado?'✓ Localidade liberada':'Liberar esta localidade aos jogadores',liberado?'':'sy-primary');
-    const aqui=this.npcsForLocation(regionId,placeId,false);
-    return `<section class="sy-active-scene" style="--sy-region:${e(this.regionColor(regionId))}"><header class="sy-active-scene-head"><small>CENA ATIVA</small><h3>${e(scene.name)} — ${e(place?.name??region?.name??'')}${place?` · ${e(region?.name??'')}`:''}</h3>${liberar}${this.explorationButton(regionId)}</header>${this.activeSceneDiagram(scene)}<div class="sy-active-scene-body">${aqui?`<section class="sy-active-scene-here"><h4>Aqui agora</h4>${aqui}</section>`:''}${this.activeSceneNpcTree(regionId,placeId)}${guildasHtml}${mercadoresHtml}${rumoresHtml}</div></section>`;
-  }
+  sceneAtlasParentOptions(...args){return immersive.sceneAtlasParentOptions(this,...args);}
+  sceneAtlasAddForm(...args){return immersive.sceneAtlasAddForm(this,...args);}
+  sceneAtlasFirstScene(...args){return immersive.sceneAtlasFirstScene(this,...args);}
+  renderSceneAtlasScene(...args){return immersive.renderSceneAtlasScene(this,...args);}
+  renderSceneAtlasPlace(...args){return immersive.renderSceneAtlasPlace(this,...args);}
+  renderSceneAtlasEdge(...args){return immersive.renderSceneAtlasEdge(this,...args);}
+  renderSceneAtlas(...args){return immersive.renderSceneAtlas(this,...args);}
+  explorationButton(...args){return immersive.explorationButton(this,...args);}
+  puzzleBoard(...args){return immersive.puzzleBoard(this,...args);}
+  renderAtlasPuzzle(...args){return immersive.renderAtlasPuzzle(this,...args);}
+  activeSceneDiagram(...args){return immersive.activeSceneDiagram(this,...args);}
+  activeSceneNpcTree(...args){return immersive.activeSceneNpcTree(this,...args);}
+  renderActiveScenePanel(...args){return immersive.renderActiveScenePanel(this,...args);}
   /** O mestre tem duas vistas do Mapa: o mapa de Opath de sempre e o atlas de cenas.
    *  O jogador continua vendo só o mapa. */
   renderMap(readonly=false){
