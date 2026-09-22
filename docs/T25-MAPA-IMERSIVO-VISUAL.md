@@ -9,6 +9,12 @@
 > ele já usa no mundo oficial). As decisões de design que faltavam já estão tomadas —
 > não pergunte de novo o que este documento já resolve.
 
+> **Estado em 22/09/2026:** §1.1–1.5 feitos pelo Codex (commits `a34ea0a`, `60c706d`);
+> §1.7 (Cena Atual com mini-diagrama e árvore de NPCs), §2 (quebra-cabeça) e §4.2 (World
+> Explorer) feitos pelo Claude. **Só falta o §1.6** (precisa de print com F12) e a conferência
+> no Foundry. Onde a implementação escolheu algo que este documento deixava em aberto, está
+> em `PROGRESSO-MAPA-IMERSIVO.md`, "Decisões de implementação".
+
 **Antes de codar, leia [docs/PROGRESSO-MAPA-IMERSIVO.md](PROGRESSO-MAPA-IMERSIVO.md)** —
 o estado de cada peça do Mapa Imersivo está lá, e esta tarefa muda esse estado.
 

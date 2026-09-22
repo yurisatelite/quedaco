@@ -377,3 +377,36 @@ test('attachCreatureRoleItems sem identificador correspondente no compêndio, se
   const result=await attachCreatureRoleItems({packs:{get:()=>pack}},source);
   assert.deepEqual(result.items,[]);
 });
+
+// ── T24 §3 — biografia em ficha de campo ──
+import {alignmentPhrase,buildFieldSheet,tacticsFromItems} from '../src/monster-convert.mjs';
+
+test('ficha de campo: temperamento sai da tendência real do SRD, sem nome de plano ou deus',()=>{
+  assert.match(alignmentPhrase('neutral good (50%) or neutral evil (50%)'),/^Metade .*ajudar.*outra metade .*cruel.*Role 1d2/);
+  assert.match(alignmentPhrase('lawful evil'),/regras.*cruel/);
+  assert.match(alignmentPhrase('unaligned'),/instinto/);
+  assert.match(alignmentPhrase('any non-good alignment'),/nunca é bondoso/);
+  assert.match(alignmentPhrase('any alignment'),/Varia/);
+  assert.equal(alignmentPhrase(''),'');
+});
+
+test('ficha de campo: blocos na ordem do T24, táticas dos Itens, "—" sem ficha escrita e original recolhido',()=>{
+  const mob=normalizeOpen5e({name:'Gigante de Teste',challenge_rating:'9',size:'Huge',type:'giant',alignment:'neutral good (50%) or neutral evil (50%)',strength:27,dexterity:10,constitution:22,intelligence:12,wisdom:16,charisma:16,hit_dice:'16d12+96',
+    actions:[{name:'Multiattack',desc:'The giant makes two morningstar attacks.'},{name:'Morningstar',desc:'Melee Weapon Attack: +12 to hit, reach 10 ft., one target. Hit: 21 (3d8 + 8) piercing damage.'},{name:'Rock',desc:'Ranged Weapon Attack: +12 to hit, range 60/240 ft., one target. Hit: 30 (4d10 + 8) bludgeoning damage.'}],
+    special_abilities:[{name:'Keen Smell',desc:'The giant has advantage on Wisdom (Perception) checks that rely on smell.'}]});
+  const src=toSkyfallNpc(mob,{habitat:'Espinha de Vorax'});
+  const bio=src.system.biography;
+  const ordem=['Habitat em Opath','Aparência','Temperamento','Comportamento','Táticas','O que quer','Ganchos','Notas de conversão'].map(t=>bio.indexOf(t));
+  assert.ok(ordem.every((pos,i)=>pos>=0&&(i===0||pos>ordem[i-1])),'blocos na ordem da seção 3');
+  assert.match(bio,/Habitat em Opath:<\/strong> Espinha de Vorax/);
+  assert.match(bio,/Aparência:<\/strong> —/);
+  assert.match(bio,/Táticas:<\/strong> Abre com Rock de longe\. Em corpo a corpo: Morningstar — mais de um ataque por turno/);
+  assert.match(bio,/Keen Smell/);
+  assert.match(bio,/<details><summary>Original \(D&amp;D 5e\)/);
+  // com ficha escrita à parte, os quatro blocos vêm dela (texto escapado)
+  const ficha=buildFieldSheet(mob,{items:src.items,sheet:{appearance:'Alto <b>demais</b>',behavior:'Aposta tudo',wants:'Tesouro',hooks:['Um','Dois'],temperament:'Vaidoso.'}});
+  assert.match(ficha,/Aparência:<\/strong> Alto &lt;b&gt;demais&lt;\/b&gt;/);
+  assert.match(ficha,/Temperamento:<\/strong> Vaidoso\. Metade/);
+  assert.match(ficha,/Ganchos:<\/strong> Um · Dois/);
+  assert.equal(tacticsFromItems([]),'');
+});

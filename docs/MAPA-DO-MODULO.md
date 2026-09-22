@@ -57,6 +57,17 @@ por atitude, condições do livro e pechincha.
 
 Nome dado pelo Yuri em 17/09/2026. Funcionalidade grande, em andamento — tem doc próprio
 de progresso, não repita aqui: **[PROGRESSO-MAPA-IMERSIVO.md](PROGRESSO-MAPA-IMERSIVO.md)**.
+Atalho pra achar código (22/09/2026):
+
+| Peça | Onde |
+|---|---|
+| Dado puro do atlas (hierarquia, arestas, posição das caixas) | [scene-atlas.mjs](../src/scene-atlas.mjs) — `buildSceneAtlasTree`, `resolveSceneLocality`; `atlas.layout[regionId]['place:x'|'scene:y'|'region:z']={x,y}` em pixels, gravado por `setAtlasLayoutPosition` |
+| Quebra-cabeça por região (arranjo inicial, linhas, portais pra fora) | `scene-atlas.mjs: buildRegionPuzzle` (dado) → `library.mjs: renderAtlasPuzzle, puzzleBoard` (tela) → `app.mjs: _bindPuzzle` (arrastar caixa = grava posição; arrastar cena da bandeja pra uma caixa = `dropAtlasScene`) |
+| Lista (árvore de `<details>`) | `library.mjs: renderSceneAtlas` com `state.atlasView='list'`; acordeões lembram estado em `state.atlasOpen` via evento `toggle` em `app.mjs` |
+| Aba Cena Atual | `library.mjs: renderActiveScenePanel` (área `activeScene`) + `activeSceneDiagram` (vizinhança: `scene-atlas.mjs: sceneNeighborhood`) + `activeSceneNpcTree` (`scene-atlas.mjs: regionLocalityTree`) |
+| World Explorer (módulo de terceiros) | [world-explorer.mjs](../src/world-explorer.mjs) — tudo blindado; `library.mjs: explorationButton`. Formato do dado dele: `docs/REFERENCIA-SKYFALL.md`, seção "Módulos de terceiros" |
+| Hooks | `main.mjs`: `canvasReady` (re-render), `deleteScene` (limpa entrada e posição), `updateScene` (pergunta ao ativar) |
+| Testes | [scene-atlas.test.mjs](../tests/scene-atlas.test.mjs), [world-explorer.test.mjs](../tests/world-explorer.test.mjs), `library.test.mjs` ("quebra-cabeça do Mapa Imersivo", "painel da cena ativa") |
 
 ## Monstros (catálogo do livro + importados de outros jogos)
 
@@ -66,7 +77,8 @@ de progresso, não repita aqui: **[PROGRESSO-MAPA-IMERSIVO.md](PROGRESSO-MAPA-IM
 | Conversor D&D 5e → Skyfall | [monster-convert.mjs](../src/monster-convert.mjs) — ver `docs/T24-MONSTROS-COMPLETOS.md` pro estado exato |
 | Filtro/facetas na tela (tipo, papel, porte, ND, região e além de Opath) | `library.mjs: monsterLocation, monsterFacetValues, monsterMatches` |
 | Região/habitat de cada monstro do mundo | macro `.local/distribuir-monstros-por-regiao.js` → `flags.quedaco.monster`; a flag prevalece sobre o índice do livro |
-| Fichas de campo para biografia | `.local/fichas-de-campo.json` — 44 entradas do bestiário com aparência, temperamento, comportamento, objetivo e ganchos; conteúdo local, ainda não lido pelo conversor |
+| Biografia em ficha de campo (T24 §3) | `monster-convert.mjs: buildFieldSheet, alignmentPhrase, tacticsFromItems`; `toSkyfallNpc(mob,{habitat,fieldSheet})`. Temperamento sai da tendência (`mob.alignment`, lida nos 3 normalizadores), Táticas dos Itens gerados, Habitat passado por quem chama (a macro de reconversão lê `flags.quedaco.monster`). Aparência/Comportamento/O que quer/Ganchos vêm de `fieldSheet` — sem ela, "—" |
+| Fichas de campo escritas | `.local/fichas-de-campo.json` — 44 entradas do bestiário **do livro** (não dos de D&D); nenhum código lê ainda — os do livro são fichas nativas do compêndio, não passam pelo conversor |
 | Falta conhecido | traços/magia/hierarquia/arquétipo já viram Itens (T24, passos 4–5, feito 17/09) — mas **não verificado no Foundry**; reconverter os 326 já importados (perderam dado na 1ª importação) |
 
 ## Mundo do livro (regiões, locais, moedas)

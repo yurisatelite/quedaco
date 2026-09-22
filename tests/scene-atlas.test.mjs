@@ -131,3 +131,78 @@ test('resolveSceneLocality cai nos mapas legados (placeScenes/regionScenes) quan
   assert.equal(resolveSceneLocality(atlas,'cena-antiga',{placeScenes:{foice:'cena-antiga'},includeLegacy:false}),null,'auditoria distingue vínculo legado de cena organizada no atlas');
   assert.equal(resolveSceneLocality(atlas,'nunca-vinculada'),null);
 });
+
+// ── T13 §2 — quebra-cabeça por região ──
+import {buildRegionPuzzle,regionLocalityTree,resetAtlasLayout,sceneNeighborhood,setAtlasLayoutPosition} from '../src/scene-atlas.mjs';
+
+test('layout do quebra-cabeça: normaliza, grava, limpa e some junto com a cena removida',()=>{
+  const sujo=normalizeSceneAtlas({layout:{deserto:{'place:kravokia':{x:10.6,y:-5},'scene:a':{x:'1',y:2},'lixo':{x:1,y:1},'scene:b':{x:99999,y:3}},vazio:{}}});
+  assert.deepEqual(sujo.layout,{deserto:{'place:kravokia':{x:11,y:0},'scene:b':{x:6000,y:3}}});
+  let atlas=registerAtlasScene(createSceneAtlas(),'a','place:kravokia');
+  atlas=setAtlasLayoutPosition(atlas,'deserto','scene:a',{x:120,y:80});
+  assert.deepEqual(atlas.layout.deserto['scene:a'],{x:120,y:80});
+  assert.throws(()=>setAtlasLayoutPosition(atlas,'deserto','qualquer',{x:1,y:1}),/Caixa/);
+  assert.throws(()=>setAtlasLayoutPosition(atlas,'deserto','scene:a',{x:'1',y:1}),/Posição/);
+  // gravar posição não mexe na hierarquia
+  assert.equal(atlas.scenes.a.parentId,'place:kravokia');
+  assert.equal(removeAtlasScene(atlas,'a').layout.deserto,undefined);
+  assert.equal(setAtlasLayoutPosition(atlas,'deserto','scene:a',null).layout.deserto,undefined);
+  assert.deepEqual(resetAtlasLayout(atlas,'deserto').layout,{});
+});
+
+test('buildRegionPuzzle: caixas do que já existe, ligadas pela hierarquia, portal tracejado e posição lembrada',()=>{
+  const regions=[{id:'deserto',name:'Deserto de Mirmir'},{id:'outra',name:'Outra'}];
+  const places=[{id:'kravokia',regionId:'deserto',name:'Kravokia'},{id:'porto',regionId:'deserto',name:'Porto de Kravokia',parentId:'kravokia'},{id:'atoleiro',regionId:'deserto',name:'Atoleiro'},{id:'longe',regionId:'outra',name:'Longe'}];
+  const scenes=[{id:'cidade',name:'Kravokia'},{id:'cais',name:'Cais'},{id:'masmorra',name:'Masmorra'},{id:'fora',name:'Fora'}];
+  let atlas=createSceneAtlas();
+  for(const [id,parent] of [['cidade','place:kravokia'],['cais','place:porto'],['masmorra','scene:cidade'],['fora','place:longe']])atlas=registerAtlasScene(atlas,id,parent);
+  atlas=createAtlasEdge(atlas,{id:'tunel',label:'Túnel',bidirectional:true,from:{sceneId:'cais'},to:{sceneId:'masmorra'}});
+  atlas=createAtlasEdge(atlas,{id:'estrada',label:'Estrada',from:{sceneId:'cidade'},to:{sceneId:'fora'}});
+  const tree=buildSceneAtlasTree({atlas,regions,places,scenes});
+  const puzzle=buildRegionPuzzle({tree,regionId:'deserto',atlas});
+  const ids=puzzle.nodes.map(node=>node.id).sort();
+  assert.deepEqual(ids,['place:atoleiro','place:kravokia','place:porto','region:deserto','scene:cais','scene:cidade','scene:masmorra']);
+  const has=(from,to,kind)=>puzzle.links.some(link=>link.from===from&&link.to===to&&link.kind===kind);
+  assert.ok(has('region:deserto','place:kravokia','hierarchy'));
+  assert.ok(has('place:kravokia','place:porto','hierarchy'),'sub-local liga no local-pai');
+  assert.ok(has('scene:cidade','scene:masmorra','hierarchy'),'cena dentro de cena');
+  assert.ok(has('scene:cais','scene:masmorra','portal'),'teletransporte é outra linha');
+  assert.deepEqual(puzzle.externals.map(link=>[link.nodeId,link.otherSceneId]),[['scene:cidade','fora']]);
+  // arranjo inicial: ninguém empilhado no mesmo ponto
+  assert.equal(new Set(puzzle.nodes.map(node=>`${node.x},${node.y}`)).size,puzzle.nodes.length);
+  const region=puzzle.nodes.find(node=>node.id==='region:deserto');
+  assert.ok(puzzle.nodes.filter(node=>node!==region).every(node=>node.y>region.y),'região fica no topo');
+  // posição guardada vence o arranjo inicial, e o quadro cresce pra caber
+  const moved=setAtlasLayoutPosition(atlas,'deserto','scene:masmorra',{x:1500,y:900});
+  const again=buildRegionPuzzle({tree:buildSceneAtlasTree({atlas:moved,regions,places,scenes}),regionId:'deserto',atlas:moved});
+  const masmorra=again.nodes.find(node=>node.id==='scene:masmorra');
+  assert.deepEqual([masmorra.x,masmorra.y,masmorra.saved],[1500,900,true]);
+  assert.ok(again.width>=1500+again.box.w&&again.height>=900+again.box.h);
+  assert.equal(buildRegionPuzzle({tree,regionId:'nao-existe',atlas}),null);
+});
+
+test('sceneNeighborhood: portais nos dois sentidos, mapa-pai e mapas internos',()=>{
+  let atlas=createSceneAtlas();
+  for(const [id,parent] of [['cidade','place:x'],['taverna','scene:cidade'],['porao','scene:taverna'],['ilha','region:y']])atlas=registerAtlasScene(atlas,id,parent);
+  atlas=createAtlasEdge(atlas,{id:'barco',label:'Barco',bidirectional:true,from:{sceneId:'ilha'},to:{sceneId:'taverna'}});
+  atlas=createAtlasEdge(atlas,{id:'alcapao',label:'Alçapão',from:{sceneId:'taverna'},to:{sceneId:'porao'}});
+  const viz=sceneNeighborhood(atlas,'taverna');
+  assert.equal(viz.parentSceneId,'cidade');
+  assert.deepEqual(viz.childSceneIds,['porao']);
+  assert.deepEqual(viz.portals.map(p=>[p.sceneId,p.direction]),[['ilha','both'],['porao','out']]);
+  assert.deepEqual(sceneNeighborhood(atlas,'porao').portals.map(p=>p.direction),['in']);
+  assert.deepEqual(sceneNeighborhood(atlas,''),{portals:[],parentSceneId:'',childSceneIds:[]});
+});
+
+test('regionLocalityTree: NPC vai pro local dele, sub-local aninha, região solta separada',()=>{
+  const places=[{id:'alberich',regionId:'thur',name:'Alberich'},{id:'casebres',regionId:'thur',name:'Casebres',parentId:'alberich'},{id:'fora',regionId:'thur',name:'Lado de Fora'},{id:'longe',regionId:'outra',name:'Longe'}];
+  const entries=[{id:'a',placeId:'alberich',regionId:'thur'},{id:'b',placeId:'casebres',regionId:'thur'},{id:'c',placeId:'',regionId:'thur'},{id:'d',placeId:'longe',regionId:'outra'},{id:'e',placeId:'sumiu',regionId:'thur'}];
+  const tree=regionLocalityTree({regionId:'thur',places,entries});
+  assert.deepEqual(tree.places.map(node=>node.place.id),['alberich','fora']);
+  const alberich=tree.places[0];
+  assert.deepEqual(alberich.entries.map(n=>n.id),['a']);
+  assert.deepEqual(alberich.children.map(node=>node.place.id),['casebres']);
+  assert.equal(alberich.total,2,'conta o sub-local');
+  assert.deepEqual(tree.loose.map(n=>n.id),['c','e'],'sem local (ou local desconhecido) fica solto na região');
+  assert.equal(tree.total,4,'NPC de outra região não entra');
+});

@@ -589,3 +589,57 @@
 .sy-creator .sy-scene-atlas-provider{padding:1px 8px;border-radius:999px;border:1px solid #41576b;font-size:11px;color:#9fb3c4}
 .sy-creator .sy-scene-atlas-provider.is-built{color:#cfe2ef}
 .sy-creator .sy-scene-atlas-provider.is-runtime{border-color:#4fca8f;background:#123a2a;color:#a9f2cf}
+/* T13 §2 — quebra-cabeça do Mapa Imersivo (e o mini-diagrama da aba Cena Atual). Caixas de
+   tamanho fixo (--sy-box-w/h) porque as linhas SVG são calculadas a partir desse tamanho. */
+.sy-creator .sy-scene-atlas-views{margin:10px 0}
+.sy-creator .sy-puzzle{display:flex;flex-direction:column;gap:10px}
+.sy-creator .sy-puzzle-regions{display:flex;flex-wrap:wrap;gap:5px}
+.sy-creator .sy-puzzle-regions button{display:inline-flex;align-items:center;gap:6px;width:auto;padding:4px 9px;font-size:12px}
+.sy-creator .sy-puzzle-regions button small{color:#8ea6bb}
+.sy-creator .sy-puzzle-regions button[aria-current=page]{border-color:var(--sy-region,var(--sy-cyan));background:#1b2835;color:#fff}
+.sy-creator .sy-puzzle-legend{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:11px;color:#9fb3c6}
+.sy-creator .sy-puzzle-legend span{padding:2px 7px;border:1px solid #3a4b5d;border-radius:5px}
+.sy-creator .sy-puzzle-legend .is-region{border-color:var(--sy-region,#6a7c8f);background:#20303f}
+.sy-creator .sy-puzzle-legend .is-place{border-color:#8a6fd1;background:#241f38}
+.sy-creator .sy-puzzle-legend .is-scene{border-color:#4fb58a;background:#16291f}
+.sy-creator .sy-puzzle-legend .is-portal{border-style:dashed;border-color:#e0b44f;color:#e0c98f}
+.sy-creator .sy-puzzle-legend button{width:auto;margin-left:auto;padding:3px 9px;font-size:11px}
+.sy-creator .sy-puzzle-scroll{overflow:auto;max-height:64vh;border:1px solid #2c3947;border-radius:8px;background:#0f151c;background-image:radial-gradient(#233140 1px,transparent 1px);background-size:22px 22px}
+.sy-creator .sy-puzzle-board{position:relative;min-width:100%}
+.sy-creator .sy-puzzle-lines{position:absolute;inset:0;pointer-events:none;overflow:visible}
+.sy-creator .sy-puzzle-link{stroke:#5d7488;stroke-width:1.6}
+.sy-creator .sy-puzzle-link.is-portal{stroke:#e0b44f;stroke-width:2;stroke-dasharray:7 5}
+.sy-creator .sy-puzzle-box{position:absolute;box-sizing:border-box;display:flex;align-items:center;gap:6px;width:var(--sy-box-w,150px);height:var(--sy-box-h,40px);padding:0 6px 0 8px;border:1px solid #4fb58a;border-radius:7px;background:#16291f;color:#e7f3ec;font-size:12px;line-height:1.1;cursor:grab;user-select:none;touch-action:none;box-shadow:0 2px 6px #0008}
+.sy-creator .sy-puzzle-box span{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sy-creator .sy-puzzle-box>i{flex:0 0 auto;opacity:.8}
+.sy-creator .sy-puzzle-box button{flex:0 0 auto;width:22px;height:22px;min-height:0;padding:0;font-size:10px;line-height:1}
+.sy-creator .sy-puzzle-box.is-region{border:2px solid var(--sy-region,#6a7c8f);background:#20303f;font-weight:600}
+.sy-creator .sy-puzzle-box.is-place{border-color:#8a6fd1;border-radius:14px;background:#241f38}
+.sy-creator .sy-puzzle-box.is-missing{border-style:dashed;border-color:#d0654f;background:#2a1714;color:#f0b9ad}
+.sy-creator .sy-puzzle-box.is-current{border:2px solid var(--sy-cyan);background:#143342;cursor:default;font-weight:600}
+.sy-creator .sy-puzzle-box.is-dragging{z-index:5;cursor:grabbing;box-shadow:0 6px 16px #000c;opacity:.92}
+.sy-creator .sy-puzzle-box.is-drop-target{outline:2px solid var(--sy-cyan);outline-offset:2px}
+.sy-creator .sy-puzzle-board.is-mini{min-width:0;margin:0 auto}.sy-creator .sy-puzzle-board.is-mini .sy-puzzle-box{cursor:default}
+.sy-creator .sy-puzzle-externals{margin:0;font-size:12px;color:#e0c98f}
+.sy-creator .sy-puzzle-tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;align-items:start}
+.sy-creator .sy-puzzle-create{display:flex;flex-wrap:wrap;gap:6px}
+.sy-creator .sy-puzzle-create input{flex:1 1 180px}.sy-creator .sy-puzzle-create select{flex:1 1 180px}.sy-creator .sy-puzzle-create button{width:auto}
+.sy-creator .sy-puzzle-tray{display:flex;flex-direction:column;gap:5px;padding:8px;border:1px dashed #3a4b5d;border-radius:8px}
+.sy-creator .sy-puzzle-tray small{color:#8ea6bb}
+.sy-creator .sy-puzzle-tray-list{display:flex;flex-wrap:wrap;gap:5px;max-height:160px;overflow:auto}
+.sy-creator .sy-puzzle-loose{padding:3px 8px;border:1px solid #4fb58a;border-radius:6px;background:#16291f;font-size:12px;cursor:grab;user-select:none;touch-action:none}
+.sy-puzzle-ghost{position:fixed;z-index:10000;pointer-events:none;padding:3px 8px;border:1px solid #35cee9;border-radius:6px;background:#143342;color:#fff;font:12px OutfitQuedaco,system-ui,sans-serif;box-shadow:0 4px 12px #000a}
+.sy-creator .sy-explore-open{display:inline-flex;align-items:center;gap:6px;width:auto;padding:5px 10px;font-size:12px}
+.sy-creator .sy-explore-open small{color:#8ea6bb}
+/* T13 §1.7 — aba Cena Atual: mini-diagrama e árvore de NPCs por local */
+.sy-creator .sy-active-scene-diagram h4,.sy-creator .sy-npc-tree h4,.sy-creator .sy-active-scene-here h4{margin:0 0 6px}
+.sy-creator .sy-active-scene-diagram .sy-puzzle-scroll{max-height:none}
+.sy-creator .sy-npc-tree{display:flex;flex-direction:column;gap:5px}
+.sy-creator .sy-npc-tree h4 small{color:#8ea6bb;font-weight:400}
+.sy-creator .sy-npc-tree-place{border:1px solid #33465a;border-left:3px solid var(--sy-region,#3a495b);border-radius:7px;background:#141c26}
+.sy-creator .sy-npc-tree-place.is-current{border-color:var(--sy-cyan)}
+.sy-creator .sy-npc-tree-place>summary{display:flex;align-items:center;gap:7px;padding:6px 9px;cursor:pointer}
+.sy-creator .sy-npc-tree-place>summary span{margin-left:auto;color:#8ea6bb;font-size:12px}
+.sy-creator .sy-npc-tree-place>summary em{color:var(--sy-cyan);font-size:11px;font-style:normal}
+.sy-creator .sy-npc-tree-body{display:flex;flex-wrap:wrap;gap:6px;padding:4px 9px 9px 16px}
+.sy-creator .sy-npc-tree-body>.sy-npc-tree-place{flex:1 1 100%}

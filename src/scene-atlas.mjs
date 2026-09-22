@@ -115,7 +115,7 @@ function breakSceneParentCycles(scenes){
 }
 
 export function emptySceneAtlas(){
-  return {schema:SCENE_ATLAS_SCHEMA,providers:{stairways:false,native:false},scenes:{},edges:{}};
+  return {schema:SCENE_ATLAS_SCHEMA,providers:{stairways:false,native:false},scenes:{},edges:{},layout:{}};
 }
 
 export const createSceneAtlas=emptySceneAtlas;
@@ -142,8 +142,67 @@ export function normalizeSceneAtlas(value){
       native:Boolean(source.providers?.native)
     },
     scenes,
-    edges:Object.fromEntries(edgeEntries)
+    edges:Object.fromEntries(edgeEntries),
+    layout:normalizedLayout(source.layout)
   };
+}
+
+// T13 §2.4 — posição das caixas do quebra-cabeça, por região, em pixels livres dentro
+// de um quadro em branco (não % de imagem — ver T25 §2.1.1). A chave de cada caixa é a
+// mesma do parentId do atlas: `region:<id>`, `place:<id>`, `scene:<id>`. Catálogo do
+// livro (`book-world.mjs`) nunca guarda posição de tela.
+export const PUZZLE_LAYOUT_MAX=6000;
+const LAYOUT_NODE=/^(region|place|scene):(.+)$/;
+function normalizedPoint(value){
+  if(!isObject(value))return null;
+  const x=Number(value.x),y=Number(value.y);
+  if(typeof value.x!=='number'||typeof value.y!=='number'||!Number.isFinite(x)||!Number.isFinite(y))return null;
+  const clamp=n=>Math.max(0,Math.min(PUZZLE_LAYOUT_MAX,Math.round(n)));
+  return {x:clamp(x),y:clamp(y)};
+}
+function normalizedLayout(value){
+  if(!isObject(value))return {};
+  const regions=[];
+  for(const [rawRegion,rawNodes] of Object.entries(value)){
+    const regionId=cleanId(rawRegion);
+    if(!regionId||!isObject(rawNodes))continue;
+    const nodes=[];
+    for(const [rawNode,point] of Object.entries(rawNodes)){
+      const match=LAYOUT_NODE.exec(String(rawNode));
+      if(!match||!cleanId(match[2]))continue;
+      const normalized=normalizedPoint(point);
+      if(normalized)nodes.push([`${match[1]}:${cleanId(match[2])}`,normalized]);
+    }
+    if(nodes.length)regions.push([regionId,Object.fromEntries(nodes)]);
+  }
+  return Object.fromEntries(regions);
+}
+
+/** Guarda (ou limpa, com `point=null`) a posição de uma caixa no quadro de uma região. */
+export function setAtlasLayoutPosition(atlas,regionId,nodeId,point){
+  const region=requiredId(regionId,'ID de região');
+  const match=LAYOUT_NODE.exec(String(nodeId??''));
+  if(!match||!cleanId(match[2]))throw new TypeError('Caixa do quebra-cabeça inválida.');
+  const key=`${match[1]}:${cleanId(match[2])}`;
+  const result=cloneSceneAtlas(atlas);
+  const nodes={...(result.layout[region]??{})};
+  if(point===null)delete nodes[key];
+  else{
+    const normalized=normalizedPoint(point);
+    if(!normalized)throw new TypeError('Posição inválida.');
+    nodes[key]=normalized;
+  }
+  if(Object.keys(nodes).length)result.layout[region]=nodes;
+  else delete result.layout[region];
+  return result;
+}
+
+/** Joga fora as posições guardadas de uma região — as caixas voltam ao arranjo inicial. */
+export function resetAtlasLayout(atlas,regionId){
+  const region=requiredId(regionId,'ID de região');
+  const result=cloneSceneAtlas(atlas);
+  delete result.layout[region];
+  return result;
 }
 
 export function cloneSceneAtlas(value){
@@ -190,6 +249,10 @@ export function removeAtlasScene(atlas,sceneId){
   const result=cloneSceneAtlas(atlas);
   result.scenes=Object.fromEntries(Object.entries(result.scenes).filter(([entryId])=>entryId!==id));
   for(const entry of Object.values(result.scenes))if(entry.parentId===`scene:${id}`)entry.parentId=SCENE_ATLAS_UNASSIGNED;
+  for(const [regionId,nodes] of Object.entries(result.layout)){
+    delete nodes[`scene:${id}`];
+    if(!Object.keys(nodes).length)delete result.layout[regionId];
+  }
   return result;
 }
 
@@ -471,4 +534,114 @@ export function buildSceneAtlasTree({
     legacyAssignedScenes:[...ids].filter(id=>(value.scenes[id]?.parentId??SCENE_ATLAS_UNASSIGNED)===SCENE_ATLAS_UNASSIGNED&&(placeByScene.has(id)||regionByScene.has(id))).length
   };
   return root;
+}
+
+// ── T13 §2 — quebra-cabeça por região ─────────────────────────────────────────────
+// Dado puro: que caixas existem num quadro de região, onde cada uma fica e que linhas as
+// ligam. A tela (`library.mjs: renderAtlasPuzzle`) só desenha; o arrastar (`app.mjs:
+// _bindPuzzle`) só grava posição. Caixa sem posição guardada cai num arranjo inicial em
+// árvore (região no topo, cada local com o que tem dentro abaixo dele), em blocos que
+// quebram linha — nunca todas empilhadas em 0,0.
+export const PUZZLE_BOX=Object.freeze({w:150,h:40,hgap:18,vgap:46,margin:20,maxWidth:1100});
+
+function puzzleWalk(node,depth,parentId,out){
+  const entry={id:node.id,key:node.key,type:node.type,label:node.label,missing:Boolean(node.missing),depth,parentId,children:[]};
+  out.push(entry);
+  for(const child of node.children??[])entry.children.push(puzzleWalk(child,depth+1,node.id,out));
+  return entry;
+}
+
+function puzzleSubtree(entry,box){
+  // posições relativas ao canto do bloco; folhas lado a lado, pai centrado sobre os filhos
+  let leaf=0,maxDepth=entry.depth;
+  const place=(node)=>{
+    maxDepth=Math.max(maxDepth,node.depth);
+    const y=(node.depth-entry.depth)*(box.h+box.vgap);
+    if(!node.children.length){node.rel={x:leaf*(box.w+box.hgap),y};leaf++;return node.rel.x;}
+    const xs=node.children.map(place);
+    node.rel={x:Math.round((xs[0]+xs[xs.length-1])/2),y};
+    return node.rel.x;
+  };
+  place(entry);
+  return {width:Math.max(1,leaf)*(box.w+box.hgap)-box.hgap,height:(maxDepth-entry.depth+1)*(box.h+box.vgap)-box.vgap};
+}
+
+export function buildRegionPuzzle({tree,regionId,atlas,box=PUZZLE_BOX}={}){
+  const regionNode=(tree?.children??[]).find(node=>node.type==='region'&&node.key===regionId);
+  if(!regionNode)return null;
+  const value=normalizeSceneAtlas(atlas);
+  const saved=value.layout[regionId]??{};
+  const entries=[];
+  const root=puzzleWalk(regionNode,0,'',entries);
+  // arranjo inicial: região no topo, cada filho direto é um bloco; blocos quebram linha
+  const top=box.margin+box.h+box.vgap;
+  let cursorX=box.margin,cursorY=top,rowHeight=0,widest=box.w;
+  for(const child of root.children){
+    const size=puzzleSubtree(child,box);
+    if(cursorX>box.margin&&cursorX+size.width>box.maxWidth){cursorX=box.margin;cursorY+=rowHeight+box.vgap*1.5;rowHeight=0;}
+    const shift=(node)=>{node.auto={x:cursorX+node.rel.x,y:cursorY+node.rel.y};node.children.forEach(shift);};
+    shift(child);
+    cursorX+=size.width+box.hgap*3;rowHeight=Math.max(rowHeight,size.height);widest=Math.max(widest,cursorX);
+  }
+  root.auto={x:Math.max(box.margin,Math.round((Math.min(widest,box.maxWidth)-box.w)/2)),y:box.margin};
+  const nodes=entries.map(entry=>{
+    const stored=saved[entry.id];
+    const point=stored??entry.auto??{x:box.margin,y:box.margin};
+    return {id:entry.id,key:entry.key,type:entry.type,label:entry.label,missing:entry.missing,parentId:entry.parentId,x:point.x,y:point.y,saved:Boolean(stored)};
+  });
+  const ids=new Set(nodes.map(node=>node.id));
+  const links=nodes.filter(node=>node.parentId&&ids.has(node.parentId)).map(node=>({from:node.parentId,to:node.id,kind:'hierarchy'}));
+  const externals=[];
+  for(const edge of Object.values(value.edges)){
+    const from=`scene:${edge.from.sceneId}`,to=`scene:${edge.to.sceneId}`;
+    const hasFrom=ids.has(from),hasTo=ids.has(to);
+    if(hasFrom&&hasTo)links.push({from,to,kind:'portal',edgeId:edge.id,label:edge.label,bidirectional:edge.bidirectional});
+    else if(hasFrom||hasTo)externals.push({edgeId:edge.id,nodeId:hasFrom?from:to,otherSceneId:hasFrom?edge.to.sceneId:edge.from.sceneId,label:edge.label});
+  }
+  const width=Math.max(600,...nodes.map(node=>node.x+box.w+box.margin));
+  const height=Math.max(260,...nodes.map(node=>node.y+box.h+box.margin));
+  return {regionId,label:regionNode.label,box,nodes,links,externals,width,height};
+}
+
+/** A vizinhança de uma cena para o mini-diagrama da aba Cena Atual (T13 §1.7): as cenas
+ * ligadas por teletransporte, o mapa onde ela fica (se for uma cena dentro de outra) e os
+ * mapas internos dela. Só o atlas — sem os mapas legados, que não têm hierarquia de cena. */
+export function sceneNeighborhood(atlas,sceneId){
+  const value=normalizeSceneAtlas(atlas);
+  const id=cleanId(sceneId);
+  if(!id)return {portals:[],parentSceneId:'',childSceneIds:[]};
+  const portals=[];
+  for(const edge of Object.values(value.edges)){
+    if(edge.from.sceneId===id&&edge.to.sceneId!==id)portals.push({edgeId:edge.id,sceneId:edge.to.sceneId,label:edge.label,direction:edge.bidirectional?'both':'out'});
+    else if(edge.to.sceneId===id&&edge.from.sceneId!==id)portals.push({edgeId:edge.id,sceneId:edge.from.sceneId,label:edge.label,direction:edge.bidirectional?'both':'in'});
+  }
+  const parent=parseParentId(value.scenes[id]?.parentId);
+  const childSceneIds=Object.entries(value.scenes).filter(([,entry])=>entry.parentId===`scene:${id}`).map(([childId])=>childId).sort();
+  return {portals,parentSceneId:parent?.type==='scene'?parent.id:'',childSceneIds};
+}
+
+/** Árvore região → local → sub-local, com o que mora em cada nó (T13 §1.7: NPCs por
+ * localidade, não a região misturada). `entries` é qualquer lista com `placeId`/`regionId`.
+ * Quem tem `placeId` de um local da região vai pro nó dele; quem só tem a região cai em
+ * `loose`. `total` conta o nó e tudo abaixo. */
+export function regionLocalityTree({regionId,places=PLACES,entries=[]}={}){
+  const region=cleanId(regionId);
+  const inRegion=(Array.isArray(places)?places:[]).filter(place=>cleanId(place?.id)&&place.regionId===region);
+  const byId=new Map(inRegion.map(place=>[place.id,{place,entries:[],children:[],total:0}]));
+  const roots=[];
+  for(const node of byId.values()){
+    const parentId=cleanId(node.place.parentId);
+    const parent=parentId&&parentId!==node.place.id?byId.get(parentId):null;
+    (parent?parent.children:roots).push(node);
+  }
+  const loose=[];
+  for(const entry of Array.isArray(entries)?entries:[]){
+    const node=byId.get(cleanId(entry?.placeId));
+    if(node)node.entries.push(entry);
+    else if(cleanId(entry?.regionId)===region)loose.push(entry);
+  }
+  const seen=new Set();
+  const count=node=>{if(seen.has(node))return 0;seen.add(node);node.total=node.entries.length+node.children.reduce((sum,child)=>sum+count(child),0);return node.total;};
+  roots.forEach(count);
+  return {regionId:region,loose,places:roots,total:loose.length+roots.reduce((sum,node)=>sum+node.total,0)};
 }

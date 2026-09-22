@@ -261,8 +261,79 @@ export function guessArchetype(mob){
   return 'brute';
 }
 
-function buildBiography(mob,nd,{tier,archetype,dr,prof,trained,hpSource,attacksFound,savingThrowsExplicit}){
-  const lines=[];
+// ── T24 §3 — biografia em "ficha de campo" ────────────────────────────────────────
+// Temperamento sai da tendência (traduzida em comportamento, sem nome de plano/deus);
+// Táticas saem dos Itens gerados; Aparência/Comportamento/O que quer/Ganchos vêm de uma
+// ficha escrita à parte (`fieldSheet`) — sem ela, título + "—" pro mestre preencher.
+// Valores reais de tendência do SRD (Open5e): unaligned, chaotic evil, lawful evil,
+// neutral, "any alignment", "any non-good alignment", "neutral good (50%) or neutral
+// evil (50%)" etc.
+const ETHIC={lawful:'segue regras, hierarquia e acordos à risca',chaotic:'age por impulso e despreza regras e hierarquia',neutral:''};
+const MORAL={good:'tende a ajudar quem não o ameaça',evil:'é cruel e egoísta com quem é mais fraco',neutral:'cuida de si — nem ajuda nem prejudica sem motivo'};
+function alignmentPhrase(text){
+  const t=String(text||'').toLowerCase().trim();
+  if(!t)return '';
+  if(/unaligned|sem tend/.test(t))return 'Age por instinto, como um animal — fome, território e medo.';
+  if(/^any\b/.test(t)){
+    if(/non-good/.test(t))return 'Varia de indivíduo pra indivíduo, mas nunca é bondoso de graça.';
+    if(/non-lawful/.test(t))return 'Varia de indivíduo pra indivíduo, mas não se prende a regras.';
+    if(/chaotic/.test(t))return 'Varia de indivíduo pra indivíduo, sempre imprevisível.';
+    if(/evil/.test(t))return 'Varia de indivíduo pra indivíduo, mas sempre cruel.';
+    if(/good/.test(t))return 'Varia de indivíduo pra indivíduo, mas sempre tende a ajudar.';
+    return 'Varia de indivíduo pra indivíduo — decida antes do encontro.';
+  }
+  const one=part=>{
+    const words=part.replace(/\([^)]*\)/g,' ').split(/\s+/).filter(Boolean);
+    const ethic=words.find(w=>w==='lawful'||w==='chaotic');
+    const moral=words.find(w=>w==='good'||w==='evil')??(words.includes('neutral')?'neutral':'');
+    return [ETHIC[ethic]??'',MORAL[moral]??''].filter(Boolean).join('; ');
+  };
+  const halves=t.split(/\s+or\s+/);
+  if(halves.length===2&&/\d+%/.test(t)){
+    const [a,b]=halves.map(one);
+    if(a&&b)return `Metade ${a}; a outra metade ${b}. Role 1d2 antes do encontro.`;
+  }
+  const phrase=one(t);
+  return phrase?`${phrase.charAt(0).toUpperCase()}${phrase.slice(1)}.`:'';
+}
+export {alignmentPhrase};
+
+/** Frase de táticas montada a partir dos Itens que o conversor gerou. */
+export function tacticsFromItems(items=[]){
+  const attacks=items.filter(item=>/\(Ataque/.test(item?.name??''));
+  const name=item=>String(item.name).replace(/\s*\(Ataque[^)]*\)\s*$/,'').trim();
+  const ranged=attacks.filter(item=>/dist[âa]ncia/i.test(item.name));
+  const melee=attacks.filter(item=>!ranged.includes(item));
+  const multi=items.find(item=>/Ataque Múltiplo/.test(item?.name??''));
+  const spells=items.filter(item=>/Magia Inata/i.test(item?.name??''));
+  const parts=[];
+  if(ranged.length)parts.push(`Abre com ${ranged.map(name).join(' ou ')} de longe.`);
+  if(melee.length)parts.push(`${ranged.length?'Em corpo a corpo':'Parte pro corpo a corpo'}: ${melee.map(name).join(', ')}${multi?' — mais de um ataque por turno':''}.`);
+  if(spells.length)parts.push('Tem Magia Inata — confira na ficha o que ela faz pra fugir, se curar ou atrapalhar o grupo.');
+  const traits=items.filter(item=>item?.name&&!attacks.includes(item)&&item!==multi&&!spells.includes(item)).map(item=>item.name).slice(0,4);
+  if(traits.length)parts.push(`Traços pra lembrar em combate: ${traits.join(', ')}.`);
+  return parts.join(' ');
+}
+
+const escapeHtml=value=>String(value??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+/** Blocos da ficha de campo, em HTML. `sheet` = {appearance,temperament,behavior,wants,hooks[]}. */
+export function buildFieldSheet(mob,{items=[],habitat='',sheet=null}={}){
+  const temperament=[sheet?.temperament,alignmentPhrase(mob?.alignment)].filter(Boolean).join(' ');
+  const hooks=Array.isArray(sheet?.hooks)?sheet.hooks.filter(Boolean):[];
+  const blocks=[
+    ['Habitat em Opath',habitat],
+    ['Aparência',sheet?.appearance],
+    ['Temperamento',temperament],
+    ['Comportamento',sheet?.behavior],
+    ['Táticas',tacticsFromItems(items)],
+    ['O que quer',sheet?.wants],
+    ['Ganchos',hooks.join(' · ')]
+  ];
+  return `<section class="quedaco-ficha-campo">${blocks.map(([title,text])=>`<p><strong>${title}:</strong> ${text?escapeHtml(text):'—'}</p>`).join('')}</section>`;
+}
+
+function buildBiography(mob,nd,{tier,archetype,dr,prof,trained,hpSource,attacksFound,savingThrowsExplicit,items=[],habitat='',fieldSheet=null}){
+  const lines=[buildFieldSheet(mob,{items,habitat,sheet:fieldSheet}),'<hr><p><strong>Notas de conversão</strong></p>'];
   lines.push(`<p><em>Convertido de D&amp;D 5e${mob.cr!=null&&mob.cr!==''?` — CR ${mob.cr}`:''} → ND ${nd}, seguindo o guia do Movimento RPG.</em></p>`);
   lines.push(`<p><strong>PV:</strong> ${hpSource==='dice'?'máximo dos dados de vida da ficha 5e':'estimado — sem dados de vida no JSON, revise'}. <strong>RD ${dr}</strong> pela faixa de ${tier==='boss'?'chefão':'ameaça'}/arquétipo (${archetype}) — não é derivado da CA; ajuste conforme o papel da criatura na cena.</p>`);
   lines.push(`<p><strong>Proteções treinadas</strong> (10 + atributo + proficiência ${prof}): ${trained.map(k=>k.toUpperCase()).join(' e ')}${savingThrowsExplicit?' — pelos testes de resistência da ficha original':' — pelos dois atributos mais altos (a ficha não listava testes de resistência)'}. Se a Proteção de DES ficar bem abaixo da CA original, considere uma passiva "Armadura Natural" somando a diferença.</p>`);
@@ -276,12 +347,12 @@ function buildBiography(mob,nd,{tier,archetype,dr,prof,trained,hpSource,attacksF
   if(mob.senses)lines.push(`<p><strong>Sentidos:</strong> ${mob.senses}</p>`);
   if(mob.languages)lines.push(`<p><strong>Idiomas (original):</strong> ${mob.languages}. Os que existem no Skyfall já foram marcados na ficha; o resto fica só aqui de referência.</p>`);
   if(mob.img)lines.push(`<p><strong>Imagem:</strong> a arte de referência do JSON virou o retrato — geralmente vem com fundo próprio (não recortado), então serve pra identificar mas não fica boa como token. O token nasce com o ícone padrão; troque por um pacote de tokens de verdade se quiser um pra mesa.</p>`);
-  if(mob.text)lines.push(`<hr><p><strong>Traços e ações (texto original):</strong></p><p>${String(mob.text).replace(/\n{2,}/g,'</p><p>').replace(/\n/g,'<br>')}</p>`);
+  if(mob.text)lines.push(`<details><summary>Original (D&amp;D 5e) — traços e ações</summary><p>${String(mob.text).replace(/\n{2,}/g,'</p><p>').replace(/\n/g,'<br>')}</p></details>`);
   return lines.join('');
 }
 
 /** Recebe o bloco normalizado e devolve o `_source` de um Actor `npc` do Skyfall. */
-export function toSkyfallNpc(mob,{hierarchy=null,boss=null}={}){
+export function toSkyfallNpc(mob,{hierarchy=null,boss=null,habitat='',fieldSheet=null}={}){
   if(!mob||typeof mob!=='object')throw Error('Bloco de criatura vazio.');
   const nd=crToNd(mob.cr);
   const abilities={};
@@ -326,6 +397,7 @@ export function toSkyfallNpc(mob,{hierarchy=null,boss=null}={}){
   for(const key of parseDamageTypeList(mob.dmgImmunities))dmgTaken[key]='imunity';
   for(const key of parseDamageTypeList(mob.dmgVulnerabilities))dmgTaken[key]='vulnerability';
   const conditionImmune=parseConditionList(mob.conditionImmunities);
+  const items=[...traitItems,...spellItems,...multiattackItems,...attackItems];
   const source={
     name:String(mob.name||'Criatura convertida').trim(),
     type:'npc',
@@ -348,9 +420,9 @@ export function toSkyfallNpc(mob,{hierarchy=null,boss=null}={}){
       ...(skillKeys.length?{skills}:{}),
       ...(languages.length?{languages}:{}),
       ...((Object.keys(dmgTaken).length||conditionImmune.length)?{modifiers:{damage:{taken:dmgTaken},condition:{imune:conditionImmune}}}:{}),
-      biography:buildBiography(mob,nd,{tier,archetype,dr,prof,trained,hpSource:diceMax!=null?'dice':'estimado',attacksFound,savingThrowsExplicit:savingThrows.length>0})
+      biography:buildBiography(mob,nd,{tier,archetype,dr,prof,trained,hpSource:diceMax!=null?'dice':'estimado',attacksFound,savingThrowsExplicit:savingThrows.length>0,items,habitat,fieldSheet})
     },
-    items:[...traitItems,...spellItems,...multiattackItems,...attackItems],
+    items,
     flags:{quedaco:{convertedFrom:mob.source==='homebrew'?'homebrew':'dnd5e',sourceCr:String(mob.cr??''),sourceName:String(mob.name||'')}}
   };
   if(mob.img&&/^https?:|^\w[\w./-]*\.(webp|png|jpe?g)$/i.test(String(mob.img)))source.img=String(mob.img);
@@ -380,6 +452,7 @@ export function normalizeOpen5e(json){
     speed:speed||{},
     type:json.type??json.details?.type?.value??json.details?.type,
     size:typeof json.size==='string'?json.size:'',
+    alignment:typeof json.alignment==='string'?json.alignment:String(json.details?.alignment??''),
     resistances:[json.damage_resistances,json.condition_immunities].filter(Boolean).join('; ')||'',
     immunities:json.damage_immunities||'',
     dmgResistances:json.damage_resistances||'',
@@ -440,6 +513,7 @@ export function parseStatblock(text){
     name,cr,abilities,ac:Number.isFinite(ac)?ac:null,hp,
     speed:parseSpeedString(speedLine),
     type,size:sizeLine,
+    alignment:sizeLine.includes(',')?sizeLine.split(',').slice(1).join(',').trim():'',
     resistances:grab(/Damage Resistances\s*:?\s*([^\n]+)/i)||'',
     immunities:grab(/Damage Immunities\s*:?\s*([^\n]+)/i)||'',
     dmgResistances:grab(/Damage Resistances\s*:?\s*([^\n]+)/i)||'',
@@ -481,6 +555,7 @@ export function normalize5eTools(json){
     speed:parseSpeedString(grab5e(json,'Speed','speed')),
     type:meta||grab5e(json,'type','Type'),
     size:meta||grab5e(json,'size','Size'),
+    alignment:meta.includes(',')?meta.split(',').slice(1).join(',').trim():String(grab5e(json,'alignment','Alignment')||''),
     resistances:parts([grab5e(json,'Damage Resistances','damage_resistances'),grab5e(json,'Condition Immunities','condition_immunities')].filter(Boolean).join('; ')),
     immunities:parts(grab5e(json,'Damage Immunities','damage_immunities')),
     dmgResistances:parts(grab5e(json,'Damage Resistances','damage_resistances')),

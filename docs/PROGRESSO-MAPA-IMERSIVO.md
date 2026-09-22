@@ -10,29 +10,48 @@
 > de **Mapa Imersivo**. É o nome que aparece na aba do Mestre (antes "Atlas de cenas") e
 > nesta e em outras documentações a partir de agora.
 
-**Última atualização:** 17/09/2026, depois do primeiro uso real no Foundry (v0.9.0
-publicada e testada pelo Yuri) — ver `docs/T25-MAPA-IMERSIVO-VISUAL.md`.
+**Última atualização:** 22/09/2026 — o Claude codou o que faltava da Tarefa 13 (quebra-cabeça,
+aba Cena Atual completa) e a Tarefa 15 (World Explorer). **Tudo isso está testado só com
+dado falso; nada foi visto no Foundry ainda** — vira a próxima versão.
 
 ## Visão geral
 
 ```
-[██████████████████████████░░░░░░░░░░░░] 65%
+Código      [██████████████████████████████████████] 97%   (falta só o 1.6, que depende de print)
+No Foundry  [███████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 18%   (só a árvore da v0.9.0 foi vista)
 ```
-
-**A etapa A caiu de 100% pra 60%:** "testado e visto no Foundry" não é o mesmo que
-"pronto". O Yuri usou de verdade e voltou com 6 ajustes de uso e um pedido que não foi
-atendido — o "mapa conceitual" virou uma árvore de listas, não um diagrama visual. Isso
-é a Tarefa 13 (`docs/T25-MAPA-IMERSIVO-VISUAL.md`). As etapas D e E (painel da cena
-ativa, pergunta ao ativar cena) ainda não tiveram nenhum retorno de uso — só B e a
-árvore da A foram testadas até agora.
 
 | # | Etapa | Código | Testado (fake) | Visto no Foundry | % |
 |---|---|---|---|---|---|
-| A | Atlas de cenas (árvore região → local → cena, editar à mão) | ✅ | ✅ | 🟡 visto, com 6 ajustes pendentes (T25 §1) + o diagrama visual ainda não existe (T25 §2) | 60% |
-| B | Teletransporte automático (Stairways ou Regions nativas) | ✅ | ✅ | ❌ ainda não testado | 100% |
-| C | **Conferir A e B no Foundry** (T3, roteiro pronto) | — | — | 🟡 A foi visto (com ressalvas); B segue pendente | 40% |
-| D | Painel da cena ativa (T6) | ✅ | ✅ | ❌ ainda não testado | 100% |
-| E | Perguntar ao ativar cena (T7) | ✅ | ✅ | ❌ ainda não testado | 100% |
+| A | Atlas de cenas: **quebra-cabeça por região** (principal) + Lista (sub-aba) | ✅ 22/09 | ✅ | ❌ versão nova ainda não publicada | 70% |
+| A.1 | Ajustes de uso T25 §1.1–1.5 (acordeão, "Mapa:", cena órfã, miniaturas, ordem das abas) | ✅ Codex 17/09 | ✅ | ❌ | 70% |
+| A.2 | T25 §1.6 — topo "descolado" em todas as abas | ❌ | — | precisa de print com F12 do Yuri | 0% |
+| B | Teletransporte automático (Stairways ou Regions nativas) | ✅ | ✅ | ❌ ainda não testado | 70% |
+| C | **Conferir A e B no Foundry** (roteiro pronto) | — | — | 🟡 A (versão antiga) visto; B pendente | 40% |
+| D | Aba **Cena Atual**: mini-diagrama das cenas ligadas + NPCs em árvore por local + guildas/mercadores/rumor/liberar | ✅ 22/09 | ✅ | ❌ | 70% |
+| E | Perguntar ao ativar cena (T7) | ✅ | ✅ | ❌ ainda não testado | 70% |
+| F | Botão do World Explorer + contagem blindada de hexágonos (T15) | ✅ 22/09 | ✅ | ❌ | 70% |
+
+**Régua desta tabela:** 70% = código + teste com dado falso. Os 30% restantes só existem
+depois que o Yuri vê rodando no Foundry. É de propósito — "testado com Node" não é "funciona".
+
+### Decisões de implementação tomadas no código (sem mudar nada que o Yuri decidiu)
+
+- **Posição guardada em `atlas.layout[regionId][nodeId]`**, não em `atlas.scenes[id].x/y`
+  como o T25 §2.4 sugeria: o quadro é por região, e locais também ganham posição (chave
+  `place:<id>`) sem tocar em `book-world.mjs`. Mesmo efeito, um lugar só pra tudo.
+- **Arranjo inicial em árvore** (região no topo, cada local com o que tem dentro embaixo),
+  em blocos que quebram linha a ~1100 px. "Reorganizar caixas" joga fora as posições da
+  região e volta a esse arranjo — nunca mexe na hierarquia.
+- **Caixas pré-existentes fixas na hierarquia:** arrastar só muda posição. O que muda
+  hierarquia é (a) soltar uma cena da bandeja "Cenas sem local" em cima de uma caixa ou
+  (b) "Criar caixa" (cria uma Scene nova dentro da caixa escolhida, já posicionada abaixo
+  dela). "Mover" continua existindo na Lista.
+- **Mini-diagrama da Cena Atual** mostra portais (tracejado) **e** o mapa onde a cena fica
+  / mapas internos dela (linha cheia) — sem isso, cena sem portal ficaria sozinha.
+- **Botão do World Explorer** aparece só com o módulo ativo **e** alguma cena que já tenha
+  dado dele (`gridData`); prefere a "cena principal" da região. Contagem estranha some,
+  botão fica.
 
 ---
 

@@ -46,7 +46,69 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   _onRender(context,options){super._onRender(context,options);if(!this.element)return;const root=this.element,scroller=this._scroller();if(scroller&&this._restoreScroll){scroller.scrollTop=this._restoreScroll.top;scroller.scrollLeft=this._restoreScroll.left;this._restoreScroll=null;}if(this._scrollDetailIntoView){this._scrollDetailIntoView=false;root.querySelector?.('.sy-detail')?.scrollIntoView({block:'nearest',behavior:'smooth'});}if(this._scrollNpcIntoView){this._scrollNpcIntoView=false;root.querySelector?.('[data-npc-editor]')?.scrollIntoView({block:'nearest',behavior:'smooth'});}if(this._scrollMapDrawerIntoView){this._scrollMapDrawerIntoView=false;root.querySelector?.('.sy-map-drawer')?.scrollIntoView({block:'nearest',behavior:'smooth'});}root.addEventListener('click',this._click??=(event)=>this.handleClick(event));root.addEventListener('change',this._change??=(event)=>this.handleChange(event));root.addEventListener('input',this._input??=(event)=>{
       if(/^(monster|item|guild|npc)CardSize$/.test(event.target.name)){const area=event.target.name.replace('CardSize','');const size=Math.min(420,Math.max(140,Number(event.target.value)||270));this.library.state[event.target.name]=size;for(const grid of root.querySelectorAll(`.sy-${area}-grid`))grid.style.setProperty('--sy-card',`${size}px`);return;}
       if(!['query','shopQuery'].includes(event.target.name))return;const name=event.target.name;clearTimeout(this._searchTimer);this._searchTimer=setTimeout(()=>{if(name==='query')this.query=event.target.value;else this.shopQuery=event.target.value;this.rerender(true);},180);
-    });root.addEventListener('toggle',this._atlasToggle??=(event)=>{const details=event.target;if(!details.matches?.('details[data-atlas-open]'))return;const id=details.dataset.atlasOpen;if(!id)return;const open=this.library.state.atlasOpen??(this.library.state.atlasOpen=new Set());if(details.open)open.add(id);else open.delete(id);},true);root.addEventListener('dragstart',this._dragStart??=(event)=>{const card=event.target.closest?.('[data-drag-actor],[data-drag-item]');if(!card||!event.dataTransfer)return;const payload=card.dataset.dragActor?{type:'Actor',uuid:card.dataset.dragActor}:{type:'Item',uuid:card.dataset.dragItem};event.dataTransfer.setData('text/plain',JSON.stringify(payload));event.dataTransfer.effectAllowed='copy';});this._brokenImg??=new Set();for(const image of root.querySelectorAll?.('img[data-fallback-src],img[data-fallback-srcs]')??[]){const chain=[image.getAttribute('src'),...(image.dataset.fallbackSrcs?.split('||')??[]),image.dataset.fallbackSrc].filter(Boolean);const known=this._brokenImg;const firstGood=chain.findIndex(url=>!known.has(url));if(firstGood>0)image.setAttribute('src',chain[firstGood]);const queue=chain.slice(Math.max(0,firstGood)+1).filter(url=>!known.has(url));image.addEventListener('error',()=>{known.add(image.getAttribute('src'));const next=queue.shift();if(next)image.setAttribute('src',next);});}for(const zone of root.querySelectorAll?.('[data-forge-drop]')??[]){zone.addEventListener('dragover',event=>{event.preventDefault();event.dataTransfer.dropEffect='copy';});zone.addEventListener('drop',async event=>{event.preventDefault();try{const data=JSON.parse(event.dataTransfer.getData('text/plain'));if(data.type!=='Item')throw Error('Arraste um equipamento da ficha.');await this.library.setForgeBase(data.uuid,zone.dataset.forgeDrop);await this.rerender(true);}catch(error){ui.notifications.warn(error.message);}});}this._bindMap(root);}
+    });root.addEventListener('toggle',this._atlasToggle??=(event)=>{const details=event.target;if(!details.matches?.('details[data-atlas-open]'))return;const id=details.dataset.atlasOpen;if(!id)return;const open=this.library.state.atlasOpen??(this.library.state.atlasOpen=new Set());if(details.open)open.add(id);else open.delete(id);},true);root.addEventListener('dragstart',this._dragStart??=(event)=>{const card=event.target.closest?.('[data-drag-actor],[data-drag-item]');if(!card||!event.dataTransfer)return;const payload=card.dataset.dragActor?{type:'Actor',uuid:card.dataset.dragActor}:{type:'Item',uuid:card.dataset.dragItem};event.dataTransfer.setData('text/plain',JSON.stringify(payload));event.dataTransfer.effectAllowed='copy';});this._brokenImg??=new Set();for(const image of root.querySelectorAll?.('img[data-fallback-src],img[data-fallback-srcs]')??[]){const chain=[image.getAttribute('src'),...(image.dataset.fallbackSrcs?.split('||')??[]),image.dataset.fallbackSrc].filter(Boolean);const known=this._brokenImg;const firstGood=chain.findIndex(url=>!known.has(url));if(firstGood>0)image.setAttribute('src',chain[firstGood]);const queue=chain.slice(Math.max(0,firstGood)+1).filter(url=>!known.has(url));image.addEventListener('error',()=>{known.add(image.getAttribute('src'));const next=queue.shift();if(next)image.setAttribute('src',next);});}for(const zone of root.querySelectorAll?.('[data-forge-drop]')??[]){zone.addEventListener('dragover',event=>{event.preventDefault();event.dataTransfer.dropEffect='copy';});zone.addEventListener('drop',async event=>{event.preventDefault();try{const data=JSON.parse(event.dataTransfer.getData('text/plain'));if(data.type!=='Item')throw Error('Arraste um equipamento da ficha.');await this.library.setForgeBase(data.uuid,zone.dataset.forgeDrop);await this.rerender(true);}catch(error){ui.notifications.warn(error.message);}});}this._bindMap(root);this._bindPuzzle(root);}
+  /** T13 §2 — quebra-cabeça do Mapa Imersivo. Duas coisas se arrastam:
+   *  1. uma caixa do quadro — só muda a posição (grava ao soltar; linhas seguem ao vivo);
+   *  2. uma cena da bandeja "sem local" — solta em cima de uma caixa, entra nela.
+   *  Clique em botão dentro da caixa continua sendo clique (não inicia arrasto). */
+  _bindPuzzle(root){
+    const board=root.querySelector?.('[data-puzzle-region]');if(!board)return;
+    const regionId=board.dataset.puzzleRegion;
+    const redraw=box=>{
+      const id=box.dataset.puzzleNode,w=box.offsetWidth,h=box.offsetHeight,x=parseFloat(box.style.left)||0,y=parseFloat(box.style.top)||0;
+      for(const line of board.querySelectorAll('line[data-link-from],line[data-link-to]')){
+        if(line.dataset.linkFrom===id){line.setAttribute('x1',x+w/2);line.setAttribute('y1',y+h/2);}
+        if(line.dataset.linkTo===id){line.setAttribute('x2',x+w/2);line.setAttribute('y2',y+h/2);}
+      }
+    };
+    let drag=null;
+    board.addEventListener('pointerdown',event=>{
+      const box=event.target.closest('.sy-puzzle-box');
+      if(!box||event.button!==0||event.target.closest('button,a,input,select'))return;
+      event.preventDefault();
+      drag={box,startX:event.clientX,startY:event.clientY,left:parseFloat(box.style.left)||0,top:parseFloat(box.style.top)||0,moved:false};
+      box.classList.add('is-dragging');board.setPointerCapture?.(event.pointerId);
+    });
+    board.addEventListener('pointermove',event=>{
+      if(!drag)return;
+      const dx=event.clientX-drag.startX,dy=event.clientY-drag.startY;
+      if(!drag.moved&&Math.abs(dx)+Math.abs(dy)<4)return;
+      drag.moved=true;
+      drag.box.style.left=`${Math.max(0,Math.round(drag.left+dx))}px`;drag.box.style.top=`${Math.max(0,Math.round(drag.top+dy))}px`;
+      redraw(drag.box);
+    });
+    const stop=event=>{
+      if(!drag)return;
+      const {box,moved}=drag;drag=null;box.classList.remove('is-dragging');
+      if(board.hasPointerCapture?.(event.pointerId))board.releasePointerCapture(event.pointerId);
+      if(!moved)return;
+      const point={x:parseFloat(box.style.left)||0,y:parseFloat(box.style.top)||0};
+      // cresce o quadro na hora, se a caixa foi pra além da borda
+      board.style.width=`${Math.max(board.offsetWidth,point.x+box.offsetWidth+20)}px`;board.style.height=`${Math.max(board.offsetHeight,point.y+box.offsetHeight+20)}px`;
+      const svg=board.querySelector('svg');if(svg){svg.setAttribute('width',board.offsetWidth);svg.setAttribute('height',board.offsetHeight);}
+      this.library.setAtlasLayout(regionId,box.dataset.puzzleNode,point).catch(error=>ui.notifications.error(error.message));
+    };
+    board.addEventListener('pointerup',stop);board.addEventListener('pointercancel',stop);
+    for(const chip of root.querySelectorAll('[data-puzzle-loose]')){
+      chip.addEventListener('pointerdown',event=>{
+        if(event.button!==0)return;event.preventDefault();
+        const ghost=chip.cloneNode(true);ghost.classList.add('sy-puzzle-ghost');document.body.append(ghost);
+        const place=e=>{ghost.style.left=`${e.clientX+8}px`;ghost.style.top=`${e.clientY+8}px`;};place(event);
+        const move=e=>{place(e);for(const box of board.querySelectorAll('.is-drop-target'))box.classList.remove('is-drop-target');document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.sy-puzzle-box:not(.is-missing)')?.classList.add('is-drop-target');};
+        const up=async e=>{
+          document.removeEventListener('pointermove',move);document.removeEventListener('pointerup',up);ghost.remove();
+          for(const box of board.querySelectorAll('.is-drop-target'))box.classList.remove('is-drop-target');
+          const target=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.sy-puzzle-box:not(.is-missing)');
+          if(!target||!board.contains(target))return;
+          const rect=board.getBoundingClientRect();
+          const point={x:Math.max(0,Math.round(e.clientX-rect.left-40)),y:Math.max(0,Math.round(e.clientY-rect.top+30))};
+          try{await this.library.dropAtlasScene(regionId,chip.dataset.puzzleLoose,target.dataset.puzzleNode,point);await this.rerender(true);}
+          catch(error){ui.notifications.error(error.message);}
+        };
+        document.addEventListener('pointermove',move);document.addEventListener('pointerup',up);
+      });
+    }
+  }
   _bindMap(root){
     this._mapObserver?.disconnect?.();this._mapObserver=null;
     const viewport=root.querySelector?.('[data-map-viewport]'),world=viewport?.querySelector?.('.sy-map-world'),image=viewport?.querySelector?.('.sy-map-image-base');if(!viewport||!world||!image)return;
@@ -217,6 +279,8 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
         // atlas de cenas: os campos moram no bloco do próprio botão
         if(op==='lib-atlas-edge-add'){const box=button.closest('.sy-scene-atlas-edge-form'),v=n=>box?.querySelector(`[name="${n}"]`);data={fromSceneId:v('atlasEdgeFrom')?.value??'',toSceneId:v('atlasEdgeTo')?.value??'',label:v('atlasEdgeLabel')?.value??'',bidirectional:Boolean(v('atlasEdgeBidirectional')?.checked)};}
         if(op==='lib-atlas-assign'){const box=button.closest('.sy-scene-atlas-scene-tools');data={parentId:box?.querySelector('[name="atlasSceneParent"]')?.value??'unassigned'};}
+        // quebra-cabeça: a caixa nova nasce logo abaixo da caixa-pai escolhida
+        if(op==='lib-atlas-puzzle-create'){const box=button.closest('.sy-puzzle-create'),parentId=box?.querySelector('[name="puzzleSceneParent"]')?.value??'unassigned',parent=this.element.querySelector(`[data-puzzle-node="${CSS.escape(parentId)}"]`);data={name:box?.querySelector('[name="puzzleSceneName"]')?.value??'',parentId};if(parent){data.x=parseFloat(parent.style.left)||0;data.y=(parseFloat(parent.style.top)||0)+(parent.offsetHeight||40)+46;}}
         if(op==='lib-atlas-scene-create'){const box=button.closest('.sy-scene-atlas-add');data={name:box?.querySelector('[name="atlasSceneName"]')?.value??''};}
         if(op==='lib-npc-roll-levels'){data={min:this.element.querySelector('[name="npcLevelMin"]')?.value,max:this.element.querySelector('[name="npcLevelMax"]')?.value};}
         if(op.startsWith('lib-npc-')){

@@ -83,6 +83,13 @@ nativos lado a lado. O Yuri roda a macro e o arquivo baixado fica em `.local/`.
 
 ## 3. A biografia — "ficha de campo"
 
+> **Feito em 22/09/2026 (Claude):** `buildFieldSheet` em `src/monster-convert.mjs` monta os
+> blocos nesta ordem; Temperamento vem da tendência (lida agora nos 3 normalizadores),
+> Táticas dos Itens, Habitat da flag `flags.quedaco.monster` (a macro de reconversão passa).
+> O texto original fica num `<details>`. Rodado contra os 322 monstros reais do SRD: nenhum
+> sai sem Temperamento nem sem Táticas. **Falta:** conteúdo (Aparência, Comportamento, O que
+> quer, Ganchos) para os de D&D — sem ele esses blocos saem "—".
+
 A biografia deixa de ser um despejo do texto original e vira isto, em blocos curtos. A
 última seção guarda o original para consulta.
 

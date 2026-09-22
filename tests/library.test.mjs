@@ -772,6 +772,22 @@ test('painel da cena ativa (T13): junta NPCs, guilda, mercador e rumor na área 
   assert.match(painel,/Companhia do Porto/); // guilda presente
   assert.match(painel,/sy-active-scene-merchant/); // tira de atitude do mercador
   assert.match(painel,/Liberar esta localidade/);
+  // T13 §1.7: árvore região → local → NPCs, com o local atual marcado e fechado de início
+  assert.match(painel,/NPCs da região por local/);
+  assert.match(painel,/data-atlas-open="npc-tree:alberich"/);
+  assert.match(painel,/você está aqui/);
+  assert.doesNotMatch(painel,/data-atlas-open="npc-tree:alberich" open/);
+  library.state.atlasOpen.add('npc-tree:alberich');
+  assert.match(library.render('activeScene'),/data-atlas-open="npc-tree:alberich" open/);
+  // mini-diagrama: sem ligação avisa; com portal, a cena vizinha aparece clicável
+  assert.match(painel,/Nenhuma cena ligada a esta ainda/);
+  store.sceneAtlas={...store.sceneAtlas,scenes:{...store.sceneAtlas.scenes,taverna:{parentId:'place:alberich'}},edges:{porta:{id:'porta',label:'Porta',bidirectional:true,from:{sceneId:'praca'},to:{sceneId:'taverna'},runtimeProvider:'none',implementations:{}}}};
+  const ligado=library.render('activeScene');
+  assert.match(ligado,/sy-puzzle-box is-scene\s+is-current/);
+  assert.match(ligado,/data-op="lib-open-scene" data-id="taverna"/);
+  assert.match(ligado,/sy-puzzle-link is-portal/);
+  // T15: sem World Explorer ativo, nada de botão
+  assert.doesNotMatch(ligado,/Mapa de exploração/);
   // sem cena ativa nenhuma: painel não aparece
   cenaAtiva.active=false;
   assert.doesNotMatch(library.render('activeScene'),/CENA ATIVA/);
@@ -783,6 +799,51 @@ test('painel da cena ativa (T13): junta NPCs, guilda, mercador e rumor na área 
   // jogador nunca vê o painel
   assert.doesNotMatch(library.render('activeScene',true),/CENA ATIVA/);
   assert.doesNotMatch(library.renderMap(false),/CENA ATIVA/);
+});
+
+test('quebra-cabeça do Mapa Imersivo (T13 §2): quadro por região, soltar cena, posição, Lista e World Explorer',async()=>{
+  const cenas=[{id:'praca',name:'Alberich — Praça',flags:{'world-explorer':{gridData:{a:{offset:{i:0,j:0},reveal:true},b:{offset:{i:0,j:1},reveal:'partial'}}}}},{id:'solta',name:'Cena Solta',flags:{}}];
+  const scenes=Object.assign(cenas,{get:id=>cenas.find(s=>s.id===id)});
+  const store={sceneAtlas:{schema:1,providers:{stairways:false,native:false},scenes:{praca:{parentId:'place:alberich'}},edges:{}},placeScenes:{},regionScenes:{},regionMainScene:{}};
+  let weActive=false;
+  const game={user:{isGM:true},actors:[],users:[],packs:[],folders:[],version:'13.351',scenes,modules:{get:id=>id==='world-explorer'?{active:weActive}:null},
+    settings:{get:(_m,k)=>(k==='sharedContent'?{}:(store[k]??{})),set:async(_m,k,v)=>{store[k]=v;}}};
+  const library=new CampaignLibrary(game,{items:[]});
+  // abre no quebra-cabeça da primeira região com cena
+  const quadro=library.renderMap(false);
+  assert.match(quadro,/data-puzzle-region="thurthur"/);
+  assert.match(quadro,/data-puzzle-node="place:alberich"/);
+  assert.match(quadro,/data-puzzle-node="scene:praca"/);
+  assert.match(quadro,/data-puzzle-loose="solta"/,'cena sem local vai pra bandeja');
+  assert.doesNotMatch(quadro,/Mapa de exploração/);
+  // soltar a cena numa caixa: entra nela e guarda onde caiu
+  await library.dropAtlasScene('thurthur','solta','place:alberich',{x:300,y:200});
+  assert.equal(store.sceneAtlas.scenes.solta.parentId,'place:alberich');
+  assert.deepEqual(store.sceneAtlas.layout.thurthur['scene:solta'],{x:300,y:200});
+  assert.match(library.renderMap(false),/data-puzzle-node="scene:solta" style="left:300px;top:200px"/);
+  // arrastar grava posição; Reorganizar esquece
+  await library.setAtlasLayout('thurthur','place:alberich',{x:40,y:500});
+  assert.deepEqual(store.sceneAtlas.layout.thurthur['place:alberich'],{x:40,y:500});
+  await library.action('lib-atlas-layout-reset','thurthur');
+  assert.equal(store.sceneAtlas.layout.thurthur,undefined);
+  assert.equal(store.sceneAtlas.scenes.solta.parentId,'place:alberich','reorganizar não mexe na hierarquia');
+  // trocar de região e de vista
+  await library.action('lib-atlas-region','deserto-inexistente');
+  assert.equal(library.state.atlasRegion,null);
+  await library.action('lib-atlas-view','list');
+  const lista=library.renderMap(false);
+  assert.match(lista,/sy-scene-atlas-regions/);
+  assert.doesNotMatch(lista,/data-puzzle-region/);
+  // World Explorer ativo: botão aparece, com a contagem blindada
+  weActive=true;
+  const comWe=library.renderMap(false);
+  assert.match(comWe,/data-op="lib-explore-open" data-id="praca"/);
+  assert.match(comWe,/1 revelado · 1 parcial/);
+  // dado em formato estranho: botão fica, contagem some, nada quebra
+  cenas[0].flags['world-explorer'].gridData={x:'lixo'};
+  const estranho=library.renderMap(false);
+  assert.match(estranho,/lib-explore-open/);
+  assert.doesNotMatch(estranho,/revelado/);
 });
 
 test('shouldAskReleaseOnActivate (T7): configuração desligada, sem localidade e localidade já liberada não perguntam',()=>{
