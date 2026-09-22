@@ -3,7 +3,7 @@
 Documento de passagem. **Claude estrutura, Codex executa, Yuri confirma.** Leia este
 arquivo e o `CLAUDE.md` da raiz; não precisa reler conversa nenhuma nem a 9ª rodada.
 
-**HEAD de referência:** `1cbe655` (22/09/2026). `npm test` = **240 passando**. Árvore limpa.
+**HEAD de referência:** `5829765` (v0.10.0, 22/09/2026). `npm test` = **241 passando**. Árvore limpa.
 **Versão no repositório:** 0.9.0, **já publicada** (v0.9.0, 17/09/2026). Tudo commitado
 depois dela (Tarefas 5, 8, 9, 10, 12, 13 e 15 desta rodada) ainda não foi publicado — vira
 a 0.10.0 quando o Yuri autorizar. **Não aumente a versão nem publique** — isso é do Claude,
@@ -195,7 +195,7 @@ mundo oficial** — quem roda é o Yuri.
 | ~~Publicar a versão nova~~ | **Feito** — v0.9.0 publicada em 17/09/2026 (`gh release`), com `quedaco.zip` e `module.json`. |
 | ~~`gh auth login`~~ | **Feito.** O Claude publica release sozinho a partir de agora, com autorização do Yuri pra cada versão. |
 | Mundo de teste | Ainda vale a pena, pra conferir a Tarefa 13 e o resto sem risco ao mundo oficial. |
-| **Autorizar a 0.10.0** | Tudo da Tarefa 13/15 e a ficha de campo estão no código; o Claude publica quando você disser "pode publicar a 0.10.0". |
+| ~~Autorizar a 0.10.0~~ | **Feito** — v0.10.0 publicada em 22/09/2026, com T13, T15, T16–T18 e a ficha de campo. |
 | **Conferir o Mapa Imersivo no Foundry, depois da 0.10.0** | Quebra-cabeça (arrastar caixa, soltar cena da bandeja, Criar caixa, Reorganizar), aba Cena Atual (mini-diagrama + árvore de NPCs) e o botão do World Explorer — nada disso foi visto ainda. A pergunta ao ativar cena (etapa E) também segue sem retorno. Roteiro em `docs/PROGRESSO-MAPA-IMERSIVO.md`. |
 | **Print do topo "descolado" (T25 §1.6)** | Abra qualquer aba, aperte F12, clique na setinha de inspecionar e clique na parte que está vazando. Mande o print com o painel do inspetor aberto — é o que falta pra corrigir. |
 | **T14 e T21** — Imbuir dentro da ficha do NPC / trocar legado no editor | Ambas ainda precisam de conversa de design com o Yuri antes de virar tarefa especificada. |
