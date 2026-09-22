@@ -240,6 +240,13 @@ Formato de cada entrada:
 **Checklist da regra 1:** tela ✔ (HTML testado) · ações ✔ · app.mjs ✔ (inalterado) · CSS ✔ (inalterado) · teste ✔ · Foundry ✖
 **Precisa de decisão:** nenhuma.
 
+### 22/09/2026 — Tarefa 18
+**Fiz:** criei `.local/fichas-de-campo-dnd.json` com 121 fichas para nomes SRD presentes na tabela HABITAT. A macro `.local/reconverter-monstros-dnd.js` agora pede o SRD e uma ficha de campo opcional, repassa `fieldSheet` ao conversor e informa na prévia quantos receberão ficha escrita.
+**Funcionou:** validei a estrutura das 121 fichas (cinco campos e dois ganchos), `node --check` da macro, `npm test` (241 passando) e `npm run package`. A macro não foi executada no Foundry nem escreveu Actor.
+**Não funcionou / deixei de fora:** as fichas locais são ponto de partida e ainda precisam de leitura em mesa para refinamento individual; a prévia real e a reconversão ficam para o Yuri, com backup do mundo.
+**Checklist da regra 1:** tela ✖ · ações ✖ · app.mjs ✖ · CSS ✖ · teste ✔ · Foundry ✖
+**Precisa de decisão:** nenhuma.
+
 ### 17/09/2026 — Tarefa 13 (§1.1–1.5 e aba Cena Atual) · Codex — *registrado pelo Claude a partir dos commits*
 **Fiz:** `a34ea0a` — acordeões lembram estado (`state.atlasOpen` + evento `toggle` em `app.mjs`), prefixo "Mapa:" quando a cena tem o nome do local, botão "Remover esta entrada" em cena ausente (`lib-atlas-scene-remove`) e `Hooks.on('deleteScene')` em `main.mjs`, miniaturas ligadas por padrão, Mapa Imersivo como primeira aba e vista padrão. `60c706d` — área nova `activeScene` ("Cena Atual") na barra do mestre; o painel saiu de dentro do Mapa.
 **Funcionou:** testes de `library.test.mjs` ajustados; 230 passando naquele ponto.
