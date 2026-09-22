@@ -63,6 +63,8 @@ Atalho pra achar código (22/09/2026):
 |---|---|
 | Dado puro do atlas (hierarquia, arestas, posição das caixas) | [scene-atlas.mjs](../src/scene-atlas.mjs) — `buildSceneAtlasTree`, `resolveSceneLocality`; `atlas.layout[regionId]['place:x'|'scene:y'|'region:z']={x,y}` em pixels, gravado por `setAtlasLayoutPosition` |
 | Quebra-cabeça por região (arranjo inicial, linhas, portais pra fora) | `scene-atlas.mjs: buildRegionPuzzle` (dado) → `panels/mapa-imersivo.mjs` (tela) → `app.mjs: _bindPuzzle` (arrastar caixa = grava posição; arrastar cena da bandeja pra uma caixa = `dropAtlasScene`) |
+| Banco de mapas e seleção visual | [map-bank.mjs](../src/map-bank.mjs) (fontes, 48 recomendações, saídas planejadas); [BANCO-DE-MAPAS.md](BANCO-DE-MAPAS.md) (catálogo); `panels/mapa-imersivo.mjs: renderAtlasPuzzle` (cartões e prévia); `app.mjs` (FilePicker e aplicação) |
+| Criar cenas com mapas escolhidos | `scene-atlas.mjs: missingPlaceScenePlan` (plano puro); `library.mjs: setMapBankFile, missingMappedScenes, createMappedScenes` (setting, prévia, Scene.create e save único no atlas) |
 | Lista (árvore de `<details>`) | `library.mjs: renderSceneAtlas` com `state.atlasView='list'`; acordeões lembram estado em `state.atlasOpen` via evento `toggle` em `app.mjs` |
 | Aba Cena Atual | `panels/mapa-imersivo.mjs: renderActiveScenePanel` (área `activeScene`) + `activeSceneDiagram` (vizinhança: `scene-atlas.mjs: sceneNeighborhood`) + `activeSceneNpcTree` (`scene-atlas.mjs: regionLocalityTree`) |
 | World Explorer (módulo de terceiros) | [world-explorer.mjs](../src/world-explorer.mjs) — tudo blindado; `library.mjs: explorationButton`. Formato do dado dele: `docs/REFERENCIA-SKYFALL.md`, seção "Módulos de terceiros" |

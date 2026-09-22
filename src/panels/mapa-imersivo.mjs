@@ -3,6 +3,7 @@ import {placeLayer} from '../atlas.mjs';
 import {buildRegionPuzzle,buildSceneAtlasTree,regionLocalityTree,resolveSceneLocality,sceneNeighborhood} from '../scene-atlas.mjs';
 import {explorationScene,sceneRevealedHexes,worldExplorerActive} from '../world-explorer.mjs';
 import {guildsForPlace} from '../guilds.mjs';
+import {mapSourceFor,mapPortalDrafts} from '../map-bank.mjs';
 import {adoptNpcFlag,inferRegionId,npcFlag} from '../npcs.mjs';
 import {avatarFor,button,e,npcRoleChip,sortByName} from '../library.mjs';
 
@@ -101,6 +102,11 @@ export function renderAtlasPuzzle(lib,tree,atlas){
     if(!regions.length)return '<p class="sy-note">Nenhuma região cadastrada.</p>';
     const selected=regions.find(region=>region.key===lib.state.atlasRegion)??regions.find(region=>region.counts?.scenes)??regions[0];
     const chips=`<nav class="sy-puzzle-regions" aria-label="Região a montar">${regions.map(region=>`<button data-op="lib-atlas-region" data-id="${e(region.key)}" aria-current="${region.key===selected.key?'page':'false'}" style="--sy-region:${e(lib.regionColor(region.key))}"><span class="sy-atlas-dot"></span>${e(region.label)}<small>${region.counts?.scenes??0}</small></button>`).join('')}</nav>`;
+    const places=PLACES.filter(place=>place.regionId===selected.key),files=lib.mapBankFiles;
+    const portalDrafts=mapPortalDrafts(PLACES);
+    const placeCards=places.map(place=>{const source=mapSourceFor(place.id),file=files[place.id],drafts=portalDrafts.filter(draft=>draft.fromPlaceId===place.id);return `<article class="sy-map-bank-card"><div><strong>${e(place.name)}</strong><small>${e(place.kind)} · ${source?`${e(source.title)} · ${e(source.license)}`:'sem fonte'}</small>${drafts.length?`<small>Saídas planejadas em ${e(drafts[0].section)}: ${drafts.map(draft=>e(draft.label)).join(' · ')} (aguardam posição)</small>`:''}</div>${source?`<a href="${e(source.url)}" target="_blank" rel="noopener noreferrer">Ver mapa</a>`:''}${file?`<img src="${e(file)}" alt="Prévia de ${e(place.name)}" loading="lazy"><small>${e(file)}</small>`:'<small>Arquivo da cena ainda não escolhido</small>'}<button data-op="lib-map-bank-file" data-id="${e(place.id)}">${file?'Trocar arquivo':'Escolher arquivo'}</button>${file?`<button data-op="lib-map-bank-file" data-id="${e(place.id)}:">Limpar</button>`:''}</article>`;}).join('');
+    const bank=`<details class="sy-map-bank"><summary>Banco de mapas · ${e(selected.label)} <small>${places.filter(place=>files[place.id]).length}/${places.length} arquivos escolhidos</small></summary><p class="sy-note">Escolha o arquivo da cena no Foundry após obter o mapa na página do autor. Créditos: Ross McConnell / 2-Minute Tabletop, CC BY-NC 4.0, uso privado na mesa.</p><div class="sy-map-bank-grid">${placeCards}</div><button data-op="lib-map-bank-plan" data-id="${e(selected.key)}">Criar cenas com mapas escolhidos</button></details>`;
+    const preview=lib.state.mapBankPreview?.regionId===selected.key?`<section class="sy-scene-atlas-editor sy-map-bank-preview"><h3>Prévia · criar cenas em ${e(selected.label)}</h3><p class="sy-note">Teste numa cópia do mundo antes da primeira vez. Cada linha cria uma cena com a imagem escolhida e vincula ao Mapa Imersivo.</p>${lib.state.mapBankPreview.rows.length?`<div class="sy-check-grid">${lib.state.mapBankPreview.rows.map(row=>`<label><input type="checkbox" name="mapBankPlace" value="${e(row.placeId)}" ${row.background||row.existingSceneId?'checked':'disabled'}><span>${e(row.name)} <small>${row.existingSceneId?'vincular cena já criada · ':''}${row.background?e(row.background):'sem arquivo — escolha no banco antes de aplicar'}</small></span></label>`).join('')}</div><button data-op="lib-map-bank-apply" data-id="" ${lib.state.mapBankPreview.rows.some(row=>row.background||row.existingSceneId)?'':'disabled'}>Aplicar cenas marcadas</button>`:'<p class="sy-note">Todos os locais desta região já têm cena.</p>'}</section>`:'';
     const puzzle=buildRegionPuzzle({tree,regionId:selected.key,atlas});
     const placeNames=new Map(PLACES.map(place=>[`place:${place.id}`,place.name]));
     const nodes=puzzle.nodes.map(node=>node.type==='scene'&&placeNames.get(node.parentId)===node.label?{...node,label:`Mapa: ${node.label}`}:node);
@@ -113,7 +119,7 @@ export function renderAtlasPuzzle(lib,tree,atlas){
     const sceneName=id=>lib.game.scenes?.get?.(id)?.name??id;
     const externals=puzzle.externals.length?`<p class="sy-puzzle-externals"><i class="fa-solid fa-door-open" aria-hidden="true"></i> Portais para fora desta região: ${puzzle.externals.map(link=>`${e(nodes.find(node=>node.id===link.nodeId)?.label??'')} → ${e(sceneName(link.otherSceneId))}`).join(' · ')}</p>`:'';
     const legend=`<div class="sy-puzzle-legend"><span class="is-region">Região</span><span class="is-place">Local</span><span class="is-scene">Cena</span><span class="is-portal">- - - teletransporte</span><button data-op="lib-atlas-layout-reset" data-id="${e(selected.key)}" title="Esquecer as posições desta região"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i> Reorganizar caixas</button></div>`;
-    return `<section class="sy-puzzle" style="--sy-region:${e(lib.regionColor(selected.key))}">${chips}${legend}<div class="sy-puzzle-scroll">${board}</div>${externals}<div class="sy-puzzle-tools">${create}${tray}</div></section>`;
+    return `<section class="sy-puzzle" style="--sy-region:${e(lib.regionColor(selected.key))}">${chips}${bank}${preview}${legend}<div class="sy-puzzle-scroll">${board}</div>${externals}<div class="sy-puzzle-tools">${create}${tray}</div></section>`;
   }
   /** T13 §1.7 — a cena ativa no centro e, em volta, as cenas ligadas a ela: portais
    *  (tracejado), o mapa onde ela fica e os mapas internos dela (linha cheia). */

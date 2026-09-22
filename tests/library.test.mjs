@@ -863,6 +863,33 @@ test('T26.1: sugestão de local só mostra prévia e aplica as cenas marcadas em
   assert.equal(store.sceneAtlas.scenes.solta.parentId,'place:alberich');
 });
 
+test('banco de mapas cria somente cenas escolhidas com imagem, vínculo e um save; repetir não duplica',async()=>{
+ const cenas=[],scenes=Object.assign(cenas,{get:id=>cenas.find(scene=>scene.id===id)});
+ const store={sceneAtlas:{schema:1,providers:{stairways:false,native:false},scenes:{},edges:{}},placeScenes:{},regionScenes:{},mapBankFiles:{}};
+ const saves=[];const game={user:{isGM:true},actors:[],users:[],packs:[],folders:[],version:'13.351',scenes,modules:{get:()=>null},settings:{get:(_m,key)=>(key==='sharedContent'?{}:(store[key]??{})),set:async(_m,key,value)=>{saves.push(key);store[key]=value;}}};
+ const library=new CampaignLibrary(game,{items:[]});
+ const created=[];const oldScene=globalThis.Scene;
+ globalThis.Scene={create:async data=>{created.push(data);const scene={id:`nova-${created.length}`,name:data.name,background:data.background,navigation:data.navigation,flags:data.flags};cenas.push(scene);return scene;}};
+ try{
+   library.state.atlasRegion='thurthur';
+   await library.setMapBankFile('lado-fora','worlds/teste/mapas/rua.webp');
+   await library.action('lib-map-bank-plan','thurthur');
+   const tela=library.renderMap(false);
+   assert.match(tela,/Banco de mapas · Thur Thur/);
+   assert.match(tela,/market-festival/);
+   assert.match(tela,/Saídas planejadas em Mapa Imersivo/);
+   assert.match(tela,/name="mapBankPlace" value="lado-fora" checked/);
+   assert.equal(created.length,0,'prévia não cria cena');
+   await library.action('lib-map-bank-apply','',{placeIds:['lado-fora','casebres']});
+   assert.deepEqual(created,[{name:'Lado de Fora',navigation:false,background:{src:'worlds/teste/mapas/rua.webp'},flags:{quedaco:{mapBankPlaceId:'lado-fora'}}}]);
+   assert.equal(store.sceneAtlas.scenes['nova-1'].parentId,'place:lado-fora');
+   assert.equal(saves.filter(key=>key==='sceneAtlas').length,1);
+   await library.action('lib-map-bank-plan','thurthur');
+   await library.action('lib-map-bank-apply','',{placeIds:['lado-fora']});
+   assert.equal(created.length,1,'segunda execução não duplica');
+ }finally{globalThis.Scene=oldScene;}
+});
+
 test('shouldAskReleaseOnActivate (T7): configuração desligada, sem localidade e localidade já liberada não perguntam',()=>{
   const locality={regionId:'thurthur',placeId:'alberich'};
   const vazio=new Set();

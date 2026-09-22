@@ -99,3 +99,10 @@ Formato de cada entrada:
 **Não funcionou / deixei de fora:** não abri o Foundry nem alterei cenas, pastas ou Atores de mundo. Não há dado real de cenas nesta verificação.
 **Checklist da regra 1:** tela ✔ · ações ✔ · app.mjs ✔ · CSS ✔ · teste ✔ · Foundry ✖
 **Precisa de decisão:** nenhuma; falta apenas conferir a prévia e a aplicação numa cópia do mundo no Foundry.
+
+### 22/09/2026 — Tarefa 2 (escopo atualizado pelo Yuri: banco e seleção de mapas antes dos NPCs)
+**Fiz:** cataloguei uma fonte pública para cada uma das 48 localidades/Quedas em `src/map-bank.mjs` e `docs/BANCO-DE-MAPAS.md`. O Mapa Imersivo mostra as fontes por região, permite escolher um arquivo de imagem real pelo FilePicker e abre uma prévia com caixas de marcar antes de criar cenas. Aplicar cria somente as cenas marcadas com imagem escolhida, `background.src` e `navigation:false`, vincula cada uma ao local no atlas e grava o atlas uma vez; cenas já vinculadas ou marcadas pelo banco não são duplicadas. As saídas pai → sublocal aparecem com nome e destino, ainda sem posição nem teletransporte jogável.
+**Funcionou:** testes com dados falsos verificaram cobertura das 48 localidades, exclusão de locais com cenas existentes, prévia, campo de fundo, vínculo, save único e repetição sem duplicar. O campo `background` e `navigation` foram conferidos no schema oficial de Scene do Foundry 13. `npm test`, `npm run package` e `git diff --check` passaram antes do commit.
+**Não funcionou / deixei de fora:** não havia arquivos de mapas nem acesso a um mundo Foundry nesta execução; nenhuma cena real foi criada. Arquivo visual, escala, grade e FilePicker precisam de conferência numa cópia do mundo. Conforme a prioridade mais recente do Yuri, tokens de NPC, visão, lojas, teletransportes posicionados e Tarefa 3 de pastas aguardam a montagem visual dos mapas.
+**Checklist da regra 1:** tela ✔ · ações ✔ · app.mjs ✔ · CSS ✔ · teste ✔ (dados falsos) · Foundry ✖
+**Precisa de decisão:** nenhuma para o código desta etapa; para preencher as cenas reais, o Yuri precisará obter os arquivos das fontes e escolhê-los no Foundry.

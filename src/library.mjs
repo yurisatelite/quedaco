@@ -10,9 +10,10 @@ import {equipmentKind,forgeFragments,forgeQuote,magicNamePreview,purchaseForgedI
 import {precoFormatado,walletTotal} from './rules.mjs';
 import {localityStock} from './locality.mjs';
 import {ImageResolver} from './images.mjs';
+import {MAP_BANK_SELECTION} from './map-bank.mjs';
 import {sealStyle} from './seal-style.mjs';
 import {placeLayer,defaultHiddenPlaces,regionDossier} from './atlas.mjs';
-import {assignAtlasScene,buildRegionPuzzle,buildSceneAtlasTree,createAtlasEdge,normalizeSceneAtlas,regionLocalityTree,removeAtlasEdge,removeAtlasScene,resetAtlasLayout,resolveSceneLocality,sceneNeighborhood,setAtlasEndpoint,setAtlasLayoutPosition,setAtlasProvider,suggestSceneParents,syncAtlasScenes,updateAtlasEdge} from './scene-atlas.mjs';
+import {assignAtlasScene,buildRegionPuzzle,buildSceneAtlasTree,createAtlasEdge,missingPlaceScenePlan,normalizeSceneAtlas,regionLocalityTree,registerAtlasScene,removeAtlasEdge,removeAtlasScene,resetAtlasLayout,resolveSceneLocality,sceneNeighborhood,setAtlasEndpoint,setAtlasLayoutPosition,setAtlasProvider,suggestSceneParents,syncAtlasScenes,updateAtlasEdge} from './scene-atlas.mjs';
 import {explorationScene,sceneRevealedHexes,worldExplorerActive} from './world-explorer.mjs';
 import {regionColor} from './regions.mjs';
 import {ForienQuestIntegration,QUEST_STATUSES,questCounts} from './forien-quests.mjs';
@@ -32,6 +33,7 @@ export const SHARED_KEY='sharedContent';
 export const SCENES_KEY='placeScenes';
 export const REGION_SCENES_KEY='regionScenes';
 export const PLACE_IMG_KEY='placeImages';
+export const MAP_BANK_FILES_KEY='mapBankFiles';
 export const REGION_IMG_KEY='regionImages';
 export const MAP_IMAGE_KEY='opathMapImage';
 export const MAP_HOTSPOTS_KEY='mapHotspots';
@@ -82,6 +84,7 @@ export function registerLibrarySettings(game,onChange){
   game.settings.register(MODULE_ID,SCENES_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
   game.settings.register(MODULE_ID,REGION_SCENES_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
   game.settings.register(MODULE_ID,PLACE_IMG_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
+  game.settings.register(MODULE_ID,MAP_BANK_FILES_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
   game.settings.register(MODULE_ID,REGION_IMG_KEY,{scope:'world',config:false,type:Object,default:{},onChange});
   game.settings.register(MODULE_ID,ASSET_ROOT_KEY,{scope:'world',config:true,type:String,default:'assets',filePicker:'folder',name:'Pasta de imagens do QUEDAÇO',hint:'Pasta da mesa com regioes, locais, npcs, monstros, itens, quests e o arquivo opcional quedaco-imagens.json. Padrao: assets',onChange});
   game.settings.register(MODULE_ID,IMAGE_INDEX_KEY,{scope:'world',config:false,type:Object,default:null,onChange});
@@ -252,7 +255,7 @@ const CUSTOM_TIER_LABEL={simple:'Simples',complex:'Complexo',boss:'Chefão'};
 const CUSTOM_ARCHETYPE_LABEL={flanker:'Flanqueador',sentinel:'Sentinela',defender:'Defensor',brute:'Bruto',leader:'Líder',mount:'Cavalaria',ranged:'Atirador',group:'Coletivo'};
 
 export class CampaignLibrary {
-  constructor(game,catalog){this.game=game;this.catalog=catalog;this.images=new ImageResolver(game,MODULE_ID,ASSET_ROOT_KEY);this.quests=new ForienQuestIntegration(game);this.actors=[];this.failures=[];this.loaded=false;this.state={mapDisplay:'atlas',mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null,layer:'auto',movingPins:false},atlasThumbnails:true,atlasOpen:new Set(),atlasView:'puzzle',atlasRegion:null,atlasSuggestions:null,npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcLevelMin:0,npcLevelMax:12,npcDragonOnly:false,npcMilitarOnly:false,npcActor:null,npcSaved:null,npcEditRole:null,npcEditRegion:null,npcEditPlace:null,monsterFacets:{},monsterCardSize:270,itemCardSize:270,guildCardSize:270,npcCardSize:270,npcPlayerRegion:null,npcAsPlayer:false,npcLegacyFilter:'all',npcHeritageFilter:'all',npcGuildFilter:'all',localNpcRole:'all',localNpcLegacy:'all',guildFacets:{},guildTab:'ativas',questStatus:'all',regionTakeover:false,regionScene:null,regionTab:'rumores',regionRumorRoll:null,regionRumorEdit:null,regionNpcRoleFilter:'all',cart:{actorId:'',lines:[]},sellActorId:''};this.modBuilder={baseId:'',materialId:'',sigils:[],tab:'prefixo'};this.forgeBuilder={smithId:'',baseUuid:'',materialId:'',sigils:[],tab:'prefixo'};}
+  constructor(game,catalog){this.game=game;this.catalog=catalog;this.images=new ImageResolver(game,MODULE_ID,ASSET_ROOT_KEY);this.quests=new ForienQuestIntegration(game);this.actors=[];this.failures=[];this.loaded=false;this.state={mapDisplay:'atlas',mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null,layer:'auto',movingPins:false},atlasThumbnails:true,atlasOpen:new Set(),atlasView:'puzzle',atlasRegion:null,atlasSuggestions:null,mapBankPreview:null,npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcLevelMin:0,npcLevelMax:12,npcDragonOnly:false,npcMilitarOnly:false,npcActor:null,npcSaved:null,npcEditRole:null,npcEditRegion:null,npcEditPlace:null,monsterFacets:{},monsterCardSize:270,itemCardSize:270,guildCardSize:270,npcCardSize:270,npcPlayerRegion:null,npcAsPlayer:false,npcLegacyFilter:'all',npcHeritageFilter:'all',npcGuildFilter:'all',localNpcRole:'all',localNpcLegacy:'all',guildFacets:{},guildTab:'ativas',questStatus:'all',regionTakeover:false,regionScene:null,regionTab:'rumores',regionRumorRoll:null,regionRumorEdit:null,regionNpcRoleFilter:'all',cart:{actorId:'',lines:[]},sellActorId:''};this.modBuilder={baseId:'',materialId:'',sigils:[],tab:'prefixo'};this.forgeBuilder={smithId:'',baseUuid:'',materialId:'',sigils:[],tab:'prefixo'};}
   image(kind,id,documentImg='',fallback='icons/svg/mystery-man.svg'){return this.images.resolve(kind,id,documentImg,fallback);}
   async reindexImages(){
     this.assertGM();
@@ -277,6 +280,44 @@ export class CampaignLibrary {
     this.assertGM();const allowed=new Set(sceneIds??[]);let atlas=this.sceneAtlas;
     for(const suggestion of this.atlasParentSuggestions())if(allowed.has(suggestion.sceneId))atlas=assignAtlasScene(atlas,suggestion.sceneId,suggestion.parentId);
     await this.saveSceneAtlas(atlas);this.state.atlasSuggestions=null;
+  }
+  get mapBankFiles(){try{return {...(this.game.settings?.get(MODULE_ID,MAP_BANK_FILES_KEY)||{})};}catch{return {};}}
+  async setMapBankFile(placeId,path){
+    this.assertGM();if(!MAP_BANK_SELECTION[placeId])throw Error('Localidade não encontrada no banco de mapas.');
+    const files=this.mapBankFiles,src=String(path??'').trim();
+    if(src&&/^(?:javascript|data|file):|^\/\//i.test(src))throw Error('Caminho de imagem inválido.');
+    if(src)files[placeId]=src;else delete files[placeId];
+    await this.game.settings.set(MODULE_ID,MAP_BANK_FILES_KEY,files);
+    this.state.mapBankPreview=null;
+  }
+  missingMappedScenes(regionId){
+    const scenes=Array.from(this.game.scenes??[]),tree=buildSceneAtlasTree({atlas:this.sceneAtlas,regions:REGIONS,places:PLACES,scenes,placeScenes:this.placeScenes,regionScenes:this.regionScenes});
+    const marked=new Map(scenes.filter(scene=>scene.flags?.[MODULE_ID]?.mapBankPlaceId).map(scene=>[scene.flags[MODULE_ID].mapBankPlaceId,scene]));
+    return missingPlaceScenePlan({tree,regionId,files:this.mapBankFiles}).map(row=>{const existing=marked.get(row.placeId);return {...row,existingSceneId:existing?.id??'',background:row.background||existing?.background?.src||''};});
+  }
+  async createMappedScenes(placeIds=[]){
+    this.assertGM();const regionId=this.state.mapBankPreview?.regionId;
+    if(!regionId||!REGIONS.some(region=>region.id===regionId))throw Error('Abra a prévia da região antes de criar cenas.');
+    const wanted=new Set(placeIds??[]),rows=this.missingMappedScenes(regionId).filter(row=>wanted.has(row.placeId)&&(row.background||row.existingSceneId));
+    if(!rows.length){this.state.mapBankPreview=null;return [];}
+    const SceneClass=globalThis.Scene;if(!SceneClass?.create)throw Error('Não foi possível criar cenas aqui.');
+    const tree=buildSceneAtlasTree({atlas:this.sceneAtlas,regions:REGIONS,places:PLACES,scenes:Array.from(this.game.scenes??[]),placeScenes:this.placeScenes,regionScenes:this.regionScenes});
+    const puzzle=buildRegionPuzzle({tree,regionId,atlas:this.sceneAtlas});
+    let atlas=this.sceneAtlas;const created=[],failures=[];
+    for(const row of rows){
+      try{
+        const scene=row.existingSceneId?(this.game.scenes?.get?.(row.existingSceneId)??Array.from(this.game.scenes??[]).find(item=>item.id===row.existingSceneId)):await SceneClass.create({name:row.name,navigation:false,background:{src:row.background},flags:{[MODULE_ID]:{mapBankPlaceId:row.placeId}}});
+        if(!scene?.id)throw Error('O Foundry não retornou o ID da cena.');
+        atlas=registerAtlasScene(atlas,scene.id,row.parentId);
+        created.push(scene);
+        const node=puzzle?.nodes.find(item=>item.id===row.parentId);
+        if(node)atlas=setAtlasLayoutPosition(atlas,regionId,`scene:${scene.id}`,{x:node.x,y:node.y+puzzle.box.h+46});
+      }catch(error){failures.push(`${row.name}: ${error.message}`);}
+    }
+    if(created.length)await this.saveSceneAtlas(atlas);
+    this.state.mapBankPreview=null;
+    if(failures.length)throw Error(`Cenas criadas: ${created.length}. Falhas: ${failures.join(' · ')}`);
+    return created;
   }
   async removeSceneAtlasScene(sceneId){this.assertGM();await this.saveSceneAtlas(removeAtlasScene(this.sceneAtlas,sceneId));}
   // T13 §2 — quebra-cabeça: arrastar só grava posição; soltar uma cena "sem local" em cima
@@ -716,6 +757,9 @@ export class CampaignLibrary {
     if(op==='lib-atlas-thumbnails')this.state.atlasThumbnails=id==='show';
     if(op==='lib-atlas-suggest')this.state.atlasSuggestions=this.atlasParentSuggestions();
     if(op==='lib-atlas-suggest-apply')await this.applyAtlasParentSuggestions(data.sceneIds);
+    if(op==='lib-map-bank-plan')this.state.mapBankPreview={regionId:id,rows:this.missingMappedScenes(id)};
+    if(op==='lib-map-bank-apply')await this.createMappedScenes(data.placeIds);
+    if(op==='lib-map-bank-file')throw Error('Escolha o arquivo pelo seletor da tela do Mapa Imersivo.'); // FilePicker em app.mjs.
     if(op==='lib-atlas-provider'){const [provider,mode]=String(id).split(':');await this.setSceneAtlasProvider(provider,mode==='on');}
     if(op==='lib-atlas-assign')await this.assignSceneAtlas(id,data.parentId);
     if(op==='lib-atlas-scene-remove')await this.removeSceneAtlasScene(id);

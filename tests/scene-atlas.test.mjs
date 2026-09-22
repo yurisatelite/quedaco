@@ -135,6 +135,9 @@ test('resolveSceneLocality cai nos mapas legados (placeScenes/regionScenes) quan
 // ── T13 §2 — quebra-cabeça por região ──
 import {buildRegionPuzzle,regionLocalityTree,resetAtlasLayout,sceneNeighborhood,setAtlasLayoutPosition} from '../src/scene-atlas.mjs';
 import {suggestSceneParents} from '../src/scene-atlas.mjs';
+import {missingPlaceScenePlan} from '../src/scene-atlas.mjs';
+import {MAP_BANK_SELECTION,mapPortalDrafts,mapSourceFor} from '../src/map-bank.mjs';
+import {PLACES} from '../src/book-world.mjs';
 
 test('layout do quebra-cabeça: normaliza, grava, limpa e some junto com a cena removida',()=>{
   const sujo=normalizeSceneAtlas({layout:{deserto:{'place:kravokia':{x:10.6,y:-5},'scene:a':{x:'1',y:2},'lixo':{x:1,y:1},'scene:b':{x:99999,y:3}},vazio:{}}});
@@ -226,4 +229,18 @@ test('suggestSceneParents usa nome longo, acento, pasta aninhada e ignora confli
  const scenes=[{id:'a',name:'Velha Alberich — Praça'},{id:'b',name:'Sem pista',folder:{id:'child'}},{id:'c',name:'Alberich',folder:{id:'g'}},{id:'d',name:'Alberich'},{id:'e',name:'Alberích — cena'},{id:'f',name:'Alberich'},{id:'h',name:'Velha Alberich',folder:{id:'velha'}}];
  const found=suggestSceneParents({atlas:{scenes:{d:{parentId:'place:alberich'}}},scenes,folders:[{id:'f0',name:'Thur Thur'},{id:'child',name:'Mapas',folder:'f0'},{id:'g',name:'Thur Thur'},{id:'velha',name:'Velha Alberich'}],places,regions,placeScenes:{alberich:'f'}});
  assert.deepEqual(found.map(x=>[x.sceneId,x.parentId,x.reason,x.confidence]),[['a','place:velha','nome','média'],['b','region:thur','pasta','média'],['e','place:alberich','nome','média'],['h','place:velha','nome+pasta','alta']]);
+});
+
+test('banco de mapas cobre todas as localidades e saídas planejadas seguem só hierarquia do livro',()=>{
+ assert.deepEqual(Object.keys(MAP_BANK_SELECTION).sort(),PLACES.map(place=>place.id).sort());
+ assert.ok(PLACES.every(place=>mapSourceFor(place.id)?.url.startsWith('https://')));
+ const exits=mapPortalDrafts(PLACES);
+ assert.equal(exits.length,PLACES.filter(place=>place.parentId).length);
+ assert.ok(exits.every(exit=>exit.status==='aguarda cenas e posições'));
+});
+
+test('plano de cenas ignora local com mapa direto, herdado ou em sublocal',()=>{
+ const tree=buildSceneAtlasTree({atlas:{scenes:{direta:{parentId:'place:p1'},filha:{parentId:'place:p2b'}}},regions:[{id:'r',name:'R'}],places:[{id:'p1',name:'P1',regionId:'r'},{id:'p2',name:'P2',regionId:'r'},{id:'p2b',name:'P2b',regionId:'r',parentId:'p2'},{id:'p3',name:'P3',regionId:'r'},{id:'p4',name:'P4',regionId:'r'}],scenes:[{id:'direta',name:'Direta'},{id:'filha',name:'Filha'},{id:'legada',name:'Legada'}],placeScenes:{p4:'legada'}});
+ const plan=missingPlaceScenePlan({tree,regionId:'r',files:{p3:'mapa.webp'}});
+ assert.deepEqual(plan.map(row=>[row.placeId,row.background]),[['p3','mapa.webp']]);
 });

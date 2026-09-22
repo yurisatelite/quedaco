@@ -658,3 +658,16 @@ export function suggestSceneParents({atlas,scenes=[],folders=[],places=PLACES,re
   const find=text=>{const hay=comparable(text),hits=[...places.map(x=>({id:`place:${x.id}`,name:x.name})),...regions.map(x=>({id:`region:${x.id}`,name:x.name}))].filter(x=>hay.includes(comparable(x.name))).sort((a,b)=>comparable(b.name).length-comparable(a.name).length);if(!hits.length)return '';const size=comparable(hits[0].name).length;return hits.filter(hit=>comparable(hit.name).length===size).length===1?hits[0].id:'';};
   return scenes.filter(scene=>{const stored=value.scenes[scene.id];return (!stored||stored.parentId==='unassigned')&&!legacy.has(scene.id);}).flatMap(scene=>{const byName=find(scene.name),byFolder=find(folderTrail(scene.folder,folders));if(!byName&&!byFolder||byName&&byFolder&&byName!==byFolder)return [];const parentId=byName||byFolder;return [{sceneId:scene.id,sceneName:scene.name,parentId,reason:byName&&byFolder?'nome+pasta':byName?'nome':'pasta',confidence:byName&&byFolder?'alta':'média'}];});
 }
+
+/** Prévia pura das localidades da região que ainda não têm nenhuma Scene. */
+export function missingPlaceScenePlan({tree,regionId,files={}}={}){
+  const region=tree?.children?.find(node=>node.type==='region'&&node.key===regionId);
+  const rows=[];
+  const visit=node=>{
+    if(node?.type!=='place')return;
+    if(!(node.counts?.scenes??0))rows.push({placeId:node.key,name:node.label,parentId:`place:${node.key}`,background:String(files[node.key]??'')});
+    for(const child of node.children??[])visit(child);
+  };
+  for(const node of region?.children??[])visit(node);
+  return rows;
+}

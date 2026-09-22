@@ -125,6 +125,14 @@ pergunta pra sempre.
   os 3 casos testados).
 - **Nunca visto abrindo de verdade** — o `DialogV2.confirm` só existe no Foundry.
 
+## G — Montar os mapas · código e testes falsos, ainda sem conferência no Foundry
+
+- **A · Sugerir onde ficam:** feito na 11ª rodada, commit `21b154a`. Cenas sem local podem receber sugestão com prévia e aplicação em um save.
+- **B · Banco e criação de cenas:** [BANCO-DE-MAPAS.md](BANCO-DE-MAPAS.md) registra uma fonte visual para cada uma das 48 localidades/Quedas. A Mestra escolhe o arquivo pelo FilePicker; a prévia da região permite marcar e criar cenas com fundo, vincular ao Mapa Imersivo e repetir sem duplicar. Saídas pai → sublocal ficam nomeadas, sem teletransporte posicionado. Só houve teste com cenas falsas; não havia imagens nem mundo Foundry acessível.
+- **C · Organizar pastas:** aguardando a montagem dos mapas, conforme a prioridade mais recente do Yuri.
+
+Depois da conferência visual, preparar tokens dos NPCs já existentes, visão e lojas nas cenas e posicionar as passagens estratégicas. Essas etapas não foram executadas neste lote.
+
 ---
 
 ## Como dividir isto entre chats/modelos
