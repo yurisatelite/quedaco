@@ -1,5 +1,17 @@
 export const CHANGELOG = [
   {
+    version:'0.10.0',
+    date:'2026-09-22',
+    title:'Mapa Imersivo montado como quebra-cabeça, aba Cena Atual e monstros com ficha de campo',
+    notes:[
+      'O Mapa Imersivo agora abre num quebra-cabeça por região: cada local e cada cena é uma caixa, ligada à região e ao local onde fica; teletransporte aparece como linha tracejada. Arraste as caixas pra onde quiser — a posição fica guardada. Solte uma cena "sem local" em cima de uma caixa pra colocá-la ali dentro, ou crie uma caixa nova direto no quadro. "Reorganizar caixas" volta ao arranjo inicial. A lista de antes continua, na sub-aba Lista.',
+      'Nova aba Cena Atual, fora do Mapa: a cena ativa no centro de um diagrama com as cenas ligadas a ela (portais, o mapa onde ela fica e os mapas internos), clicáveis; os NPCs da região organizados por local, com o local atual marcado; e, como antes, guildas presentes, mercadores com atitude, rumor da região e o botão de liberar a localidade.',
+      'Mapa Imersivo mais calmo: as regiões e locais começam fechados e lembram o que você abriu; a cena com o mesmo nome do local aparece como "Mapa: <nome>"; cena apagada no Foundry sai do mapa sozinha (e uma entrada antiga quebrada ganha o botão "Remover esta entrada"); miniaturas já vêm ligadas; Mapa Imersivo é a primeira aba.',
+      'Quem usa o módulo World Explorer ganha um botão "Mapa de exploração" no Mapa Imersivo e na Cena Atual, com quantos hexágonos já foram revelados. Sem o módulo ativo, o botão não aparece.',
+      'Monstros convertidos de D&D ganham biografia em ficha de campo: habitat em Opath, temperamento (tirado da tendência da criatura, sem nomes do cenário de origem), táticas montadas a partir dos próprios ataques e traços, e espaço para aparência, comportamento, o que quer e ganchos. O texto original fica recolhido no fim, só pra consulta.'
+    ]
+  },
+  {
     version:'0.9.0',
     date:'2026-09-17',
     title:'Mapa Imersivo, monstros de outros jogos chegando completos, e um mestre com menos ruído na tela',

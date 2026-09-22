@@ -81,7 +81,7 @@ O pacote resultante fica em `dist/quedaco-<versão>/quedaco`. `npm run release` 
 
 ## Estado funcional
 
-- Versão do repositório: **0.9.0** (`module.json` e `package.json`), fechada em 17/09/2026. As macros de `.local/` importam do módulo **instalado** no Foundry, que pode estar atrás do repositório — confira o que está publicado antes de uma macro depender de código novo.
+- Versão do repositório: **0.10.0** (`module.json` e `package.json`), fechada em 22/09/2026. As macros de `.local/` importam do módulo **instalado** no Foundry, que pode estar atrás do repositório — confira o que está publicado antes de uma macro depender de código novo.
 - O módulo antigo está desativado no mundo oficial.
 - Jogadores veem Criação de Personagens e as abas liberadas pela Mestra; ela vê NPCs, Guildas, Mapa, Monstros, Itens, Imbuir e Quests.
 - A progressão 1–12 usa os benefícios registrados nos documentos do sistema. Escolhas descritas apenas em prosa ainda exigem implementação e conferência individual.
