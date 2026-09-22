@@ -206,3 +206,16 @@ test('regionLocalityTree: NPC vai pro local dele, sub-local aninha, região solt
   assert.deepEqual(tree.loose.map(n=>n.id),['c','e'],'sem local (ou local desconhecido) fica solto na região');
   assert.equal(tree.total,4,'NPC de outra região não entra');
 });
+
+test('revisão T16: quebra-cabeça preserva região vazia, cena regional, local apagado, 30 locais e ciclos',()=>{
+  const regions=[{id:'r',name:'Região'}],places=Array.from({length:31},(_,i)=>({id:`p${i}`,name:`Local ${i}`,regionId:'r'}));
+  places.push({id:'c1',name:'Ciclo 1',regionId:'r',parentId:'c2'},{id:'c2',name:'Ciclo 2',regionId:'r',parentId:'c1'});
+  const atlas={schema:1,providers:{stairways:false,native:false},scenes:{direta:{parentId:'region:r'},perdida:{parentId:'place:apagado'}},edges:{}};
+  const tree=buildSceneAtlasTree({atlas,regions,places,scenes:[{id:'direta',name:'Direta'}]});
+  const puzzle=buildRegionPuzzle({tree,regionId:'r',atlas});
+  assert.ok(puzzle.nodes.some(node=>node.id==='scene:direta'));
+  assert.ok(puzzle.nodes.every((node,i,nodes)=>nodes.findIndex(other=>other.x===node.x&&other.y===node.y)===i),'arranjo não sobrepõe caixas');
+  assert.equal(buildRegionPuzzle({tree,regionId:'ausente',atlas}),null);
+  const locals=regionLocalityTree({regionId:'r',places,entries:[{placeId:'c1',regionId:'r'}]});
+  assert.equal(locals.total,1,'ciclo não perde NPCs da árvore');
+});

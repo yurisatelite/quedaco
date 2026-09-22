@@ -226,6 +226,13 @@ Formato de cada entrada:
 **Checklist da regra 1:** tela ✔ (prévia) · ações ✔ · app.mjs ✔ · CSS ✔ · teste ✔ · **Foundry ✖**
 **Precisa de decisão:** nenhuma — as escolhas de implementação estão em `docs/PROGRESSO-MAPA-IMERSIVO.md`.
 
+### 22/09/2026 — Tarefa 16
+**Fiz:** revisei o quebra-cabeça e a árvore de NPCs de `1cbe655`. `regionLocalityTree` agora quebra ciclos de `place.parentId` em raízes seguras, evitando que NPCs desapareçam da árvore quando dois locais apontam um para o outro. Acrescentei teste para cena diretamente na região, local apagado, 31 locais, região ausente e ciclo.
+**Funcionou:** `npm test` passou com 241 testes; `npm run package` gerou o pacote de desenvolvimento. Os cenários são dados falsos de Node.
+**Não funcionou / deixei de fora:** o arrasto nativo, o drop fora do quadro, re-render durante arrasto e a inspeção visual com 100+ NPCs exigem DOM/Foundry; não há mundo de teste nesta execução. A amostra SRD já tinha sido validada no commit revisado; não alterei o conversor.
+**Checklist da regra 1:** tela ✖ · ações ✖ · app.mjs ✖ · CSS ✖ · teste ✔ · Foundry ✖
+**Precisa de decisão:** nenhuma.
+
 ### 17/09/2026 — Tarefa 13 (§1.1–1.5 e aba Cena Atual) · Codex — *registrado pelo Claude a partir dos commits*
 **Fiz:** `a34ea0a` — acordeões lembram estado (`state.atlasOpen` + evento `toggle` em `app.mjs`), prefixo "Mapa:" quando a cena tem o nome do local, botão "Remover esta entrada" em cena ausente (`lib-atlas-scene-remove`) e `Hooks.on('deleteScene')` em `main.mjs`, miniaturas ligadas por padrão, Mapa Imersivo como primeira aba e vista padrão. `60c706d` — área nova `activeScene` ("Cena Atual") na barra do mestre; o painel saiu de dentro do Mapa.
 **Funcionou:** testes de `library.test.mjs` ajustados; 230 passando naquele ponto.

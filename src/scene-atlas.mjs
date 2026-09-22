@@ -629,9 +629,14 @@ export function regionLocalityTree({regionId,places=PLACES,entries=[]}={}){
   const inRegion=(Array.isArray(places)?places:[]).filter(place=>cleanId(place?.id)&&place.regionId===region);
   const byId=new Map(inRegion.map(place=>[place.id,{place,entries:[],children:[],total:0}]));
   const roots=[];
+  const hasCycle=startId=>{
+    const seen=new Set();let cursor=startId;
+    while(cursor){if(seen.has(cursor))return true;seen.add(cursor);cursor=cleanId(byId.get(cursor)?.place.parentId);}
+    return false;
+  };
   for(const node of byId.values()){
     const parentId=cleanId(node.place.parentId);
-    const parent=parentId&&parentId!==node.place.id?byId.get(parentId):null;
+    const parent=parentId&&parentId!==node.place.id&&!hasCycle(node.place.id)?byId.get(parentId):null;
     (parent?parent.children:roots).push(node);
   }
   const loose=[];
