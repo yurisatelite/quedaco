@@ -10,7 +10,7 @@ import {equipmentKind,forgeFragments,forgeQuote,magicNamePreview,purchaseForgedI
 import {precoFormatado,walletTotal} from './rules.mjs';
 import {localityStock} from './locality.mjs';
 import {ImageResolver} from './images.mjs';
-import {MAP_BANK_SELECTION} from './map-bank.mjs';
+import {MAP_BANK_SELECTION,mapBuildProgress} from './map-bank.mjs';
 import {sealStyle} from './seal-style.mjs';
 import {placeLayer,defaultHiddenPlaces,regionDossier} from './atlas.mjs';
 import {assignAtlasScene,buildRegionPuzzle,buildSceneAtlasTree,createAtlasEdge,missingPlaceScenePlan,normalizeSceneAtlas,regionLocalityTree,registerAtlasScene,removeAtlasEdge,removeAtlasScene,resetAtlasLayout,resolveSceneLocality,sceneNeighborhood,setAtlasEndpoint,setAtlasLayoutPosition,setAtlasProvider,suggestSceneParents,syncAtlasScenes,updateAtlasEdge} from './scene-atlas.mjs';
@@ -282,6 +282,12 @@ export class CampaignLibrary {
     await this.saveSceneAtlas(atlas);this.state.atlasSuggestions=null;
   }
   get mapBankFiles(){try{return {...(this.game.settings?.get(MODULE_ID,MAP_BANK_FILES_KEY)||{})};}catch{return {};}}
+  get mapBuildProgress(){
+    const tree=buildSceneAtlasTree({atlas:this.sceneAtlas,regions:REGIONS,places:PLACES,scenes:Array.from(this.game.scenes??[]),placeScenes:this.placeScenes,regionScenes:this.regionScenes}),mapped=[];
+    const visit=node=>{if(node?.type==='place'&&(node.counts?.scenes??0)>0)mapped.push(node.key);for(const child of node?.children??[])visit(child);};
+    for(const region of tree.children??[])visit(region);
+    return mapBuildProgress({places:PLACES,files:this.mapBankFiles,mappedPlaceIds:mapped});
+  }
   async setMapBankFile(placeId,path){
     this.assertGM();if(!MAP_BANK_SELECTION[placeId])throw Error('Localidade não encontrada no banco de mapas.');
     const files=this.mapBankFiles,src=String(path??'').trim();

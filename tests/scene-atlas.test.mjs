@@ -136,7 +136,7 @@ test('resolveSceneLocality cai nos mapas legados (placeScenes/regionScenes) quan
 import {buildRegionPuzzle,regionLocalityTree,resetAtlasLayout,sceneNeighborhood,setAtlasLayoutPosition} from '../src/scene-atlas.mjs';
 import {suggestSceneParents} from '../src/scene-atlas.mjs';
 import {missingPlaceScenePlan} from '../src/scene-atlas.mjs';
-import {MAP_BANK_SELECTION,mapPortalDrafts,mapSourceFor} from '../src/map-bank.mjs';
+import {MAP_BANK_SELECTION,mapBuildProgress,mapPortalDrafts,mapSourceFor} from '../src/map-bank.mjs';
 import {PLACES} from '../src/book-world.mjs';
 
 test('layout do quebra-cabeça: normaliza, grava, limpa e some junto com a cena removida',()=>{
@@ -237,6 +237,13 @@ test('banco de mapas cobre todas as localidades e saídas planejadas seguem só 
  const exits=mapPortalDrafts(PLACES);
  assert.equal(exits.length,PLACES.filter(place=>place.parentId).length);
  assert.ok(exits.every(exit=>exit.status==='aguarda cenas e posições'));
+});
+
+test('régua do banco separa seleção, arquivo, cena e trabalho de mesa ainda pendente',()=>{
+ const places=[{id:'a'},{id:'b'}];
+ const progress=mapBuildProgress({places,files:{a:'mapa.webp'},mappedPlaceIds:['a']});
+ assert.deepEqual(progress.steps.map(step=>[step.id,step.count,step.percent]),[['catalogo',0,0],['arquivos',1,50],['cenas',1,50],['npcs',0,0],['ambiente',0,0],['passagens',0,0]]);
+ assert.equal(progress.percent,30,'arquivo e cena contam, mas NPCs, ambiente e passagens não são fingidos como feitos');
 });
 
 test('plano de cenas ignora local com mapa direto, herdado ou em sublocal',()=>{

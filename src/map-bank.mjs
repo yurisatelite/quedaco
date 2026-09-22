@@ -34,6 +34,24 @@ export const MAP_BANK_SELECTION=Object.freeze({
 
 export function mapSourceFor(placeId){return MAP_BANK_SOURCES[MAP_BANK_SELECTION[placeId]]??null;}
 
+/** Régua explícita: uma cena só conta como pronta após as etapas de mesa restantes. */
+export function mapBuildProgress({places=[],files={},mappedPlaceIds=[]}={}){
+  const all=Array.isArray(places)?places:[],total=all.length,mapped=new Set(mappedPlaceIds??[]);
+  const sourceCount=all.filter(place=>Boolean(mapSourceFor(place.id))).length;
+  const fileCount=all.filter(place=>Boolean(files?.[place.id])).length;
+  const sceneCount=all.filter(place=>mapped.has(place.id)).length;
+  const ratio=count=>total?count/total:0;
+  const steps=[
+    {id:'catalogo',label:'Banco selecionado',weight:20,count:sourceCount,total},
+    {id:'arquivos',label:'Arquivos escolhidos',weight:25,count:fileCount,total},
+    {id:'cenas',label:'Cenas vinculadas',weight:35,count:sceneCount,total},
+    {id:'npcs',label:'NPCs posicionados',weight:10,count:0,total},
+    {id:'ambiente',label:'Visão e lojas conferidas',weight:5,count:0,total},
+    {id:'passagens',label:'Passagens posicionadas',weight:5,count:0,total}
+  ].map(step=>({...step,percent:Math.round(ratio(step.count)*100),points:step.weight*ratio(step.count)}));
+  return {total,sourceCount,fileCount,sceneCount,percent:Math.round(steps.reduce((sum,step)=>sum+step.points,0)),steps};
+}
+
 // Só relações de continência confirmadas pelo índice geográfico. A posição de cada
 // passagem jogável continua vazia até a Mestra marcar entrada e saída nas cenas.
 export function mapPortalDrafts(places){return places.filter(place=>place.parentId).map(place=>({fromPlaceId:place.parentId,toPlaceId:place.id,label:`Entrada para ${place.name}`,section:'Mapa Imersivo',bidirectional:true,status:'aguarda cenas e posições'}));}

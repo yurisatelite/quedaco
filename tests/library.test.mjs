@@ -876,6 +876,8 @@ test('banco de mapas cria somente cenas escolhidas com imagem, vínculo e um sav
    await library.action('lib-map-bank-plan','thurthur');
    const tela=library.renderMap(false);
    assert.match(tela,/Banco de mapas · Thur Thur/);
+   assert.match(tela,/MONTAGEM DO MUNDO/);
+   assert.match(tela,/21% pronta/);
    assert.match(tela,/market-festival/);
    assert.match(tela,/Saídas planejadas em Mapa Imersivo/);
    assert.match(tela,/name="mapBankPlace" value="lado-fora" checked/);

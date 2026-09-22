@@ -2,6 +2,10 @@
 
 Atualizado em 22/09/2026. A lista executável está em `src/map-bank.mjs`: **48 localidades e Quedas**, cada uma com uma fonte sugerida. As dez regiões são contêineres conceituais e não recebem battlemap nesta leva. A seleção indica o *tipo visual* de mapa que pode representar a localidade na mesa; não afirma que o desenho retrata literalmente o lugar do livro.
 
+## Régua de progresso
+
+A barra no Mapa Imersivo mostra uma medida única para a montagem inteira, sem tratar uma cena vazia como concluída. O peso é: banco selecionado (20%), arquivos escolhidos (25%), cenas vinculadas (35%), NPCs posicionados (10%), visão e lojas conferidas (5%) e passagens posicionadas (5%). Cada etapa que depende das 48 localidades avança proporcionalmente; as três últimas ficam em zero até existirem no mundo.
+
 | Região | Localidades → fonte selecionada |
 | --- | --- |
 | Arquipélago de Huma | Foice → Coastal Town; Pacuma e Papuáma → Desert Island; Kiki, Mahuku e Lapuko → Coastal Town; Vulcão Tief → Dragon’s Lair Bridge; Queda do Tempo → Ruined Keep |
