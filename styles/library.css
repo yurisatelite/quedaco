@@ -575,6 +575,7 @@
 .sy-creator .sy-scene-atlas-unassigned{padding:8px 10px;border:1px dashed #4a6b80;border-radius:8px}
 .sy-creator .sy-scene-atlas-editor,.sy-creator .sy-scene-atlas-links{display:grid;gap:8px;padding:10px;border:1px solid #4da1b4;border-radius:9px;background:#132430}
 .sy-creator .sy-scene-atlas-editor h3,.sy-creator .sy-scene-atlas-links h3{margin:0;font-size:15px}
+.sy-creator .sy-atlas-suggestions{margin:10px 0}.sy-creator .sy-atlas-suggestions .sy-check-grid{display:grid;gap:5px;max-height:260px;overflow:auto}.sy-creator .sy-atlas-suggestions label{display:flex;align-items:start;gap:7px;padding:6px 8px;border:1px solid #344b5e;border-radius:6px;font-size:13px}.sy-creator .sy-atlas-suggestions label:has(input:checked){border-color:#65cbe3;background:#153342}.sy-creator .sy-atlas-suggestions small{display:block;color:#91a9bd}
 .sy-creator .sy-scene-atlas-edge-form{display:grid;gap:6px}
 .sy-creator .sy-scene-atlas-edge-form label{margin:0;font-size:12px}
 .sy-creator .sy-scene-atlas-edge-form select,.sy-creator .sy-scene-atlas-edge-form input:not([type=checkbox]){margin:0;padding:4px 7px;font-size:12px}

@@ -134,6 +134,7 @@ test('resolveSceneLocality cai nos mapas legados (placeScenes/regionScenes) quan
 
 // ── T13 §2 — quebra-cabeça por região ──
 import {buildRegionPuzzle,regionLocalityTree,resetAtlasLayout,sceneNeighborhood,setAtlasLayoutPosition} from '../src/scene-atlas.mjs';
+import {suggestSceneParents} from '../src/scene-atlas.mjs';
 
 test('layout do quebra-cabeça: normaliza, grava, limpa e some junto com a cena removida',()=>{
   const sujo=normalizeSceneAtlas({layout:{deserto:{'place:kravokia':{x:10.6,y:-5},'scene:a':{x:'1',y:2},'lixo':{x:1,y:1},'scene:b':{x:99999,y:3}},vazio:{}}});
@@ -218,4 +219,11 @@ test('revisão T16: quebra-cabeça preserva região vazia, cena regional, local 
   assert.equal(buildRegionPuzzle({tree,regionId:'ausente',atlas}),null);
   const locals=regionLocalityTree({regionId:'r',places,entries:[{placeId:'c1',regionId:'r'}]});
   assert.equal(locals.total,1,'ciclo não perde NPCs da árvore');
+});
+
+test('suggestSceneParents usa nome longo, acento, pasta aninhada e ignora conflito, atlas e legado',()=>{
+ const places=[{id:'alberich',name:'Alberich'},{id:'velha',name:'Velha Alberich'}],regions=[{id:'thur',name:'Thur Thur'}];
+ const scenes=[{id:'a',name:'Velha Alberich — Praça'},{id:'b',name:'Sem pista',folder:{id:'child'}},{id:'c',name:'Alberich',folder:{id:'g'}},{id:'d',name:'Alberich'},{id:'e',name:'Alberích — cena'},{id:'f',name:'Alberich'},{id:'h',name:'Velha Alberich',folder:{id:'velha'}}];
+ const found=suggestSceneParents({atlas:{scenes:{d:{parentId:'place:alberich'}}},scenes,folders:[{id:'f0',name:'Thur Thur'},{id:'child',name:'Mapas',folder:'f0'},{id:'g',name:'Thur Thur'},{id:'velha',name:'Velha Alberich'}],places,regions,placeScenes:{alberich:'f'}});
+ assert.deepEqual(found.map(x=>[x.sceneId,x.parentId,x.reason,x.confidence]),[['a','place:velha','nome','média'],['b','region:thur','pasta','média'],['e','place:alberich','nome','média'],['h','place:velha','nome+pasta','alta']]);
 });

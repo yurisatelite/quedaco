@@ -279,6 +279,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
         // atlas de cenas: os campos moram no bloco do próprio botão
         if(op==='lib-atlas-edge-add'){const box=button.closest('.sy-scene-atlas-edge-form'),v=n=>box?.querySelector(`[name="${n}"]`);data={fromSceneId:v('atlasEdgeFrom')?.value??'',toSceneId:v('atlasEdgeTo')?.value??'',label:v('atlasEdgeLabel')?.value??'',bidirectional:Boolean(v('atlasEdgeBidirectional')?.checked)};}
         if(op==='lib-atlas-assign'){const box=button.closest('.sy-scene-atlas-scene-tools');data={parentId:box?.querySelector('[name="atlasSceneParent"]')?.value??'unassigned'};}
+        if(op==='lib-atlas-suggest-apply')data={sceneIds:Array.from(this.element.querySelectorAll('[name="atlasSuggestion"]:checked')).map(input=>input.value)};
         // quebra-cabeça: a caixa nova nasce logo abaixo da caixa-pai escolhida
         if(op==='lib-atlas-puzzle-create'){const box=button.closest('.sy-puzzle-create'),parentId=box?.querySelector('[name="puzzleSceneParent"]')?.value??'unassigned',parent=this.element.querySelector(`[data-puzzle-node="${CSS.escape(parentId)}"]`);data={name:box?.querySelector('[name="puzzleSceneName"]')?.value??'',parentId};if(parent){data.x=parseFloat(parent.style.left)||0;data.y=(parseFloat(parent.style.top)||0)+(parent.offsetHeight||40)+46;}}
         if(op==='lib-atlas-scene-create'){const box=button.closest('.sy-scene-atlas-add');data={name:box?.querySelector('[name="atlasSceneName"]')?.value??''};}

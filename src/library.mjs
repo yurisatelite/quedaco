@@ -12,7 +12,7 @@ import {localityStock} from './locality.mjs';
 import {ImageResolver} from './images.mjs';
 import {sealStyle} from './seal-style.mjs';
 import {placeLayer,defaultHiddenPlaces,regionDossier} from './atlas.mjs';
-import {assignAtlasScene,buildRegionPuzzle,buildSceneAtlasTree,createAtlasEdge,normalizeSceneAtlas,regionLocalityTree,removeAtlasEdge,removeAtlasScene,resetAtlasLayout,resolveSceneLocality,sceneNeighborhood,setAtlasEndpoint,setAtlasLayoutPosition,setAtlasProvider,syncAtlasScenes,updateAtlasEdge} from './scene-atlas.mjs';
+import {assignAtlasScene,buildRegionPuzzle,buildSceneAtlasTree,createAtlasEdge,normalizeSceneAtlas,regionLocalityTree,removeAtlasEdge,removeAtlasScene,resetAtlasLayout,resolveSceneLocality,sceneNeighborhood,setAtlasEndpoint,setAtlasLayoutPosition,setAtlasProvider,suggestSceneParents,syncAtlasScenes,updateAtlasEdge} from './scene-atlas.mjs';
 import {explorationScene,sceneRevealedHexes,worldExplorerActive} from './world-explorer.mjs';
 import {regionColor} from './regions.mjs';
 import {ForienQuestIntegration,QUEST_STATUSES,questCounts} from './forien-quests.mjs';
@@ -252,7 +252,7 @@ const CUSTOM_TIER_LABEL={simple:'Simples',complex:'Complexo',boss:'Chefão'};
 const CUSTOM_ARCHETYPE_LABEL={flanker:'Flanqueador',sentinel:'Sentinela',defender:'Defensor',brute:'Bruto',leader:'Líder',mount:'Cavalaria',ranged:'Atirador',group:'Coletivo'};
 
 export class CampaignLibrary {
-  constructor(game,catalog){this.game=game;this.catalog=catalog;this.images=new ImageResolver(game,MODULE_ID,ASSET_ROOT_KEY);this.quests=new ForienQuestIntegration(game);this.actors=[];this.failures=[];this.loaded=false;this.state={mapDisplay:'atlas',mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null,layer:'auto',movingPins:false},atlasThumbnails:true,atlasOpen:new Set(),atlasView:'puzzle',atlasRegion:null,npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcLevelMin:0,npcLevelMax:12,npcDragonOnly:false,npcMilitarOnly:false,npcActor:null,npcSaved:null,npcEditRole:null,npcEditRegion:null,npcEditPlace:null,monsterFacets:{},monsterCardSize:270,itemCardSize:270,guildCardSize:270,npcCardSize:270,npcPlayerRegion:null,npcAsPlayer:false,npcLegacyFilter:'all',npcHeritageFilter:'all',npcGuildFilter:'all',localNpcRole:'all',localNpcLegacy:'all',guildFacets:{},guildTab:'ativas',questStatus:'all',regionTakeover:false,regionScene:null,regionTab:'rumores',regionRumorRoll:null,regionRumorEdit:null,regionNpcRoleFilter:'all',cart:{actorId:'',lines:[]},sellActorId:''};this.modBuilder={baseId:'',materialId:'',sigils:[],tab:'prefixo'};this.forgeBuilder={smithId:'',baseUuid:'',materialId:'',sigils:[],tab:'prefixo'};}
+  constructor(game,catalog){this.game=game;this.catalog=catalog;this.images=new ImageResolver(game,MODULE_ID,ASSET_ROOT_KEY);this.quests=new ForienQuestIntegration(game);this.actors=[];this.failures=[];this.loaded=false;this.state={mapDisplay:'atlas',mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null,layer:'auto',movingPins:false},atlasThumbnails:true,atlasOpen:new Set(),atlasView:'puzzle',atlasRegion:null,atlasSuggestions:null,npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcLevelMin:0,npcLevelMax:12,npcDragonOnly:false,npcMilitarOnly:false,npcActor:null,npcSaved:null,npcEditRole:null,npcEditRegion:null,npcEditPlace:null,monsterFacets:{},monsterCardSize:270,itemCardSize:270,guildCardSize:270,npcCardSize:270,npcPlayerRegion:null,npcAsPlayer:false,npcLegacyFilter:'all',npcHeritageFilter:'all',npcGuildFilter:'all',localNpcRole:'all',localNpcLegacy:'all',guildFacets:{},guildTab:'ativas',questStatus:'all',regionTakeover:false,regionScene:null,regionTab:'rumores',regionRumorRoll:null,regionRumorEdit:null,regionNpcRoleFilter:'all',cart:{actorId:'',lines:[]},sellActorId:''};this.modBuilder={baseId:'',materialId:'',sigils:[],tab:'prefixo'};this.forgeBuilder={smithId:'',baseUuid:'',materialId:'',sigils:[],tab:'prefixo'};}
   image(kind,id,documentImg='',fallback='icons/svg/mystery-man.svg'){return this.images.resolve(kind,id,documentImg,fallback);}
   async reindexImages(){
     this.assertGM();
@@ -272,6 +272,12 @@ export class CampaignLibrary {
   async saveSceneAtlas(atlas){this.assertGM();await this.game.settings.set(MODULE_ID,SCENE_ATLAS_KEY,normalizeSceneAtlas(atlas));}
   async setSceneAtlasProvider(provider,enabled){this.assertGM();await this.saveSceneAtlas(setAtlasProvider(this.sceneAtlas,provider,enabled));}
   async assignSceneAtlas(sceneId,parentId){this.assertGM();await this.saveSceneAtlas(assignAtlasScene(this.sceneAtlas,sceneId,parentId));}
+  atlasParentSuggestions(){return suggestSceneParents({atlas:this.sceneAtlas,scenes:Array.from(this.game.scenes??[]),folders:Array.from(this.game.folders??[]),places:PLACES,regions:REGIONS,placeScenes:this.placeScenes,regionScenes:this.regionScenes});}
+  async applyAtlasParentSuggestions(sceneIds=[]){
+    this.assertGM();const allowed=new Set(sceneIds??[]);let atlas=this.sceneAtlas;
+    for(const suggestion of this.atlasParentSuggestions())if(allowed.has(suggestion.sceneId))atlas=assignAtlasScene(atlas,suggestion.sceneId,suggestion.parentId);
+    await this.saveSceneAtlas(atlas);this.state.atlasSuggestions=null;
+  }
   async removeSceneAtlasScene(sceneId){this.assertGM();await this.saveSceneAtlas(removeAtlasScene(this.sceneAtlas,sceneId));}
   // T13 §2 — quebra-cabeça: arrastar só grava posição; soltar uma cena "sem local" em cima
   // de uma caixa liga a cena àquela caixa (mesmo efeito de "Mover" na Lista) e já guarda
@@ -708,6 +714,8 @@ export class CampaignLibrary {
     if(op==='lib-images-reindex')await this.reindexImages();
     if(op==='lib-map-display')this.state.mapDisplay=id==='atlas'?'atlas':'geographic';
     if(op==='lib-atlas-thumbnails')this.state.atlasThumbnails=id==='show';
+    if(op==='lib-atlas-suggest')this.state.atlasSuggestions=this.atlasParentSuggestions();
+    if(op==='lib-atlas-suggest-apply')await this.applyAtlasParentSuggestions(data.sceneIds);
     if(op==='lib-atlas-provider'){const [provider,mode]=String(id).split(':');await this.setSceneAtlasProvider(provider,mode==='on');}
     if(op==='lib-atlas-assign')await this.assignSceneAtlas(id,data.parentId);
     if(op==='lib-atlas-scene-remove')await this.removeSceneAtlasScene(id);

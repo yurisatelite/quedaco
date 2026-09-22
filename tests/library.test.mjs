@@ -846,6 +846,23 @@ test('quebra-cabeça do Mapa Imersivo (T13 §2): quadro por região, soltar cena
   assert.doesNotMatch(estranho,/revelado/);
 });
 
+test('T26.1: sugestão de local só mostra prévia e aplica as cenas marcadas em um save',async()=>{
+  const cenas=[{id:'praca',name:'Alberich — Praça',flags:{}},{id:'solta',name:'Alberich — Porão',flags:{}}];
+  const scenes=Object.assign(cenas,{get:id=>cenas.find(scene=>scene.id===id)});
+  const store={sceneAtlas:{schema:1,providers:{stairways:false,native:false},scenes:{praca:{parentId:'place:alberich'}},edges:{}},placeScenes:{},regionScenes:{}};
+  let saves=0;
+  const game={user:{isGM:true},actors:[],users:[],packs:[],folders:[],version:'13.351',scenes,modules:{get:()=>null},settings:{get:(_m,key)=>(key==='sharedContent'?{}:(store[key]??{})),set:async(_m,key,value)=>{saves++;store[key]=value;}}};
+  const library=new CampaignLibrary(game,{items:[]});
+  await library.action('lib-atlas-suggest','');
+  const preview=library.renderMap(false);
+  assert.match(preview,/Prévia: sugestões de local/);
+  assert.match(preview,/name="atlasSuggestion" value="solta"/);
+  assert.equal(store.sceneAtlas.scenes.solta,undefined,'prévia não altera o atlas');
+  await library.action('lib-atlas-suggest-apply','',{sceneIds:['solta']});
+  assert.equal(saves,1);
+  assert.equal(store.sceneAtlas.scenes.solta.parentId,'place:alberich');
+});
+
 test('shouldAskReleaseOnActivate (T7): configuração desligada, sem localidade e localidade já liberada não perguntam',()=>{
   const locality={regionId:'thurthur',placeId:'alberich'};
   const vazio=new Set();

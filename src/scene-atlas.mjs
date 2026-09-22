@@ -650,3 +650,11 @@ export function regionLocalityTree({regionId,places=PLACES,entries=[]}={}){
   roots.forEach(count);
   return {regionId:region,loose,places:roots,total:loose.length+roots.reduce((sum,node)=>sum+node.total,0)};
 }
+
+const comparable=value=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+const folderTrail=(folder,all)=>{const byId=new Map((all??[]).map(item=>[item.id,item]));const names=[],visited=new Set();let cursor=byId.get(folder?.id??folder)??folder;while(cursor&&!visited.has(cursor.id)){visited.add(cursor.id);names.push(cursor.name??'');const next=cursor.folder?.id??cursor.folder;cursor=byId.get(next); }return names.join(' ');};
+export function suggestSceneParents({atlas,scenes=[],folders=[],places=PLACES,regions=REGIONS,placeScenes={},regionScenes={}}={}){
+  const value=normalizeSceneAtlas(atlas),legacy=new Set([...Object.values(placeScenes??{}),...Object.values(regionScenes??{})].flatMap(mappedSceneIds));
+  const find=text=>{const hay=comparable(text),hits=[...places.map(x=>({id:`place:${x.id}`,name:x.name})),...regions.map(x=>({id:`region:${x.id}`,name:x.name}))].filter(x=>hay.includes(comparable(x.name))).sort((a,b)=>comparable(b.name).length-comparable(a.name).length);if(!hits.length)return '';const size=comparable(hits[0].name).length;return hits.filter(hit=>comparable(hit.name).length===size).length===1?hits[0].id:'';};
+  return scenes.filter(scene=>{const stored=value.scenes[scene.id];return (!stored||stored.parentId==='unassigned')&&!legacy.has(scene.id);}).flatMap(scene=>{const byName=find(scene.name),byFolder=find(folderTrail(scene.folder,folders));if(!byName&&!byFolder||byName&&byFolder&&byName!==byFolder)return [];const parentId=byName||byFolder;return [{sceneId:scene.id,sceneName:scene.name,parentId,reason:byName&&byFolder?'nome+pasta':byName?'nome':'pasta',confidence:byName&&byFolder?'alta':'média'}];});
+}

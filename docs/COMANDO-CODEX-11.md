@@ -92,3 +92,10 @@ Formato de cada entrada:
 **Checklist da regra 1:** tela ✔/✖ · ações ✔/✖ · app.mjs ✔/✖ · CSS ✔/✖ · teste ✔/✖ · Foundry ✔/✖
 **Precisa de decisão:** a pergunta exata para o Yuri, se houver.
 ```
+
+### 22/09/2026 — Tarefa 1
+**Fiz:** adicionei `suggestSceneParents` em `src/scene-atlas.mjs`; ela compara nome e trilha de pastas sem acento, escolhe a localidade de nome mais longo, só aceita sugestão quando nome e pasta concordam, e ignora conflitos, atlas já organizado e vínculos legados. No Mapa Imersivo, a bandeja agora abre uma prévia com caixas de marcar; alta confiança vem marcada e **Aplicar marcadas** grava tudo numa única atualização do atlas.
+**Funcionou:** `npm test` passou com 243 testes; inclui testes de nome longo, acento, pasta aninhada, conflito, cena organizada, legado, confiança alta e prévia/aplicação única com dados falsos. `npm run package` gerou o pacote de desenvolvimento.
+**Não funcionou / deixei de fora:** não abri o Foundry nem alterei cenas, pastas ou Atores de mundo. Não há dado real de cenas nesta verificação.
+**Checklist da regra 1:** tela ✔ · ações ✔ · app.mjs ✔ · CSS ✔ · teste ✔ · Foundry ✖
+**Precisa de decisão:** nenhuma; falta apenas conferir a prévia e a aplicação numa cópia do mundo no Foundry.
