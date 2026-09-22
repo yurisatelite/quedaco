@@ -3,10 +3,16 @@
 Documento de passagem. **Claude estrutura, Codex executa, Yuri confirma.** Leia este
 arquivo e o `CLAUDE.md` da raiz; não precisa reler conversa nenhuma nem a 9ª rodada.
 
-**HEAD de referência:** `50b8928`. `npm test` = **230 passando**. Árvore limpa.
+**HEAD de referência:** `1cbe655` (22/09/2026). `npm test` = **240 passando**. Árvore limpa.
 **Versão no repositório:** 0.9.0, **já publicada** (v0.9.0, 17/09/2026). Tudo commitado
-depois dela (Tarefas 5, 8, 9, 10, 12 desta rodada, e a especificação das Tarefas 13–15)
-ainda não foi publicado — vira a próxima versão quando essa leva de tarefas fechar.
+depois dela (Tarefas 5, 8, 9, 10, 12, 13 e 15 desta rodada) ainda não foi publicado — vira
+a 0.10.0 quando o Yuri autorizar. **Não aumente a versão nem publique** — isso é do Claude,
+com autorização do Yuri pra cada versão.
+
+> **22/09/2026 — o Claude codou o que faltava sem decisão pendente:** o quebra-cabeça do
+> Mapa Imersivo (T25 §2), a aba Cena Atual completa (§1.7), o World Explorer (T15) e a
+> biografia em ficha de campo (T24 §3). Ver o diário (seção 4). **O que sobra pro Codex
+> são as Tarefas 16, 17 e 18**, no fim da seção 1.
 
 ---
 
@@ -40,8 +46,9 @@ mesmo escreveu.
 As tarefas 1–7 e 11 (T24) da 9ª rodada estão **concluídas** (ver diário na seção 4 de
 `docs/COMANDO-CODEX-9.md`, que fica fechada). **As tarefas 5, 8, 9, 10 e 12 abaixo também
 já foram concluídas pelo Codex — ver o diário na seção 4 deste documento.** Ficam
-descritas aqui só como referência do que foi pedido; não refaça nenhuma delas. O que
-resta em aberto nesta rodada são as tarefas **13, 14 e 15**, abaixo.
+descritas aqui só como referência do que foi pedido; não refaça nenhuma delas. A 13 ficou
+quase toda pronta (só o §1.6 espera um print do Yuri) e a 15 está feita. A 14 espera
+conversa de design. **O que resta pro Codex: Tarefas 16, 17 e 18.**
 
 ### ~~Tarefa 5~~ — Conferência da região-espelho  · **concluída (diário: 17/09/2026)**
 
@@ -67,12 +74,18 @@ Especificação original em `docs/COMANDO-CODEX-9.md`, Tarefa 10.
 ### ~~Tarefa 12~~ — Biografia em ficha de campo (T24, passo 6)  · **parcial (diário: 17/09/2026)**
 
 Especificação em `docs/T24-MONSTROS-COMPLETOS.md`, seção 3. **Feito:**
-`.local/fichas-de-campo.json` com as 44 ameaças do bestiário do livro. **Falta:** o
-conversor ainda não lê esse arquivo (a reconversão não preenche essas fichas sozinha), e
-não existe conteúdo para os 326 monstros de D&D — comece pelos mais usados se for
-continuar isso.
+`.local/fichas-de-campo.json` com as 44 ameaças do bestiário do livro (Codex, 17/09); o
+conversor monta a biografia em ficha de campo e aceita uma ficha escrita por monstro
+(Claude, 22/09). **Falta:** o conteúdo para os monstros de D&D e a macro ler esse
+arquivo — é a **Tarefa 18**.
 
-### Tarefa 13 — Mapa Imersivo: ajustes de uso e o mapa conceitual de verdade  · *grande — especificada em `docs/T25-MAPA-IMERSIVO-VISUAL.md`*
+### ~~Tarefa 13~~ — Mapa Imersivo: ajustes de uso e o mapa conceitual de verdade  · **concluída no código, exceto o §1.6 (diário: 17/09 Codex, 22/09 Claude)**
+
+**Não refaça.** §1.1–1.5 e a aba nova: Codex (`a34ea0a`, `60c706d`). §1.7 completo, §2
+inteiro: Claude (`1cbe655`). **§1.6 (topo descolado em todas as abas) fica parado** até o
+Yuri mandar um print com o inspetor (F12) mostrando qual elemento está por cima — não dá
+pra reproduzir sem o Foundry rodando, e a regra é não adivinhar pela leitura do CSS.
+Especificação original, pra referência:
 
 **Primeiro retorno de uso real** — o Yuri testou a v0.9.0 no Foundry, mandou prints, e
 depois teve uma conversa de design com o Claude sobre a peça maior. **Todas as decisões
@@ -89,7 +102,7 @@ Decidido nesta rodada de conversa (`docs/T25-MAPA-IMERSIVO-VISUAL.md`, seção 4
 **ainda sem desenho de como fica dentro da ficha do NPC.** Não codifique — isto é só um
 lembrete registrado pra não se perder, do mesmo jeito que T21 e T8b esperam decisão.
 
-### Tarefa 15 — Ponte com o módulo World Explorer  · *pequena — especificada em `docs/T25-MAPA-IMERSIVO-VISUAL.md`, seção 4.2*
+### ~~Tarefa 15~~ — Ponte com o módulo World Explorer  · **concluída (diário: 22/09/2026, Claude)**
 
 O Yuri já usa esse módulo no mundo oficial pra revelar hexágonos de exploração. O
 QUEDAÇO só precisa de um botão que abre a cena de exploração quando o módulo está
@@ -97,6 +110,73 @@ ativo — **sem ler nem escrever nada da estrutura interna dele** além de checa
 ativo. A leitura opcional de quantos hexágonos já foram revelados (item 2 da seção 4.2)
 é fora do escopo principal e precisa vir **blindada contra formato inesperado** — nunca
 pode quebrar a tela.
+
+### Tarefa 16 — Revisar o que o Claude codou em 22/09  · *média — revisão, não feature nova*
+
+Segundo par de olhos em `1cbe655`. Leia `docs/PROGRESSO-MAPA-IMERSIVO.md` ("Decisões de
+implementação") antes — não desfaça uma decisão registrada lá; se discordar, anote no
+diário como pergunta pro Yuri. Confira, com teste pra cada coisa que achar:
+
+1. **`scene-atlas.mjs: buildRegionPuzzle`** — região sem nenhum local; cena pendurada
+   direto na região (`region:`); cena cujo local-pai não existe mais em `PLACES`; região
+   com 30+ locais (o quadro fica largo demais? o arranjo quebra linha a 1100 px — confira
+   que nenhuma caixa cai em cima de outra); ciclo em `place.parentId`.
+2. **`app.mjs: _bindPuzzle`** — arrastar e soltar fora do quadro; soltar a cena da bandeja
+   em cima de uma caixa `is-missing` (deve ser ignorado); clique no botão de dentro da
+   caixa não pode iniciar arrasto; re-render no meio de um arrasto (o setting muda e o
+   `onChange` re-renderiza — veja se não duplica listener: `_bindPuzzle` roda a cada
+   render, em elemento novo, então não deveria).
+3. **`library.mjs: activeSceneNpcTree`** — NPC com `placeId` de outra região; região com
+   100+ NPCs (a árvore começa fechada, mas o HTML é montado inteiro — meça).
+4. **Acessibilidade, opcional:** hoje só dá pra posicionar caixa arrastando com mouse. Se
+   couber pequeno, setas do teclado movem a caixa focada 10 px e gravam ao soltar a tecla.
+   Não invente outra interação além dessa.
+5. **`monster-convert.mjs: buildFieldSheet`** — rode contra `.local/srd-monstros.json`
+   inteiro (`node tools/buscar-srd.mjs` se não existir) e confira 10 biografias ao acaso:
+   táticas coerentes com os Itens, nenhum HTML quebrado.
+
+**Pronto quando:** cada caso acima tem teste (ou nota no diário dizendo por que não
+precisa); `npm test` e `npm run package` passando.
+
+### Tarefa 17 — Tirar o Mapa Imersivo de dentro do `library.mjs`  · *média — estrutura, regra da seção 2*
+
+`library.mjs` passou de 2000 linhas. Mova pra `src/panels/mapa-imersivo.mjs` as funções de
+tela do Mapa Imersivo e da Cena Atual: `renderSceneAtlas`, `renderSceneAtlasScene`,
+`renderSceneAtlasPlace`, `renderSceneAtlasEdge`, `sceneAtlasParentOptions`,
+`sceneAtlasAddForm`, `sceneAtlasFirstScene`, `renderAtlasPuzzle`, `puzzleBoard`,
+`activeSceneDiagram`, `activeSceneNpcTree`, `renderActiveScenePanel`, `explorationButton`.
+Jeito sugerido: funções que recebem a instância da biblioteca (`renderSceneAtlas(lib)`) e
+métodos finos em `CampaignLibrary` que só delegam — assim nenhum teste nem `action()`
+muda. **Nenhuma mudança de comportamento** nesta tarefa: o HTML gerado tem de ser igual
+byte a byte (compare `renderMap(false)` e `render('activeScene')` antes/depois num teste
+temporário).
+
+**Pronto quando:** `library.mjs` não tem mais essas funções; todos os testes passam sem
+alteração; `docs/MAPA-DO-MODULO.md` aponta o arquivo novo.
+
+### Tarefa 18 — Fichas de campo dos monstros de D&D mais usados  · *conteúdo + um ajuste pequeno de macro*
+
+O conversor já monta a biografia em ficha de campo (T24 §3), mas Aparência,
+Comportamento, O que quer e Ganchos saem "—" porque ninguém escreveu esse conteúdo para
+os monstros de D&D (as 44 de `.local/fichas-de-campo.json` são do bestiário **do livro**).
+
+1. Crie `.local/fichas-de-campo-dnd.json` no **mesmo formato** do arquivo do livro
+   (`appearance`, `temperament`, `behavior`, `wants`, `hooks[]`), chaveado pelo **nome
+   em inglês do SRD** (o mesmo de `flags.quedaco.sourceName`). Comece pelos monstros que
+   aparecem na tabela `HABITAT` de `.local/distribuir-monstros-por-regiao.js` — são os que
+   o Yuri já pôs em alguma região.
+2. **Regras de conteúdo (T24 §3, "O que fica de fora"):** palavras próprias, curtas, sem
+   copiar parágrafo; nada de deus, plano, reino ou nome próprio do cenário de origem —
+   traço de cultura entra traduzido em comportamento. `temperament` é opcional (o
+   conversor já escreve um pela tendência; o do arquivo vem antes).
+3. Em `.local/reconverter-monstros-dnd.js`: depois de pedir o `srd-monstros.json`, peça um
+   **segundo arquivo opcional** (`fichas-de-campo-dnd.json`; cancelar = seguir sem) e passe
+   `toSkyfallNpc(mob,{habitat,fieldSheet:fichas[sourceName]})`. A prévia no chat conta
+   quantos ganharam ficha escrita.
+
+**Pronto quando:** o JSON valida (os cinco campos em todas as entradas, `hooks` com 2–3
+frases); a macro roda `node --check`; a prévia diz quantos têm ficha. **Não rode a macro no
+mundo oficial** — quem roda é o Yuri.
 
 ---
 
@@ -115,11 +195,13 @@ pode quebrar a tela.
 | ~~Publicar a versão nova~~ | **Feito** — v0.9.0 publicada em 17/09/2026 (`gh release`), com `quedaco.zip` e `module.json`. |
 | ~~`gh auth login`~~ | **Feito.** O Claude publica release sozinho a partir de agora, com autorização do Yuri pra cada versão. |
 | Mundo de teste | Ainda vale a pena, pra conferir a Tarefa 13 e o resto sem risco ao mundo oficial. |
-| **Conferir o Mapa Imersivo no Foundry, de novo, depois da Tarefa 13** | O painel da cena ativa virou a aba "Cena Atual" e o atlas virou o quebra-cabeça arrastável — nenhum dos dois foi visto ainda nesse formato novo. A pergunta ao ativar cena (`docs/PROGRESSO-MAPA-IMERSIVO.md`, etapa E) também segue sem retorno. |
+| **Autorizar a 0.10.0** | Tudo da Tarefa 13/15 e a ficha de campo estão no código; o Claude publica quando você disser "pode publicar a 0.10.0". |
+| **Conferir o Mapa Imersivo no Foundry, depois da 0.10.0** | Quebra-cabeça (arrastar caixa, soltar cena da bandeja, Criar caixa, Reorganizar), aba Cena Atual (mini-diagrama + árvore de NPCs) e o botão do World Explorer — nada disso foi visto ainda. A pergunta ao ativar cena (etapa E) também segue sem retorno. Roteiro em `docs/PROGRESSO-MAPA-IMERSIVO.md`. |
+| **Print do topo "descolado" (T25 §1.6)** | Abra qualquer aba, aperte F12, clique na setinha de inspecionar e clique na parte que está vazando. Mande o print com o painel do inspetor aberto — é o que falta pra corrigir. |
 | **T14 e T21** — Imbuir dentro da ficha do NPC / trocar legado no editor | Ambas ainda precisam de conversa de design com o Yuri antes de virar tarefa especificada. |
 | **T8b** — ficha de profissão do NPC | Protótipo em `.local/criar-vendedor-prototipo.js`; falta o brainstorm. |
 | Imagens das moedas | 33 prompts prontos em `docs/T17-PROMPTS-MOEDAS.md`. |
-| **Reconverter os 326 monstros de D&D** | `node tools/buscar-srd.mjs` no seu computador, depois `.local/reconverter-monstros-dnd.js` no Foundry (prévia primeiro). Backup do mundo antes — ela apaga e recria os Itens de cada monstro convertido. |
+| **Reconverter os 326 monstros de D&D** | **Depois da 0.10.0** (a ficha de campo só existe nela). `node tools/buscar-srd.mjs` no seu computador, depois `.local/reconverter-monstros-dnd.js` no Foundry (prévia primeiro). Backup do mundo antes — ela apaga e recria os Itens e **reescreve a biografia** de cada monstro convertido. |
 | Fichas de campo dos 326 monstros de D&D (Tarefa 12, o que falta) | Conteúdo, não código — as 44 do livro já estão feitas; os de D&D podem ser escritos por qualquer um, inclusive o Yuri, seguindo o mesmo formato. |
 
 ---
@@ -136,6 +218,20 @@ Formato de cada entrada:
 **Checklist da regra 1:** tela ✔/✖ · ações ✔/✖ · app.mjs ✔/✖ · CSS ✔/✖ · teste ✔/✖
 **Precisa de decisão:** a pergunta exata para o Yuri, se houver.
 ```
+
+### 22/09/2026 — Tarefas 13 (§1.7 e §2), 15 e 12 (biografia) · Claude
+**Fiz:** (1) Quebra-cabeça por região: `atlas.layout` guarda `{x,y}` por caixa e região (`scene-atlas.mjs: setAtlasLayoutPosition, resetAtlasLayout`, e `removeAtlasScene` limpa a posição); `buildRegionPuzzle` monta caixas (região/local/sub-local/cena), linhas de hierarquia, portais tracejados e a lista de portais pra fora da região, com arranjo inicial em árvore que quebra linha. Tela em `library.mjs: renderAtlasPuzzle, puzzleBoard`; arrastar em `app.mjs: _bindPuzzle`. Sub-abas "Quebra-cabeça" (padrão) e "Lista". (2) Cena Atual: `activeSceneDiagram` (`sceneNeighborhood`) e `activeSceneNpcTree` (`regionLocalityTree`), além de "Aqui agora" e do resto do painel. (3) `src/world-explorer.mjs` + `explorationButton`. (4) `monster-convert.mjs: buildFieldSheet, alignmentPhrase, tacticsFromItems`; `alignment` lido nos 3 normalizadores; macro de reconversão passa o habitat.
+**Funcionou:** 240 testes (10 novos, incluindo o botão do World Explorer com dado estranho e a árvore começando fechada). Prévia estática no navegador com dados falsos de Thur Thur: quebra-cabeça e Cena Atual renderizam como esperado. Ficha de campo rodada contra os 322 monstros reais do SRD — nenhum sem Temperamento ou Táticas.
+**Não funcionou / deixei de fora:** o arrastar não foi exercitado de verdade (a prévia não tem o `app.mjs`); nada visto no Foundry. §1.6 não foi tocado (precisa de print). Conteúdo das fichas de D&D virou a Tarefa 18.
+**Checklist da regra 1:** tela ✔ (prévia) · ações ✔ · app.mjs ✔ · CSS ✔ · teste ✔ · **Foundry ✖**
+**Precisa de decisão:** nenhuma — as escolhas de implementação estão em `docs/PROGRESSO-MAPA-IMERSIVO.md`.
+
+### 17/09/2026 — Tarefa 13 (§1.1–1.5 e aba Cena Atual) · Codex — *registrado pelo Claude a partir dos commits*
+**Fiz:** `a34ea0a` — acordeões lembram estado (`state.atlasOpen` + evento `toggle` em `app.mjs`), prefixo "Mapa:" quando a cena tem o nome do local, botão "Remover esta entrada" em cena ausente (`lib-atlas-scene-remove`) e `Hooks.on('deleteScene')` em `main.mjs`, miniaturas ligadas por padrão, Mapa Imersivo como primeira aba e vista padrão. `60c706d` — área nova `activeScene` ("Cena Atual") na barra do mestre; o painel saiu de dentro do Mapa.
+**Funcionou:** testes de `library.test.mjs` ajustados; 230 passando naquele ponto.
+**Não funcionou / deixei de fora:** o diário não tinha sido preenchido; a árvore de NPCs e o mini-diagrama ficaram pro Claude (entrada acima).
+**Checklist da regra 1:** tela ✔ · ações ✔ · app.mjs ✔ · CSS ✔ · teste ✔ · Foundry ✖
+**Precisa de decisão:** nenhuma.
 
 ### 17/09/2026 — Tarefa 5
 **Fiz:** incluí no topo da visão de região da Mestra o bloco somente-leitura “Conferência da região”. Ele lista, com contagem e atalhos, NPCs sem legado, herança, local ou guilda; retratos provisórios; mercadores sem estoque; localidades sem cena; cenas regionais fora do Mapa Imersivo; e localidades com NPCs sem gancho de rumor. A resolução do atlas ganhou a opção de ignorar os vínculos legados, para a auditoria não confundir uma cena escolhida antes com uma cena organizada no atlas.
