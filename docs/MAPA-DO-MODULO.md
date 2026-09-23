@@ -110,6 +110,14 @@ Atalho pra achar código (22/09/2026):
 | Ação da Mestra | `library.mjs: reindexImages`, botão “Reindexar imagens” no topo da biblioteca; lista uma vez as subpastas conhecidas com `FilePicker.browse` |
 | Testes | [images.test.mjs](../tests/images.test.mjs) — índice restringe candidatos existentes; sem índice conserva a tentativa por convenção |
 
+## Sistema visual do painel da Mestra
+
+Regras de espaçamento, chip e card em **[DESIGN-SISTEMA-VISUAL.md](DESIGN-SISTEMA-VISUAL.md)**
+— confira antes de escrever CSS novo em `styles/library.css`/`styles/creator.css`.
+`npm run lint:css` (Stylelint) audita o CSS; config em `.stylelintrc.json` (regras que
+não geram falso positivo) e `.stylelintrc.audit.json` (inclui `no-duplicate-selectors`,
+rodar manualmente de vez em quando, é barulhento pelo estilo de override do arquivo).
+
 ## Criação de personagem (jogador)
 
 | Peça | Onde |

@@ -95,8 +95,21 @@
 .sy-creator .sy-npc-stock code,.sy-creator .sy-shop-stock span{flex:1;min-width:0;overflow-wrap:anywhere}
 .sy-creator .sy-npc-stock-add,.sy-creator .sy-npc-new-item,.sy-creator .sy-npc-link-add{display:grid;grid-template-columns:minmax(180px,1.4fr) repeat(2,minmax(120px,1fr)) auto;gap:7px;align-items:end}
 .sy-creator .sy-npc-links{color:#9ae8ff;font-size:12px}
-.sy-creator .sy-npc-toolbar{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:10px 0 16px}.sy-creator .sy-npc-toolbar .sy-library-tabs{margin:0}.sy-creator .sy-npc-filters{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}.sy-creator .sy-npc-filters label{width:auto;max-width:220px;margin:0;font-size:11px}.sy-creator .sy-npc-filters select{width:auto;max-width:220px;min-width:150px}
-.sy-creator .sy-npc-level-range{display:flex;align-items:flex-end;gap:6px;padding-left:8px;border-left:1px solid #314151}.sy-creator .sy-npc-level-range label{min-width:68px}.sy-creator .sy-npc-level-range input{width:68px}
+/* T27 (revisão de design, 23/09/2026): fileira de Papel — mesma casa (topo do painel)
+   que as abas de Guildas/Monstros/Itens, separada do bloco "Filtrar por". Botões menores
+   e mais próximos entre si (é uma lista de 19), cor plena só no selecionado — ver a regra
+   de .sy-npc-role-tabs .sy-npc-role abaixo e docs/DESIGN-SISTEMA-VISUAL.md. */
+.sy-creator .sy-npc-role-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0}
+.sy-creator .sy-npc-role-tabs button{width:auto;margin:0;padding:5px 9px;font-size:11px}
+/* Sem seleção: só o ícone carrega a cor do papel, o texto fica neutro — 19 cores fortes
+   ao mesmo tempo era a "bagunça" apontada; com seleção, a cor volta inteira (padrão de
+   chip/tag: neutro por padrão, cor plena só no ativo). */
+.sy-creator .sy-npc-role-tabs button[aria-current="false"] .sy-npc-role{color:#aab8c4}
+.sy-creator .sy-npc-role-tabs button[aria-current="page"] .sy-npc-role{color:var(--sy-role)}
+.sy-creator .sy-npc-filters{display:flex;align-items:center;gap:16px 20px;flex-wrap:wrap;padding-top:14px;margin-top:2px;border-top:1px solid #263341}
+.sy-creator .sy-npc-filters label{display:flex;flex-direction:column;gap:5px;width:auto;max-width:220px;margin:0;font-size:11px;color:#9fc4d8}
+.sy-creator .sy-npc-filters select{width:auto;max-width:220px;min-width:150px;margin:0}
+.sy-creator .sy-npc-level-range{display:flex;align-items:center;gap:14px;padding-left:12px;border-left:1px solid #314151}.sy-creator .sy-npc-level-range label{display:inline-flex;align-items:center;gap:6px;min-width:0;margin:0;white-space:nowrap}.sy-creator .sy-npc-level-range input{width:56px;margin:0}
 .sy-creator button.sy-danger{border-color:#b85862;background:#4b2229;color:#ffdbe0}.sy-creator button.sy-danger:hover{border-color:#e47780;background:#6a2b34}
 .sy-creator .sy-npc-card{cursor:grab}.sy-creator .sy-npc-card:active{cursor:grabbing}.sy-creator .sy-npc-card.is-editing{border-color:var(--sy-cyan);box-shadow:0 0 0 2px #35cee933}.sy-creator .sy-npc-card .sy-card-heading{padding:0}.sy-creator .sy-npc-card>.sy-share-toggle{right:6px}.sy-creator .sy-npc-delete{left:6px;right:auto}.sy-creator .sy-npc-actions button{padding:5px 8px;font-size:11px}.sy-creator .sy-npc-editor-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.sy-creator .sy-npc-editor-head h3{margin:0 auto 0 0}.sy-creator .sy-npc-editor-head button{width:auto}.sy-creator .sy-npc-saved{color:#91ddb0;font-weight:600}.sy-creator .sy-npc-saved[hidden]{display:none}
 .sy-creator .sy-hint{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #d6ad4c;border-radius:8px;background:#3b321c;color:#fff0bd}.sy-creator .sy-hint button{width:auto;margin:0}
@@ -379,7 +392,11 @@
 .sy-creator .sy-npc-identity{display:flex;flex-direction:column;gap:6px;min-width:0;padding:10px 11px}
 .sy-creator .sy-npc-identity-top{display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:0;padding-right:26px}
 .sy-creator .sy-npc-identity-top>strong{font-size:15px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1 1 auto}
-.sy-creator .sy-npc-tags{display:flex;flex-wrap:wrap;align-items:flex-start;gap:4px;max-height:none;overflow:visible}
+/* Achado 23/09/2026: este bloco (commit 00472be, 12/09) desfazia sem querer o clamp de
+   249 (commit 4febd86, 11/09), que existe pra todo card de NPC ter a mesma altura —
+   por isso NPCs com mais selos (legado+herança+dragão+militar) ficavam maiores que os
+   outros. Restaurado: no máximo 2 linhas de selos, o resto corta. */
+.sy-creator .sy-npc-tags{display:flex;flex-wrap:wrap;align-items:flex-start;gap:4px;max-height:50px;overflow:hidden}
 .sy-creator .sy-npc-card .sy-npc-actions{margin:auto 0 0}
 .sy-creator .sy-npc-location-badge{margin-right:0;max-width:none;flex:0 0 auto}
 /* o card do jogador esconde a foto do NPC bloqueado sem tirar ele da lista do mestre */

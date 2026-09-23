@@ -29,7 +29,7 @@ Os utilitários de `tools/` acham a raiz sozinhos (`tools/raiz.mjs`); não volte
 3. Não crie, edite ou exclua Atores do mundo oficial durante desenvolvimento. Testes integrados devem parar antes da criação da ficha, salvo instrução expressa do Yuri.
 4. Preserve compatibilidade com Foundry 13 e Skyfall 1.0.1 até uma migração deliberada.
 5. Use `rg` para buscas. Faça mudanças pequenas e verificáveis.
-6. Rode `npm test` e `npm run package` antes de considerar a alteração pronta.
+6. Rode `npm test` e `npm run package` antes de considerar a alteração pronta. Mexeu em `styles/*.css`, rode também `npm run lint:css`.
 7. Aumente `module.json.version` e `package.json.version` somente ao preparar uma versão instalável.
 8. Não publique a fonte Noka em repositório público sem confirmar sua licença de redistribuição.
 9. **Pesquisa funda vira documento antes de fechar a tarefa.** Sempre que reabrir o
@@ -42,13 +42,15 @@ Os utilitários de `tools/` acham a raiz sozinhos (`tools/raiz.mjs`); não volte
    investigação. Pedido do Yuri em 17/09/2026: "a gente vai criar uma estrutura para que
    cada vez mais a gente faça menos esforço".
 
+10. **CSS novo do painel da Mestra segue [docs/DESIGN-SISTEMA-VISUAL.md](docs/DESIGN-SISTEMA-VISUAL.md).** Espaçamento em escala de 4/8px, rótulo+campo sempre com gap explícito, chip neutro por padrão e cor plena só quando ativo, card de lista com altura de faixa de selos limitada. Pedido do Yuri em 23/09/2026, depois de ver a tela cheia de inconsistência que ele não sabia como nomear nem corrigir sozinho.
+
 ## Antes de explorar código pra uma feature nova
 
 Confira **[docs/MAPA-DO-MODULO.md](docs/MAPA-DO-MODULO.md)** — provavelmente já tem uma
 linha dizendo qual arquivo/função cuida daquela área, os testes e o que falta. Pra campo
 do sistema Skyfall (perícia, idioma, tamanho, tipo de Item...), **[docs/REFERENCIA-SKYFALL.md](docs/REFERENCIA-SKYFALL.md)**.
 Pra saber o que existe *no mundo agora* (NPCs, guildas, região), não dá pra ler código —
-ver **[docs/COMO-CONSULTAR-O-MUNDO.md](docs/COMO-CONSULTAR-O-MUNDO.md)**.
+ver **[docs/COMO-CONSULTAR-O-MUNDO.md](docs/COMO-CONSULTAR-O-MUNDO.md)**. Pra regra de organização visual (espaçamento, chip, card), **[docs/DESIGN-SISTEMA-VISUAL.md](docs/DESIGN-SISTEMA-VISUAL.md)**.
 
 ## Arquitetura
 
@@ -75,6 +77,7 @@ ver **[docs/COMO-CONSULTAR-O-MUNDO.md](docs/COMO-CONSULTAR-O-MUNDO.md)**.
 npm test
 npm run package
 npm run release
+npm run lint:css
 ```
 
 O pacote resultante fica em `dist/quedaco-<versão>/quedaco`. `npm run release` também cria o ZIP com `module.json` na raiz, pronto para uma release. Para instalação manual, envie somente a pasta `quedaco` para `Data/modules`.
