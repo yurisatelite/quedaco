@@ -632,21 +632,24 @@ export class CampaignLibrary {
       if(actor&&Number(actor.ownership?.default)<1)await actor.update({ownership:{...(actor.ownership??{}),default:1}});
     }
   }
-  async autotagNpcs(force=false){
+  // T27 (23/09/2026): a versão "força tudo de novo" (Re-taguear todos) só servia pra
+  // distribuir a mesa uma vez; o Yuri não vai repetir isso, então saiu — esta função só
+  // preenche o que está faltando, nunca reescreve o que já foi tagueado à mão.
+  async autotagNpcs(){
     this.assertGM();
     const updates=[];
     for(const actor of this.npcActors()){
       if(actor.hasPlayerOwner)continue;
       const flag=npcFlag(actor)??adoptNpcFlag(actor),next={...flag};let changed=false;
-      if(force||!flag.role||flag.role==='extra'){
+      if(!flag.role||flag.role==='extra'){
         const role=roleFromText(`${actor.name} ${stripTags(actor.system?.biography??actor.system?.details?.description??'')}`);
         if(role!==flag.role){next.role=role;changed=true;}
       }
-      if(force||!flag.placeId){
+      if(!flag.placeId){
         const pid=inferPlaceId(actor);
         if(pid&&pid!==flag.placeId){next.placeId=pid;const pr=PLACES.find(place=>place.id===pid)?.regionId;if(pr)next.regionId=pr;changed=true;}
       }
-      if((force||!next.regionId)&&!next.placeId){
+      if(!next.regionId&&!next.placeId){
         const rid=inferRegionId(actor);
         if(rid&&rid!==next.regionId){next.regionId=rid;changed=true;}
       }
@@ -827,7 +830,7 @@ export class CampaignLibrary {
     }
     if(op==='lib-npc-close'){this.state.npcActor=null;this.state.npcEditRole=null;this.state.npcEditRegion=null;this.state.npcEditPlace=null;}
     if(op==='lib-npc-roll-levels')await this.rollNpcLevels(data.min,data.max,id==='force');
-    if(op==='lib-npc-autotag')await this.autotagNpcs(id==='force');
+    if(op==='lib-npc-autotag')await this.autotagNpcs();
     if(op==='lib-guild-import')await this.importGuilds(data.text);
     if(op==='lib-guild-stance')await this.setGuildStance(id,data.stance);
     if(op==='lib-guild-archive'){const cut=String(id).lastIndexOf('|');await this.setGuildArchived(String(id).slice(0,cut),String(id).slice(cut+1)!=='off');}
@@ -1532,7 +1535,7 @@ export class CampaignLibrary {
     // da grade "Filtrar por". Antes, tudo isso vinha junto sob um único rótulo e virava
     // uma sopa de 19 botões coloridos + seletores + campo de nível.
     const roleTabs=`<div class="sy-npc-role-tabs">${[['all','Todos'],...Object.entries(NPC_ROLES)].map(([id,label])=>`<button data-op="lib-npc-filter" data-id="${id}" aria-current="${this.state.npcRole===id?'page':'false'}">${id==='all'?e(label):npcRoleChip(id)}</button>`).join('')}${tagFilterBtn('lib-npc-dragon-filter',this.state.npcDragonOnly,'fa-dragon','#d4372c','Dragão')}${tagFilterBtn('lib-npc-militar-filter',this.state.npcMilitarOnly,'fa-shield-halved','#7a8f52','Militar')}</div>`;
-    const filters=`<div class="sy-npc-filters"><label>Local<select name="npcPlaceFilter"><option value="all">Todos os locais</option>${sortByName(PLACES.filter(place=>availablePlaceIds.has(place.id))).map(place=>`<option value="${e(place.id)}" ${placeFilter===place.id?'selected':''}>${e(place.name)}</option>`).join('')}</select></label><label>Vínculo<select name="npcLinkFilter"><option value="all">Todos</option>${Object.entries(NPC_LINK_TYPES).map(([id,label])=>`<option value="${id}" ${this.state.npcLink===id?'selected':''}>${label}</option>`).join('')}</select></label><label>Legado<select name="npcLegacyFilter"><option value="all">Todos os legados</option>${LEGACIES.map(name=>`<option value="${e(name)}" ${legacyFilter===name?'selected':''}>${e(name)}</option>`).join('')}</select></label><label>Herança<select name="npcHeritageFilter"><option value="all">Todas</option>${(legacyFilter==='all'?[...new Set(Object.values(HERITAGES).flat())]:heritagesOf(legacyFilter)).map(name=>`<option value="${e(name)}" ${heritageFilter===name?'selected':''}>${e(name)}</option>`).join('')}</select></label><label>Guilda<select name="npcGuildFilter"><option value="all">Todas</option><option value="none" ${guildFilter==='none'?'selected':''}>Sem guilda</option>${guildOptions}</select></label><span class="sy-npc-level-range"><label>Nível de<input type="number" name="npcLevelMin" min="0" max="12" value="${e(this.state.npcLevelMin)}"></label><label>até<input type="number" name="npcLevelMax" min="0" max="12" value="${e(this.state.npcLevelMax)}"></label><button data-op="lib-npc-roll-levels">Sortear níveis ausentes</button>${button('npc-roll-levels','force','Sortear todos')}${button('npc-autotag','','Taguear tudo (papel/região/local)')}${button('npc-autotag','force','Re-taguear todos')}</span><span class="sy-npc-level-range"><label>Gerar avulsos<input type="number" name="npcGenCount" min="1" max="20" value="5"></label><button data-op="lib-generate-npc-bulk">Gerar NPCs</button></span></div>`;
+    const filters=`<div class="sy-npc-filters"><label>Local<select name="npcPlaceFilter"><option value="all">Todos os locais</option>${sortByName(PLACES.filter(place=>availablePlaceIds.has(place.id))).map(place=>`<option value="${e(place.id)}" ${placeFilter===place.id?'selected':''}>${e(place.name)}</option>`).join('')}</select></label><label>Vínculo<select name="npcLinkFilter"><option value="all">Todos</option>${Object.entries(NPC_LINK_TYPES).map(([id,label])=>`<option value="${id}" ${this.state.npcLink===id?'selected':''}>${label}</option>`).join('')}</select></label><label>Legado<select name="npcLegacyFilter"><option value="all">Todos os legados</option>${LEGACIES.map(name=>`<option value="${e(name)}" ${legacyFilter===name?'selected':''}>${e(name)}</option>`).join('')}</select></label><label>Herança<select name="npcHeritageFilter"><option value="all">Todas</option>${(legacyFilter==='all'?[...new Set(Object.values(HERITAGES).flat())]:heritagesOf(legacyFilter)).map(name=>`<option value="${e(name)}" ${heritageFilter===name?'selected':''}>${e(name)}</option>`).join('')}</select></label><label>Guilda<select name="npcGuildFilter"><option value="all">Todas</option><option value="none" ${guildFilter==='none'?'selected':''}>Sem guilda</option>${guildOptions}</select></label><span class="sy-npc-level-range"><label>Nível de<input type="number" name="npcLevelMin" min="0" max="12" value="${e(this.state.npcLevelMin)}"></label><label>até<input type="number" name="npcLevelMax" min="0" max="12" value="${e(this.state.npcLevelMax)}"></label></span><details class="sy-npc-bulk-menu"><summary><i class="fa-solid fa-ellipsis" aria-hidden="true"></i> Ações em lote</summary><div class="sy-npc-bulk-menu-body"><button data-op="lib-npc-roll-levels">Sortear níveis ausentes</button>${button('npc-roll-levels','force','Sortear todos')}${button('npc-autotag','','Taguear tudo (papel/região/local)')}<label>Gerar avulsos<input type="number" name="npcGenCount" min="1" max="20" value="5"></label><button data-op="lib-generate-npc-bulk">Gerar NPCs</button></div></details></div>`;
     // liberar a localidade inteira em vez de marcar NPC por NPC
     const localities=this.npcLocalities;
     const contagem=regionId=>all.filter(actor=>{const f=flagFor(actor);return (f.regionId||PLACES.find(p=>p.id===f.placeId)?.regionId)===regionId;}).length;

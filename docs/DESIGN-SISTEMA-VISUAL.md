@@ -2,15 +2,17 @@
 
 > Pedido do Yuri, 23/09/2026: ele viu a tela funcionando e reparou numa bagunça visual —
 > rótulo colado no campo, 19 botões coloridos sem hierarquia, cards de tamanhos
-> diferentes. Ele não é designer e não quer ter que tomar essa decisão de novo a cada
-> tela nova. Este documento é a resposta: um punhado de regras pequenas, com o porquê,
-> pra qualquer um (humano ou modelo) aplicar sem reabrir essa conversa.
+> diferentes, e depois (numa segunda rodada, mesmo dia) cards ainda "ligeiramente"
+> diferentes, um botão que não precisava mais existir, e um grid que sobrava espaço
+> vazio. Ele não é designer e não quer ter que tomar essa decisão de novo a cada tela
+> nova. Este documento é a resposta: um punhado de regras pequenas, com o porquê, pra
+> qualquer um (humano ou modelo) aplicar sem reabrir essa conversa.
 
 **Antes de escrever CSS novo no painel da Mestra, confira se o problema já tem regra
 aqui.** Se tiver, siga-a. Se não tiver e for um padrão novo (não um ajuste de uma tela
 só), registre a regra aqui depois.
 
-## O que causou a bagunça — três bugs reais, não "gosto pessoal"
+## O que causou a bagunça — bugs reais, não "gosto pessoal"
 
 Achados lendo o código, não adivinhados pelo print:
 
@@ -66,8 +68,10 @@ quando selecionado.** Já implementado pra papel de NPC:
 .sy-npc-role-tabs button[aria-current="page"] .sy-npc-role{color:var(--sy-role)}
 ```
 
-Isso é diferente do selo de papel **dentro** do card do NPC (`npcRoleChip` no corpo do
-cartão) — esse continua colorido sempre, porque ali é informação, não filtro.
+**Isso só vale pro chip que É o filtro clicável.** O selo de papel que aparece *dentro*
+do card do NPC (`npcRoleChip` no corpo do cartão) continua colorido sempre — ali é
+informação sobre aquele NPC, não um controle de ligar/desligar. Confirmado com o Yuri
+em 23/09/2026 depois de ver a tela: "não tira a cor das tags [do card]".
 
 ### 4. Card de lista: altura igual, sempre
 
@@ -79,12 +83,45 @@ limite — é o motivo #1 de "uns cards maiores que os outros" (bug #1 acima). S
 precisar mostrar mais informação que cabe, o lugar certo é abrir o editor/detalhe, não
 esticar o card da lista.
 
+**A galeria em si precisa esticar os cards, não só limitar o conteúdo interno.**
+`.sy-library-grid` (base de todo grid de card) usa `align-items:start` — cada card fica
+do tamanho do próprio conteúdo, então dois cards na mesma fileira podem ainda diferir
+alguns pixels mesmo com a faixa de selos limitada. Onde altura igual importa de verdade
+(hoje: `.sy-npc-grid`), acrescente `align-items:stretch` só naquele grid específico, e
+`height:100%` na cadeia de divs até o conteúdo que precisa preencher (senão o grid
+estica o card mas o conteúdo interno não acompanha, sobra vazio embaixo sem esticar
+retrato/selos — ver `.sy-npc-card .sy-library-card-content`, `.sy-npc-card-grid` em
+`styles/library.css`).
+
 ### 5. Filtro rápido (tipo aba) fica separado do filtro fino (seletor)
 
 Um filtro clicável de poucas opções (papel, categoria) é uma **aba**, no topo do painel
 (`panelHeader({tabs:...})`). Um filtro com muitas opções ou texto livre (local, legado,
 faixa de nível) é um **seletor**, dentro de "Filtrar por" (`panelHeader({filters:...})`).
 Não misture os dois no mesmo bloco visual — foi o bug #3 acima.
+
+### 6. Contêiner não ocupa mais largura do que o conteúdo pede
+
+Achado do Yuri em 23/09/2026 no painel "Liberar NPCs por localidade": um `display:grid`
+sem `grid-template-columns` vira **uma coluna só, largura total** — cada região virava
+uma faixa cheia com um bloco de vazio escuro à direita do pouco texto/poucos locais
+dela. **"O módulo tá cheio disso"** — provavelmente existe em outras telas ainda não
+revistas. Regra: uma lista de blocos curtos (região, card, chip) usa grid responsivo
+(`grid-template-columns:repeat(auto-fill,minmax(<largura mínima>,1fr))`, o mesmo padrão
+de `.sy-library-grid`) — nunca um grid de coluna única pra conteúdo que não precisa da
+largura toda. Corrigido em `.sy-locality-grid`; **o resto do arquivo não foi auditado
+ainda** — é candidato a revisão numa próxima passada, não prova de que só existia ali.
+
+### 7. Ação rara/perigosa não fica de botão solto — vira item de um menu, ou some
+
+"Re-taguear todos" sobrescrevia papel/local de NPCs já ajustados à mão — servia só pra
+distribuir a mesa uma vez, e ficou de botão permanente por descuido. Removido de vez
+(23/09/2026): o Yuri disse "a gente não vai fazer isso mais". As ações de manutenção que
+sobraram (sortear nível, taguear o que falta, gerar avulsos) foram de botões soltos
+disputando espaço com os filtros para dentro de um menu — `<details class="...-menu">`,
+mesmo idioma de disclosure que o resto do painel já usa (`sy-library-guide`), sem JS
+novo. Regra: **uma ação que só faz sentido uma vez, ou raramente, não fica no primeiro
+plano da tela pra sempre** — ou sai, ou entra num menu que abre sob pedido.
 
 ## Ferramenta instalada: Stylelint
 

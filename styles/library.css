@@ -110,6 +110,15 @@
 .sy-creator .sy-npc-filters label{display:flex;flex-direction:column;gap:5px;width:auto;max-width:220px;margin:0;font-size:11px;color:#9fc4d8}
 .sy-creator .sy-npc-filters select{width:auto;max-width:220px;min-width:150px;margin:0}
 .sy-creator .sy-npc-level-range{display:flex;align-items:center;gap:14px;padding-left:12px;border-left:1px solid #314151}.sy-creator .sy-npc-level-range label{display:inline-flex;align-items:center;gap:6px;min-width:0;margin:0;white-space:nowrap}.sy-creator .sy-npc-level-range input{width:56px;margin:0}
+/* T27 (23/09/2026): Sortear níveis/Taguear/Gerar avulsos eram 4-5 botões soltos disputando espaço com os seletores — agora moram atrás de um "Ações em lote", igual a um accordion comum do painel (details/summary), sem JS novo. */
+.sy-creator .sy-npc-bulk-menu{width:auto;margin:0;align-self:center}
+.sy-creator .sy-npc-bulk-menu>summary{width:auto;list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid #435567;border-radius:6px;background:#202b39;color:#e9f3ff;font-size:12px;font-weight:600}
+.sy-creator .sy-npc-bulk-menu>summary::-webkit-details-marker{display:none}
+.sy-creator .sy-npc-bulk-menu[open]>summary{border-color:var(--sy-cyan);color:#aeedff}
+.sy-creator .sy-npc-bulk-menu-body{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;padding:10px;border:1px dashed #314151;border-radius:8px}
+.sy-creator .sy-npc-bulk-menu-body button{width:auto;margin:0}
+.sy-creator .sy-npc-bulk-menu-body label{display:inline-flex;align-items:center;gap:6px;width:auto;margin:0;font-size:11px;white-space:nowrap}
+.sy-creator .sy-npc-bulk-menu-body input{width:56px;margin:0}
 .sy-creator button.sy-danger{border-color:#b85862;background:#4b2229;color:#ffdbe0}.sy-creator button.sy-danger:hover{border-color:#e47780;background:#6a2b34}
 .sy-creator .sy-npc-card{cursor:grab}.sy-creator .sy-npc-card:active{cursor:grabbing}.sy-creator .sy-npc-card.is-editing{border-color:var(--sy-cyan);box-shadow:0 0 0 2px #35cee933}.sy-creator .sy-npc-card .sy-card-heading{padding:0}.sy-creator .sy-npc-card>.sy-share-toggle{right:6px}.sy-creator .sy-npc-delete{left:6px;right:auto}.sy-creator .sy-npc-actions button{padding:5px 8px;font-size:11px}.sy-creator .sy-npc-editor-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.sy-creator .sy-npc-editor-head h3{margin:0 auto 0 0}.sy-creator .sy-npc-editor-head button{width:auto}.sy-creator .sy-npc-saved{color:#91ddb0;font-weight:600}.sy-creator .sy-npc-saved[hidden]{display:none}
 .sy-creator .sy-hint{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #d6ad4c;border-radius:8px;background:#3b321c;color:#fff0bd}.sy-creator .sy-hint button{width:auto;margin:0}
@@ -376,7 +385,8 @@
 .sy-creator .sy-npc-note-others p{margin:0 0 5px;font-size:12px;color:#bccddb}
 .sy-creator .sy-npc-note-others b{color:#8fd4ee}
 /* painel do mestre pra abrir localidades */
-.sy-creator .sy-locality-grid{display:grid;gap:8px;margin-top:10px}
+/* T27 (23/09/2026): sem grid-template-columns, o grid vira 1 coluna full-width — a barra da região ('Arquipélago de Huma · 24') e o pouco texto dela ficam largados numa faixa enorme e vazia à direita. Padrão de grid responsivo (mesmo de sy-library-grid), pra região com poucos locais não ocupar a largura toda à toa — achado do Yuri, "o módulo tá cheio disso": mesmo problema pode existir em outros lugares que ainda não foram revistos, ver docs/DESIGN-SISTEMA-VISUAL.md, regra 6. */
+.sy-creator .sy-locality-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;margin-top:10px;align-items:start}
 .sy-creator .sy-locality-row{padding:8px 10px;border-left:3px solid var(--sy-region,#3a495b);border-radius:6px;background:#131c27}
 .sy-creator .sy-locality-row>small{color:#79c79a;font-size:11px}
 .sy-creator .sy-locality-region{width:auto;margin:0 0 6px;padding:5px 11px;font-size:12px;font-weight:700;background:#1b2836;border:1px solid #44586c;color:#dbe9f5}
@@ -386,8 +396,13 @@
 .sy-creator .sy-locality-place.is-on{background:#123a2a;border-color:#4fca8f;color:#a9f2cf}
 
 /* ── Cartão de NPC: retrato 3:4 à esquerda, tudo o mais empurrado pra direita ── */
-.sy-creator .sy-npc-card .sy-library-card-content{padding:0}
-.sy-creator .sy-npc-card-grid{display:grid;grid-template-columns:var(--sy-face,calc(var(--sy-card,270px) * .36)) minmax(0,1fr);align-items:stretch;gap:0;min-height:0}
+/* T27 (23/09/2026): o grid da galeria (.sy-library-grid) usa align-items:start — bom pra
+   cards de conteúdo livre, mas deixava o NPC (que já tem faixa de selos limitada) alguns
+   pixels mais alto ou mais baixo que o vizinho na mesma fileira. Só a galeria de NPC
+   estica; as outras (monstro/item/guilda) continuam como estavam. */
+.sy-creator .sy-npc-grid{align-items:stretch}
+.sy-creator .sy-npc-card .sy-library-card-content{padding:0;height:100%}
+.sy-creator .sy-npc-card-grid{display:grid;grid-template-columns:var(--sy-face,calc(var(--sy-card,270px) * .36)) minmax(0,1fr);align-items:stretch;gap:0;min-height:0;height:100%}
 .sy-creator .sy-npc-portrait-card{display:block;width:100%;height:100%;min-height:calc(var(--sy-face,calc(var(--sy-card,270px) * .36)) * 4 / 3);object-fit:cover;object-position:50% 28%;border:0;border-right:1px solid #2c3a49;background:#0f1620}
 .sy-creator .sy-npc-identity{display:flex;flex-direction:column;gap:6px;min-width:0;padding:10px 11px}
 .sy-creator .sy-npc-identity-top{display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:0;padding-right:26px}

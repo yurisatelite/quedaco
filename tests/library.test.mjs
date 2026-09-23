@@ -927,6 +927,37 @@ test('topos de NPCs e Guildas separam pesquisa e filtros sem os menus de criaç�
   assert.match(guilds,/sy-panel-header-top[\s\S]*sy-panel-header-actions/);
 });
 
+test('T27 (revisão de design): fileira de papel vira aba própria, "Re-taguear todos" some, ações de manutenção viram menu',()=>{
+  const npc={id:'n1',uuid:'Actor.n1',name:'Brida',type:'character',items:[],system:{level:{value:2}},flags:{quedaco:{npc:{role:'merchant',regionId:'thurthur',placeId:'alberich'}}}};
+  const game={user:{isGM:true},actors:[npc],users:[],packs:[],folders:[],scenes:[],settings:{get:(_m,key)=>key==='sharedContent'?{}:''}};
+  const library=new CampaignLibrary(game,{items:[],entry:()=>null});
+  const html=library.render('npcs');
+  // a fileira de papel mora no topo (mesmo slot de tabs de Guildas/Monstros/Itens), não dentro de "Filtrar por"
+  assert.match(html,/sy-panel-header-top[\s\S]*sy-npc-role-tabs[\s\S]*Filtrar por/);
+  assert.doesNotMatch(html,/sy-npc-toolbar/,'o wrapper antigo que misturava papel e filtro não existe mais');
+  // "Re-taguear todos" foi removido de vez — só "Taguear tudo" (o que falta) continua
+  assert.doesNotMatch(html,/Re-taguear todos/);
+  assert.match(html,/Taguear tudo \(papel\/região\/local\)/);
+  // as ações de manutenção (sortear, taguear, gerar avulsos) ficam atrás de um menu
+  assert.match(html,/sy-npc-bulk-menu[\s\S]*Ações em lote[\s\S]*Sortear níveis ausentes[\s\S]*Gerar NPCs/);
+});
+test('autotagNpcs (T27): só preenche o que falta, nunca força uma tag que já foi ajustada à mão',async()=>{
+  const updates=[];
+  const jaAjustado={id:'a1',uuid:'Actor.a1',name:'Zebedeu, o Ferreiro',type:'character',hasPlayerOwner:false,items:[],system:{level:{value:2}},flags:{quedaco:{npc:{role:'merchant',placeId:'alberich',regionId:'thurthur'}}}};
+  const semTag={id:'a2',uuid:'Actor.a2',name:'Zumbo, o Ferreiro',type:'character',hasPlayerOwner:false,items:[],system:{level:{value:1}},flags:{quedaco:{npc:{role:'extra',placeId:'',regionId:''}}}};
+  const game={user:{isGM:true},actors:[jaAjustado,semTag],users:[],packs:[],folders:[],scenes:[],settings:{get:(_m,key)=>key==='sharedContent'?{}:''}};
+  globalThis.Actor={updateDocuments:async(docs)=>updates.push(...docs)};
+  try{
+    const library=new CampaignLibrary(game,{items:[]});
+    const feitos=await library.autotagNpcs();
+    assert.equal(feitos,1,'só o NPC sem tag muda');
+    assert.equal(updates.length,1);
+    assert.equal(updates[0]._id,'a2');
+    // o papel que já estava certo (merchant) nunca é mexido por autotagNpcs sem argumento
+    assert.equal(library.autotagNpcs.length,0,'a função não aceita mais o parâmetro force');
+  }finally{delete globalThis.Actor;}
+});
+
 test('conferência da região conta cada pendência, abre os documentos certos e marca a região pronta',()=>{
   const region=REGIONS.find(entry=>entry.id==='thurthur'),places=PLACES.filter(place=>place.regionId===region.id);
   const guild={id:'guilda',uuid:'Actor.guilda',name:'Companhia',type:'guild',system:{members:[]},flags:{quedaco:{appendix:{}}}};
