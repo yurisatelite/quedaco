@@ -4,8 +4,8 @@ Documento de passagem. **Claude estrutura, Codex executa, Yuri confirma.** Leia 
 arquivo e o `CLAUDE.md` da raiz. A 10ª rodada (`COMANDO-CODEX-10.md`) está encerrada e fica
 como histórico — não precisa relê-la, mas as regras dela continuam valendo (seção 0).
 
-**HEAD de referência:** o commit que criou este arquivo (logo depois de `23904a0`).
-`npm test` = **241 passando**. Árvore limpa.
+**HEAD de referência:** `bf84002` (23/09/2026 — Tarefas 1 e 2 do Codex já commitadas,
+mais a revisão de design do Claude em cima). `npm test` = **250 passando**. Árvore limpa.
 **Versão publicada:** 0.10.0 (22/09/2026). Tudo desta rodada vira a 0.11.0 quando o Yuri
 autorizar. **Não aumente a versão nem publique** — isso é do Claude, com autorização do Yuri
 pra cada versão.
