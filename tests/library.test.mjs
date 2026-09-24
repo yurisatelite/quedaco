@@ -927,6 +927,16 @@ test('topos de NPCs e Guildas separam pesquisa e filtros sem os menus de criaç�
   assert.match(guilds,/sy-panel-header-top[\s\S]*sy-panel-header-actions/);
 });
 
+test('T27 (revisão de design): lema da guilda ganha classe própria pro CSS limitar a altura',()=>{
+  const guild={id:'g1',uuid:'Actor.g1',name:'Guilda com Lema',type:'guild',items:[],system:{level:2,motto:'Um lema comprido que poderia esticar o card demais na fileira',abilities:{},members:[]},flags:{quedaco:{appendix:{kind:'guilda',seals:[]}}}};
+  const semLema={id:'g2',uuid:'Actor.g2',name:'Guilda sem Lema',type:'guild',items:[],system:{level:2,motto:'',abilities:{},members:[]},flags:{quedaco:{appendix:{kind:'guilda',seals:[]}}}};
+  const game={user:{isGM:true},actors:[guild,semLema],users:[],packs:[],folders:[],scenes:[],settings:{get:(_m,key)=>key==='sharedContent'?{}:(key==='guildArchived'?[]:'')}};
+  const library=new CampaignLibrary(game,{items:[],entry:()=>null});
+  const html=library.renderGuilds(false);
+  assert.match(html,/<p class="sy-guild-motto">Um lema comprido/);
+  assert.doesNotMatch(html,/<p>Um lema comprido/,'o parágrafo do lema não pode voltar a ser genérico, senão o CSS de altura não pega mais');
+});
+
 test('T27 (revisão de design): fileira de papel vira aba própria, "Re-taguear todos" some, ações de manutenção viram menu',()=>{
   const npc={id:'n1',uuid:'Actor.n1',name:'Brida',type:'character',items:[],system:{level:{value:2}},flags:{quedaco:{npc:{role:'merchant',regionId:'thurthur',placeId:'alberich'}}}};
   const game={user:{isGM:true},actors:[npc],users:[],packs:[],folders:[],scenes:[],settings:{get:(_m,key)=>key==='sharedContent'?{}:''}};

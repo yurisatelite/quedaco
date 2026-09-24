@@ -93,6 +93,17 @@ estica o card mas o conteúdo interno não acompanha, sobra vazio embaixo sem es
 retrato/selos — ver `.sy-npc-card .sy-library-card-content`, `.sy-npc-card-grid` em
 `styles/library.css`).
 
+**Auditado 23/09/2026 (autorizado por "pode seguir", sem pedido específico do Yuri
+pra essa tela):** cards de Guilda tinham o mesmo problema — o lema (`motto`) é texto
+livre sem limite, então guilda com lema comprido ficava mais alta que guilda sem lema.
+Mesma correção aplicada (`.sy-guild-grid{align-items:stretch}` + `.sy-guild-motto` com
+`-webkit-line-clamp:2`). **Cards de Monstro/Item também variam de altura, mas por outro
+motivo** — nome de criatura mais longo quebra em 2 linhas no cabeçalho do `<details>`,
+enquanto um nome curto fica numa linha só; não é um limite que "vazou" como nos outros
+dois, é variação natural de conteúdo sem nenhum trava. Não mexi ainda — telas com
+`<details>` (accordion) por card têm outro formato, e o Yuri não viu nem reclamou desta
+uma; fica candidato pra quando alguém for mexer ali, não uma correção surpresa.
+
 ### 5. Filtro rápido (tipo aba) fica separado do filtro fino (seletor)
 
 Um filtro clicável de poucas opções (papel, categoria) é uma **aba**, no topo do painel
