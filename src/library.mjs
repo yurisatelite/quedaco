@@ -25,6 +25,7 @@ import * as immersive from './panels/mapa-imersivo.mjs';
 import {ATTITUDES,DEFAULT_ATTITUDE,buyerConditions,itemKind,quote as priceQuote,sellQuote} from './negotiation.mjs';
 import {HERITAGES,LEGACIES,MELANCOLIA,CLASS_STYLE,heritagesOf,legacyOfHeritage} from './book-heritages.mjs';
 import {guildKind,guildsForPlace,npcGuildLabel,cleanSeal,guildThemes,GUILD_STANCES,guildMembers,guildLevel,guildProtectionReasons,planGuildRedistribution} from './guilds.mjs';
+import {DEFAULT_CAMPAIGN_FOCUS,focusedGuilds,focusedLegacies,focusedNpcs,focusedPlaces,focusedRegions,normalizeCampaignFocus} from './campaign-focus.mjs';
 
 export const BOOK_ITEMS=[...BASE_ITEMS,...SIGILS];
 
@@ -68,6 +69,7 @@ export const NPC_GRAPH_KEY='npcGraph';
 export const SCENE_ATLAS_KEY='sceneAtlas';
 export const GENERATOR_MACRO_KEY='generatorMacro';
 export const ASK_RELEASE_ON_ACTIVATE_KEY='askReleaseOnActivate';
+export const CAMPAIGN_FOCUS_KEY='campaignFocus';
 export const DEFAULT_GENERATOR_MACRO='Skyfall — Criador de Conteúdo';
 export const emptyShare=()=>({areas:[],map:[],monsters:[],items:[],npcs:[],guilds:[]});
 export const generatorMacroName=settings=>String(settings?.get?.(MODULE_ID,GENERATOR_MACRO_KEY)||DEFAULT_GENERATOR_MACRO);
@@ -112,6 +114,7 @@ export function registerLibrarySettings(game,onChange){
     name:'Macro geradora de conteúdo',hint:'Nome da macro do mestre que o QUEDAÇO abre quando uma ameaça não existe na biblioteca.',onChange});
   game.settings.register(MODULE_ID,ASK_RELEASE_ON_ACTIVATE_KEY,{scope:'world',config:true,type:Boolean,default:true,
     name:'Perguntar ao ativar uma cena',hint:'Ao ativar uma cena do Mapa Imersivo cuja localidade ainda não foi liberada, pergunta se libera aos jogadores. Desligue para nunca perguntar.'});
+  game.settings.register(MODULE_ID,CAMPAIGN_FOCUS_KEY,{scope:'world',config:false,type:Object,default:DEFAULT_CAMPAIGN_FOCUS,onChange});
 }
 export const e=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 // Um compêndio travado (rede, mundo corrompido, Forge fora do ar) não pode travar o
@@ -286,7 +289,7 @@ export class CampaignLibrary {
     const tree=buildSceneAtlasTree({atlas:this.sceneAtlas,regions:REGIONS,places:PLACES,scenes:Array.from(this.game.scenes??[]),placeScenes:this.placeScenes,regionScenes:this.regionScenes}),mapped=[];
     const visit=node=>{if(node?.type==='place'&&(node.counts?.scenes??0)>0)mapped.push(node.key);for(const child of node?.children??[])visit(child);};
     for(const region of tree.children??[])visit(region);
-    return mapBuildProgress({places:PLACES,files:this.mapBankFiles,mappedPlaceIds:mapped});
+    return mapBuildProgress({places:this.campaignPlaces(),files:this.mapBankFiles,mappedPlaceIds:mapped});
   }
   async setMapBankFile(placeId,path){
     this.assertGM();if(!MAP_BANK_SELECTION[placeId])throw Error('Localidade não encontrada no banco de mapas.');
@@ -670,7 +673,11 @@ export class CampaignLibrary {
     globalThis.ui?.notifications?.info?.(`Nível sorteado (${lo}–${hi}) para ${targets.length} NPC(s).`);
     return targets.length;
   }
-  guildActors(){return sortByName(Array.from(this.game.actors??[]).filter(guildKind));}
+  allGuildActors(){return sortByName(Array.from(this.game.actors??[]).filter(guildKind));}
+  guildActors(){
+    const all=this.allGuildActors(),resolve=uuid=>this.resolveActor(uuid),protectedIds=new Set(all.filter(guild=>guildProtectionReasons(guild,resolve).length).map(guild=>guild.uuid));
+    return focusedGuilds(all,this.campaignFocus,protectedIds);
+  }
   async loadSealImages(force=false){
     if(this._sealImages&&!force)return this._sealImages;
     const map={};
@@ -761,6 +768,7 @@ export class CampaignLibrary {
       // carrinho e venda: quem monta e fecha é o jogador, na ficha dele
       'lib-cart-add','lib-cart-remove','lib-cart-clear','lib-cart-buy','lib-npc-sell-open','lib-npc-sell'];
     if(!openOps.includes(op))this.assertGM();
+    if(op==='lib-campaign-focus'){const current=this.campaignFocus;await this.game.settings.set(MODULE_ID,CAMPAIGN_FOCUS_KEY,{...current,enabled:id!=='off'});this.state.region=null;this.state.place=null;this.state.atlasRegion=current.regionId;}
     if(op==='lib-images-reindex')await this.reindexImages();
     if(op==='lib-map-display')this.state.mapDisplay=id==='atlas'?'atlas':'geographic';
     if(op==='lib-atlas-thumbnails')this.state.atlasThumbnails=id==='show';
@@ -985,7 +993,12 @@ export class CampaignLibrary {
     }
   }
   actorById(id){return Array.from(this.game.actors??[]).find(actor=>actor.id===id||actor.uuid===id);}
-  npcActors(){return Array.from(this.game.actors??[]).filter(isGeneratedNpc);}
+  get campaignFocus(){try{return normalizeCampaignFocus(this.game.settings?.get(MODULE_ID,CAMPAIGN_FOCUS_KEY));}catch{return normalizeCampaignFocus(null);}}
+  campaignRegions(){return focusedRegions(REGIONS,this.campaignFocus);}
+  campaignPlaces(){return focusedPlaces(PLACES,this.campaignFocus);}
+  campaignLegacies(){return focusedLegacies(LEGACIES,this.campaignFocus);}
+  allNpcActors(){return Array.from(this.game.actors??[]).filter(isGeneratedNpc);}
+  npcActors(){return focusedNpcs(this.allNpcActors(),this.campaignFocus,{places:PLACES,inferRegion:inferRegionId});}
   /** Atores 'npc' importados/gerados como monstro (flag quedaco.convertedFrom), pra aparecerem na aba Monstros junto do catálogo do livro. */
   customMonsterActors(){return Array.from(this.game.actors??[]).filter(actor=>actor.type==='npc'&&actor.getFlag?.(MODULE_ID,'convertedFrom'));}
   /** Legado, herança e classe lidos dos itens da própria ficha; a herança sozinha já revela o legado.
@@ -1233,13 +1246,20 @@ export class CampaignLibrary {
   modMaterial(){return BOOK_ITEMS.find(item=>item.id===this.modBuilder.materialId&&item.category==='Materiais especiais'&&item.price===300)??null;}
   modEquipment(){const base=this.modBase();if(!base)return '';if(base.category.startsWith('Armas'))return 'Arma';if(base.name.startsWith('Escudo'))return 'Escudo';if(base.category==='Armaduras e escudos')return 'Armadura';if(base.category==='Vestimentas')return 'Vestimenta';return '';}
   modSheet(){return modifiedItemSheet(this.modBase(),this.modMaterial(),this.modBuilder.sigils);}
+  campaignFocusBanner(readonly=false){
+    const focus=this.campaignFocus,region=REGIONS.find(entry=>entry.id===focus.regionId)?.name??focus.regionId;
+    if(!focus.enabled)return readonly?'':`<p class="sy-note"><strong>Visão completa.</strong> ${button('campaign-focus','on',`Retomar foco em ${region}`)}</p>`;
+    const counts=`${focus.guildNames.length}+P.I.P.I. guildas · ${focus.legacyNames.length} legados`;
+    return `<p class="sy-note"><strong>Foco da campanha: ${e(region)}.</strong> ${e(counts)} · NPCs e mapas das outras regiões estão apenas ocultos.${readonly?'':` ${button('campaign-focus','off','Mostrar tudo temporariamente')}`}</p>`;
+  }
   render(area,readonly=false){
     if(!readonly)this.assertGM();
     else if(area!=='quests'&&!this.shared.areas.includes(area))return `<main class="sy-library"><small>CONSULTA DA CAMPANHA</small><h2>${area}</h2><p class="sy-library-deferred">O mestre ainda não liberou este conteúdo.</p></main>`;
     const titles={npcs:'NPCs',guilds:'Guildas e Hansas',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'};
     const body=area==='npcs'?this.renderNpcs(readonly):area==='guilds'?this.renderGuilds(readonly):area==='map'?this.renderMap(readonly):area==='activeScene'?this.renderActiveScenePanel():area==='monsters'?this.renderMonsters(readonly):area==='imbue'?this.renderImbue(readonly):area==='quests'?this.renderQuests(readonly):this.renderItems(readonly);
     const maintenance=readonly?'':`<div class="sy-library-maintenance">${button('images-reindex','','Reindexar imagens')}</div>`;
-    return `<main class="sy-library"><small>${area==='quests'?'QUESTS DA CAMPANHA':readonly?'LIBERADO PELO MESTRE':'CONSULTA DA CAMPANHA'}</small><h2>${titles[area]}</h2>${maintenance}${body}</main>`;
+    const focus=['npcs','guilds','map','activeScene'].includes(area)?this.campaignFocusBanner(readonly):'';
+    return `<main class="sy-library"><small>${area==='quests'?'QUESTS DA CAMPANHA':readonly?'LIBERADO PELO MESTRE':'CONSULTA DA CAMPANHA'}</small><h2>${titles[area]}</h2>${focus}${maintenance}${body}</main>`;
   }
   renderQuests(readonly=false){
     if(!this.quests.available)return `<p class="sy-library-deferred"><strong>Forien's Quest Log não está disponível.</strong><br>Ative o módulo nesta mesa e abra novamente o QUEDAÇO.</p>`;
@@ -1535,11 +1555,11 @@ export class CampaignLibrary {
     // da grade "Filtrar por". Antes, tudo isso vinha junto sob um único rótulo e virava
     // uma sopa de 19 botões coloridos + seletores + campo de nível.
     const roleTabs=`<div class="sy-npc-role-tabs">${[['all','Todos'],...Object.entries(NPC_ROLES)].map(([id,label])=>`<button data-op="lib-npc-filter" data-id="${id}" aria-current="${this.state.npcRole===id?'page':'false'}">${id==='all'?e(label):npcRoleChip(id)}</button>`).join('')}${tagFilterBtn('lib-npc-dragon-filter',this.state.npcDragonOnly,'fa-dragon','#d4372c','Dragão')}${tagFilterBtn('lib-npc-militar-filter',this.state.npcMilitarOnly,'fa-shield-halved','#7a8f52','Militar')}</div>`;
-    const filters=`<div class="sy-npc-filters"><label>Local<select name="npcPlaceFilter"><option value="all">Todos os locais</option>${sortByName(PLACES.filter(place=>availablePlaceIds.has(place.id))).map(place=>`<option value="${e(place.id)}" ${placeFilter===place.id?'selected':''}>${e(place.name)}</option>`).join('')}</select></label><label>Vínculo<select name="npcLinkFilter"><option value="all">Todos</option>${Object.entries(NPC_LINK_TYPES).map(([id,label])=>`<option value="${id}" ${this.state.npcLink===id?'selected':''}>${label}</option>`).join('')}</select></label><label>Legado<select name="npcLegacyFilter"><option value="all">Todos os legados</option>${LEGACIES.map(name=>`<option value="${e(name)}" ${legacyFilter===name?'selected':''}>${e(name)}</option>`).join('')}</select></label><label>Herança<select name="npcHeritageFilter"><option value="all">Todas</option>${(legacyFilter==='all'?[...new Set(Object.values(HERITAGES).flat())]:heritagesOf(legacyFilter)).map(name=>`<option value="${e(name)}" ${heritageFilter===name?'selected':''}>${e(name)}</option>`).join('')}</select></label><label>Guilda<select name="npcGuildFilter"><option value="all">Todas</option><option value="none" ${guildFilter==='none'?'selected':''}>Sem guilda</option>${guildOptions}</select></label><span class="sy-npc-level-range"><label>Nível de<input type="number" name="npcLevelMin" min="0" max="12" value="${e(this.state.npcLevelMin)}"></label><label>até<input type="number" name="npcLevelMax" min="0" max="12" value="${e(this.state.npcLevelMax)}"></label></span><details class="sy-npc-bulk-menu"><summary><i class="fa-solid fa-ellipsis" aria-hidden="true"></i> Ações em lote</summary><div class="sy-npc-bulk-menu-body"><button data-op="lib-npc-roll-levels">Sortear níveis ausentes</button>${button('npc-roll-levels','force','Sortear todos')}${button('npc-autotag','','Taguear tudo (papel/região/local)')}<label>Gerar avulsos<input type="number" name="npcGenCount" min="1" max="20" value="5"></label><button data-op="lib-generate-npc-bulk">Gerar NPCs</button></div></details></div>`;
+    const filters=`<div class="sy-npc-filters"><label>Local<select name="npcPlaceFilter"><option value="all">Todos os locais</option>${sortByName(PLACES.filter(place=>availablePlaceIds.has(place.id))).map(place=>`<option value="${e(place.id)}" ${placeFilter===place.id?'selected':''}>${e(place.name)}</option>`).join('')}</select></label><label>Vínculo<select name="npcLinkFilter"><option value="all">Todos</option>${Object.entries(NPC_LINK_TYPES).map(([id,label])=>`<option value="${id}" ${this.state.npcLink===id?'selected':''}>${label}</option>`).join('')}</select></label><label>Legado<select name="npcLegacyFilter"><option value="all">Todos os legados</option>${this.campaignLegacies().map(name=>`<option value="${e(name)}" ${legacyFilter===name?'selected':''}>${e(name)}</option>`).join('')}</select></label><label>Herança<select name="npcHeritageFilter"><option value="all">Todas</option>${(legacyFilter==='all'?[...new Set(Object.values(HERITAGES).flat())]:heritagesOf(legacyFilter)).map(name=>`<option value="${e(name)}" ${heritageFilter===name?'selected':''}>${e(name)}</option>`).join('')}</select></label><label>Guilda<select name="npcGuildFilter"><option value="all">Todas</option><option value="none" ${guildFilter==='none'?'selected':''}>Sem guilda</option>${guildOptions}</select></label><span class="sy-npc-level-range"><label>Nível de<input type="number" name="npcLevelMin" min="0" max="12" value="${e(this.state.npcLevelMin)}"></label><label>até<input type="number" name="npcLevelMax" min="0" max="12" value="${e(this.state.npcLevelMax)}"></label></span><details class="sy-npc-bulk-menu"><summary><i class="fa-solid fa-ellipsis" aria-hidden="true"></i> Ações em lote</summary><div class="sy-npc-bulk-menu-body"><button data-op="lib-npc-roll-levels">Sortear níveis ausentes</button>${button('npc-roll-levels','force','Sortear todos')}${button('npc-autotag','','Taguear tudo (papel/região/local)')}<label>Gerar avulsos<input type="number" name="npcGenCount" min="1" max="20" value="5"></label><button data-op="lib-generate-npc-bulk">Gerar NPCs</button></div></details></div>`;
     // liberar a localidade inteira em vez de marcar NPC por NPC
     const localities=this.npcLocalities;
     const contagem=regionId=>all.filter(actor=>{const f=flagFor(actor);return (f.regionId||PLACES.find(p=>p.id===f.placeId)?.regionId)===regionId;}).length;
-    const liberacao=`<details class="sy-library-guide sy-npc-liberar"><summary>Liberar NPCs por localidade · ${[...localities].filter(k=>k.startsWith('region:')).length} região(ões) aberta(s)</summary><p class="sy-note">Abrir uma região revela só que ela existe. Cada localidade deve ser liberada separadamente para mostrar seus NPCs. NPCs liberados um a um continuam valendo.</p><div class="sy-locality-grid">${sortByName(REGIONS).map(region=>{
+    const liberacao=`<details class="sy-library-guide sy-npc-liberar"><summary>Liberar NPCs por localidade · ${[...localities].filter(k=>k.startsWith('region:')).length} região(ões) aberta(s)</summary><p class="sy-note">Abrir uma região revela só que ela existe. Cada localidade deve ser liberada separadamente para mostrar seus NPCs. NPCs liberados um a um continuam valendo.</p><div class="sy-locality-grid">${sortByName(this.campaignRegions()).map(region=>{
       const aberta=localities.has(`region:${region.id}`);
       const locais=PLACES.filter(place=>place.regionId===region.id);
       const locaisHtml=locais.map(place=>`<button class="sy-locality-place ${localities.has(`place:${place.id}`)?'is-on':''}" data-op="lib-npc-locality" data-id="place:${e(place.id)}">${e(place.name)}</button>`).join('');
@@ -1759,7 +1779,7 @@ export class CampaignLibrary {
     return `<details class="sy-library-guide"><summary>Cenas da região${named.length?` — ${named.length} vinculada(s)`:''}</summary><p class="sy-note">Vincule quantas cenas quiser a uma região; os jogadores veem os botões de abrir quando a região está liberada.</p>${rows}${grid}</details>`;
   }
   mapIndexBanner(interactive){
-    const pins=interactive?REGIONS.filter(r=>Array.isArray(r.hotspot)).map(r=>`<button class="sy-map-pin" data-op="lib-region" data-id="${e(r.id)}" style="left:${r.hotspot[0]}%;top:${r.hotspot[1]}%"><span>${e(r.name)}</span></button>`).join(''):'';
+    const pins=interactive?this.campaignRegions().filter(r=>Array.isArray(r.hotspot)).map(r=>`<button class="sy-map-pin" data-op="lib-region" data-id="${e(r.id)}" style="left:${r.hotspot[0]}%;top:${r.hotspot[1]}%"><span>${e(r.name)}</span></button>`).join(''):'';
     return `<div class="sy-map-wrap"><img class="sy-map-banner" src="${e(this.resolvedMapImage)}" alt="Mapa de Opath" loading="lazy">${pins}</div>`;
   }
   placeMarkerPosition(place,index,total){
@@ -1771,17 +1791,18 @@ export class CampaignLibrary {
   }
   renderDynamicMap(readonly=false){
     const state=this.state.map??{scale:1,tx:0,ty:0,focus:null},shared=this.shared.map,placeIds=this.sharedPlaceIds();
-    const focus=REGIONS.find(region=>region.id===state.focus),place=[...PLACES,...BEYOND].find(entry=>entry.id===this.state.place);
-    const regions=(readonly?REGIONS.filter(region=>shared.includes(region.id)):REGIONS).filter(region=>Array.isArray(region.hotspot));
+    const campaignRegions=this.campaignRegions(),campaignPlaces=this.campaignPlaces();
+    const focus=campaignRegions.find(region=>region.id===state.focus),place=campaignPlaces.find(entry=>entry.id===this.state.place);
+    const regions=(readonly?campaignRegions.filter(region=>shared.includes(region.id)):campaignRegions).filter(region=>Array.isArray(region.hotspot));
     const layer=state.layer??'auto',hidden=this.mapHidden;
     const layerLets=kind=>{const l=placeLayer(kind);if(layer==='all'||layer==='auto')return true;if(layer==='cities')return l==='cidade';if(layer==='marks')return l==='marco';if(layer==='falls')return l==='queda';return false;};
     // mapHidden (Quedas nascem ocultas) só vale nas vistas auto/tudo. Ao escolher uma
     // camada de propósito (Cidades/Marcos/Quedas) os pinos daquela camada aparecem mesmo ocultos.
     const respectHidden=layer==='auto'||layer==='all';
     const placeVisible=entry=>layerLets(entry.kind)&&(!respectHidden||!hidden.has(entry.id))&&(!readonly||placeIds.has(entry.id));
-    const places=focus?PLACES.filter(entry=>entry.regionId===focus.id&&placeVisible(entry)):[];
+    const places=focus?campaignPlaces.filter(entry=>entry.regionId===focus.id&&placeVisible(entry)):[];
     const showRegions=!focus&&(layer==='regions'||layer==='all'||(layer==='auto'&&state.scale<1.6)),showCities=!focus&&layer!=='regions'&&(layer!=='auto'||state.scale>=1.6);
-    const globalPlaces=showCities?PLACES.filter(placeVisible):[];
+    const globalPlaces=showCities?campaignPlaces.filter(placeVisible):[];
     const regionPins=showRegions?regions.map(region=>{const point=resolveHotspot(this.mapHotspots,'regions',region.id,region.hotspot);return `<button class="sy-map-marker ${state.movingPins?'is-movable':''}" data-pin-kind="regions" data-pin-id="${e(region.id)}" data-op="lib-map-focus" data-id="${e(region.id)}" style="--sy-region:${e(this.regionColor(region.id))};left:${point[0]}%;top:${point[1]}%" title="${state.movingPins?'Arraste para reposicionar':`Explorar ${e(region.name)}`}"><span>${e(region.name)}</span></button>`;}).join(''):'';
     const shownPlaces=focus?places:globalPlaces;
     const placePins=shownPlaces.map((entry,index)=>{let fallback;if(focus)fallback=this.placeMarkerPosition(entry,index,shownPlaces.length);else{const region=REGIONS.find(item=>item.id===entry.regionId),siblings=PLACES.filter(item=>item.regionId===entry.regionId),local=this.placeMarkerPosition(entry,siblings.indexOf(entry),siblings.length),base=region?.hotspot??[50,50];fallback=[Math.max(1,Math.min(99,base[0]+(local[0]-50)*.18)),Math.max(1,Math.min(99,base[1]+(local[1]-50)*.18))];}const [x,y]=resolveHotspot(this.mapHotspots,'places',entry.id,fallback);return `<button class="sy-map-marker sy-map-marker-place ${state.movingPins?'is-movable':''} ${this.state.place===entry.id?'is-current':''}" data-pin-kind="places" data-pin-id="${e(entry.id)}" data-op="lib-place" data-id="${e(entry.id)}" style="--sy-region:${e(this.regionColor(entry.regionId))};left:${x}%;top:${y}%" title="Abrir ${e(entry.name)}"><span>${e(entry.name)}</span></button>`;}).join('');
@@ -1800,9 +1821,10 @@ export class CampaignLibrary {
   atlasShareIcon(id){const on=this.shared.map.includes(id);return `<button class="sy-atlas-icon ${on?'is-on':''}" data-op="lib-share" data-id="map:${e(id)}" aria-pressed="${on}" title="${on?'Liberado no mapa — clique para ocultar dos jogadores':'Liberar no mapa para os jogadores'}"><i class="fa-solid ${on?'fa-eye':'fa-eye-slash'}" aria-hidden="true"></i></button>`;}
   atlasPinIcon(id){const off=this.mapHidden.has(id);return `<button class="sy-atlas-icon" data-op="lib-map-hide" data-id="${e(id)}:${off?'show':'hide'}" title="${off?'Mostrar o pino no mapa':'Ocultar o pino do mapa'}"><i class="fa-solid ${off?'fa-location-dot-slash':'fa-location-dot'}" aria-hidden="true"></i></button>`;}
   renderAtlas(){
-    const tree=REGIONS.map(region=>{
+    const places=this.campaignPlaces();
+    const tree=this.campaignRegions().map(region=>{
       const groups=[['cidade','Cidades'],['marco','Marcos'],['queda','Quedas']].map(([k,label])=>{
-        const list=PLACES.filter(p=>p.regionId===region.id&&placeLayer(p.kind)===k);
+        const list=places.filter(p=>p.regionId===region.id&&placeLayer(p.kind)===k);
         return list.length?`<div class="sy-atlas-group"><h6>${label}</h6>${list.map(p=>`<div class="sy-atlas-place"><button data-op="lib-place" data-id="${e(p.id)}">${e(p.name)}</button>${this.atlasShareIcon(p.id)}${this.atlasPinIcon(p.id)}</div>`).join('')}</div>`:'';
       }).join('');
       return `<details class="sy-atlas-region" style="--sy-region:${e(this.regionColor(region.id))}"><summary><span class="sy-atlas-dot"></span>${e(region.name)}</summary><div class="sy-atlas-region-body"><div class="sy-atlas-row">${button('region-view',region.id,'▶ Abrir região')}${button('map-focus',region.id,'⌖ Focar')}${this.atlasShareIcon(region.id)}<span class="sy-atlas-hint">olho = liberar · alfinete = pino</span></div>${groups||'<small>Sem locais.</small>'}</div></details>`;
@@ -1825,6 +1847,7 @@ export class CampaignLibrary {
   /** O mestre tem duas vistas do Mapa: o mapa de Opath de sempre e o atlas de cenas.
    *  O jogador continua vendo só o mapa. */
   renderMap(readonly=false){
+    const focus=this.campaignFocus;if(focus.enabled){this.state.atlasRegion=focus.regionId;this.state.region=focus.regionId;if(this.state.place&&!this.campaignPlaces().some(place=>place.id===this.state.place))this.state.place=null;this.state.map={...this.state.map,focus:focus.regionId};}
     if(readonly)return this.renderMapGeographic(true);
     const atlas=this.state.mapDisplay==='atlas';
     const vista=`<nav class="sy-library-tabs sy-map-display" aria-label="Vista do mapa"><button data-op="lib-map-display" data-id="atlas" aria-current="${atlas?'page':'false'}"><i class="fa-solid fa-sitemap" aria-hidden="true"></i> Mapa Imersivo</button><button data-op="lib-map-display" data-id="geographic" aria-current="${atlas?'false':'page'}"><i class="fa-solid fa-map" aria-hidden="true"></i> Mapa de Opath</button></nav>`;

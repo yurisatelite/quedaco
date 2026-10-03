@@ -1,5 +1,7 @@
 # Banco de mapas do Mapa Imersivo — seleção inicial
 
+> Desde 03/10/2026, a execução ativa está limitada às 7 localidades de **Thur Thur**. As outras recomendações ficam preservadas; a régua ativa está em [FOCO-THURTHUR.md](FOCO-THURTHUR.md).
+
 Atualizado em 22/09/2026. A lista executável está em `src/map-bank.mjs`: **48 localidades e Quedas**, cada uma com uma fonte sugerida. As dez regiões são contêineres conceituais e não recebem battlemap nesta leva. A seleção indica o *tipo visual* de mapa que pode representar a localidade na mesa; não afirma que o desenho retrata literalmente o lugar do livro.
 
 ## Régua de progresso

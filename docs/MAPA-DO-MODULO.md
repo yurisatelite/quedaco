@@ -1,5 +1,7 @@
 # Mapa do módulo — por funcionalidade
 
+> Escopo ativo: [Foco da campanha — Thur Thur](FOCO-THURTHUR.md). O filtro reversível mora em `src/campaign-focus.mjs` e usa o setting `campaignFocus`.
+
 > Índice pra achar rápido onde uma funcionalidade mora, antes de sair grepando
 > `src/library.mjs` (arquivo grande, tudo passa por ele). Cada linha diz: o que é, os
 > arquivos e funções principais, os testes que cobrem, e se falta algo conhecido.

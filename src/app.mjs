@@ -222,6 +222,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   }
   async renderCatalog(type,extra=false){
     let list=this.catalog.list(type,this.query);
+    if(type==='legacy')list=list.filter(item=>this.library.campaignLegacies().includes(item.name));
     if(type==='heritage') {
       if(!this.selected('legacy')) return '<p>Escolha primeiro um legado. As heranças serão mostradas conforme os vínculos oficiais do compêndio.</p>';
       const allowed=new Set(this.heritageOptions.map(item=>item.uuid));
