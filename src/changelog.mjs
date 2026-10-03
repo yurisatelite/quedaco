@@ -1,5 +1,15 @@
 export const CHANGELOG = [
   {
+    version:'0.11.0',
+    date:'2026-10-03',
+    title:'Thur Thur vira o foco ativo da campanha',
+    notes:[
+      'O QUEDAÇO passa a abrir concentrado em Thur Thur: NPCs, regiões e localidades das demais partes de Opath ficam ocultos, mas nenhuma ficha, cena ou vínculo é apagado.',
+      'A P.I.P.I. continua protegida. Dez guildas sorteadas permanecem visíveis, e a criação de personagem mostra quatro legados: Walshie, Tôra, Gnomo e Urodelo.',
+      'O Mapa Imersivo, o mapa geográfico e o banco de mapas passam a trabalhar com as sete localidades de Thur Thur. Mapas internos continuam aparecendo, e o botão Mostrar tudo temporariamente restaura a visão completa.'
+    ]
+  },
+  {
     version:'0.10.0',
     date:'2026-09-22',
     title:'Mapa Imersivo montado como quebra-cabeça, aba Cena Atual e monstros com ficha de campo',
