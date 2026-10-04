@@ -283,6 +283,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
         if(op==='lib-atlas-assign'){const box=button.closest('.sy-scene-atlas-scene-tools');data={parentId:box?.querySelector('[name="atlasSceneParent"]')?.value??'unassigned'};}
         if(op==='lib-atlas-suggest-apply')data={sceneIds:Array.from(this.element.querySelectorAll('[name="atlasSuggestion"]:checked')).map(input=>input.value)};
         if(op==='lib-map-bank-apply')data={placeIds:Array.from(this.element.querySelectorAll('[name="mapBankPlace"]:checked')).map(input=>input.value)};
+        if(op==='lib-map-bank-adopt-apply')data={placeIds:Array.from(this.element.querySelectorAll('[name="mapBankAdopt"]:checked')).map(input=>input.value)};
         // quebra-cabeça: a caixa nova nasce logo abaixo da caixa-pai escolhida
         if(op==='lib-atlas-puzzle-create'){const box=button.closest('.sy-puzzle-create'),parentId=box?.querySelector('[name="puzzleSceneParent"]')?.value??'unassigned',parent=this.element.querySelector(`[data-puzzle-node="${CSS.escape(parentId)}"]`);data={name:box?.querySelector('[name="puzzleSceneName"]')?.value??'',parentId};if(parent){data.x=parseFloat(parent.style.left)||0;data.y=(parseFloat(parent.style.top)||0)+(parent.offsetHeight||40)+46;}}
         if(op==='lib-atlas-scene-create'){const box=button.closest('.sy-scene-atlas-add');data={name:box?.querySelector('[name="atlasSceneName"]')?.value??''};}

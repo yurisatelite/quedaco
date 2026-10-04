@@ -892,6 +892,25 @@ test('banco de mapas cria somente cenas escolhidas com imagem, vínculo e um sav
  }finally{globalThis.Scene=oldScene;}
 });
 
+test('banco de mapas registra somente fundos reais de cenas vinculadas, após prévia',async()=>{
+ const cenas=[{id:'alberich-scene',name:'Mapa: Alberich',background:{src:'worlds/skyfall/mapas/alberich.webp'},flags:{}},{id:'solta',name:'Cena solta',background:{src:'worlds/skyfall/mapas/solta.webp'},flags:{}}];
+ const scenes=Object.assign(cenas,{get:id=>cenas.find(scene=>scene.id===id)});
+ const store={sceneAtlas:{schema:1,providers:{stairways:false,native:false},scenes:{'alberich-scene':{parentId:'place:alberich'}},edges:{}},placeScenes:{},regionScenes:{},mapBankFiles:{'lado-fora':'worlds/manual/rua.webp'}};
+ const saves=[];const game={user:{isGM:true},actors:[],users:[],packs:[],folders:[],version:'13.351',scenes,modules:{get:()=>null},settings:{get:(_m,key)=>(key==='sharedContent'?{}:(store[key]??{})),set:async(_m,key,value)=>{saves.push(key);store[key]=value;}}};
+ const library=new CampaignLibrary(game,{items:[]});
+ await library.action('lib-map-bank-adopt-plan','thurthur');
+ const tela=library.renderMap(false);
+ assert.match(tela,/Prévia · registrar fundos de cenas em Thur Thur/);
+ assert.match(tela,/name="mapBankAdopt" value="alberich" checked/);
+ assert.doesNotMatch(tela,/name="mapBankAdopt" value="lado-fora"/,'não sobrescreve escolha manual');
+ assert.equal(saves.length,0,'prévia não grava');
+ await library.action('lib-map-bank-adopt-apply','',{placeIds:['alberich','lado-fora']});
+ assert.equal(store.mapBankFiles.alberich,'worlds/skyfall/mapas/alberich.webp');
+ assert.equal(store.mapBankFiles['lado-fora'],'worlds/manual/rua.webp');
+ assert.deepEqual(saves,['mapBankFiles'],'aplica o banco em um único save');
+ assert.equal(scenes.length,2,'não cria, edita ou move cenas');
+});
+
 test('shouldAskReleaseOnActivate (T7): configuração desligada, sem localidade e localidade já liberada não perguntam',()=>{
   const locality={regionId:'thurthur',placeId:'alberich'};
   const vazio=new Set();

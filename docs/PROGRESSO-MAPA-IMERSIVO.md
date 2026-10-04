@@ -130,6 +130,10 @@ pergunta pra sempre.
 - **A · Sugerir onde ficam:** feito na 11ª rodada, commit `21b154a`. Cenas sem local podem receber sugestão com prévia e aplicação em um save.
 - **B · Banco e criação de cenas:** [BANCO-DE-MAPAS.md](BANCO-DE-MAPAS.md) registra uma fonte visual para cada uma das 48 localidades/Quedas. A Mestra escolhe o arquivo pelo FilePicker; a prévia da região permite marcar e criar cenas com fundo, vincular ao Mapa Imersivo e repetir sem duplicar. Saídas pai → sublocal ficam nomeadas, sem teletransporte posicionado. Só houve teste com cenas falsas; não havia imagens nem mundo Foundry acessível.
 - **C · Organizar pastas:** aguardando a montagem dos mapas, conforme a prioridade mais recente do Yuri.
+- **D · Registrar fundos existentes no Banco:** preparado localmente após a conferência de
+  04/10. A prévia lista apenas fundos reais (`background.src`) das Scenes já vinculadas e
+  grava os caminhos marcados em um save, sem criar, editar ou mover cenas. Coberto com cenas
+  falsas; falta publicar/instalar esta alteração e vê-la no Foundry.
 
 Depois da conferência visual, preparar tokens dos NPCs já existentes, visão e lojas nas cenas e posicionar as passagens estratégicas. Essas etapas não foram executadas neste lote.
 
