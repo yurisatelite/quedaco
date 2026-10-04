@@ -25,3 +25,12 @@ O botão **Mostrar tudo temporariamente** desliga o setting `campaignFocus`. **R
 | Validação final e atualização instalável | 5% | pendente de autorização de versão |
 
 **Progresso de implementação verificável: 45%.** Os 20% de cenas precisam ser revistos no Foundry depois da instalação.
+
+## Inventário local de mapas — 04/10/2026
+
+Na pasta privada `E:\RPG\QUEDACO\mapas-privados\2-minute-tabletop`, a conferência encontrou
+somente os pacotes **Desert Ruins** e **Ruined Keep**. Para a seleção ativa de Thur Thur,
+isso já cobre **Velha Alberich** (`Ruined Keep`); Alberich, Lado de Fora, Casebres, Mercado
+Repentino, Bosque da Passagem e Salgado Fim continuam dependentes de arquivos que estejam
+no Foundry hospedado ou de novos downloads. O FilePicker do mundo é a fonte de verdade para
+essa segunda conferência, pois a pasta privada local não espelha o armazenamento do servidor.
