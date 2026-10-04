@@ -10,9 +10,9 @@
 > de **Mapa Imersivo**. É o nome que aparece na aba do Mestre (antes "Atlas de cenas") e
 > nesta e em outras documentações a partir de agora.
 
-**Última atualização:** 22/09/2026 — o Claude codou o que faltava da Tarefa 13 (quebra-cabeça,
-aba Cena Atual completa) e a Tarefa 15 (World Explorer). **Tudo isso está testado só com
-dado falso; nada foi visto no Foundry ainda** — vira a próxima versão.
+**Última atualização:** 04/10/2026 — o Mapa Imersivo foi aberto no Foundry hospedado: a
+estrutura existente de Thur Thur foi conferida, mas o foco da versão 0.11.0 ainda não está
+ativo no mundo. Os detalhes estão na etapa G.
 
 ## Visão geral
 
@@ -132,6 +132,13 @@ pergunta pra sempre.
 - **C · Organizar pastas:** aguardando a montagem dos mapas, conforme a prioridade mais recente do Yuri.
 
 Depois da conferência visual, preparar tokens dos NPCs já existentes, visão e lojas nas cenas e posicionar as passagens estratégicas. Essas etapas não foram executadas neste lote.
+
+**Conferência parcial no Foundry, 04/10:** o Mapa Imersivo abriu no mundo hospedado e
+mostrou 123 cenas, 51 organizadas, zero ligações e Stairways 0.11.1 disponível. Thur Thur
+já tem uma cena vinculada para cada localidade, mas uma entrada órfã (`GaT46iOjJwumsAP5`)
+aparece sob Lado de Fora depois da Scene ter sido apagada. Nada foi corrigido nem criado
+nessa conferência. A versão 0.11.0 ainda não está ativa no mundo — as dez regiões seguem
+visíveis —, então o foco em Thur Thur precisa ser visto novamente após a atualização.
 
 ---
 
