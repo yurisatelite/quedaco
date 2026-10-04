@@ -1,5 +1,15 @@
 export const CHANGELOG = [
   {
+    version:'0.12.0',
+    date:'2026-10-04',
+    title:'Banco de mapas reaproveita os fundos já vinculados',
+    notes:[
+      'O Banco de mapas ganhou o botão “Registrar fundos das cenas vinculadas”. Ele encontra, por localidade, o fundo que uma cena já vinculada ao Mapa Imersivo usa de verdade e mostra uma prévia antes de gravar.',
+      'Você pode desmarcar qualquer localidade antes de aplicar. A operação registra somente os caminhos marcados no Banco de mapas, em uma única gravação; não cria, move ou edita cenas.',
+      'Uma escolha de arquivo feita manualmente continua protegida: o registro automático não a substitui. Isso facilita completar Thur Thur com os sete mapas que já existem no mundo.'
+    ]
+  },
+  {
     version:'0.11.0',
     date:'2026-10-03',
     title:'Thur Thur vira o foco ativo da campanha',
