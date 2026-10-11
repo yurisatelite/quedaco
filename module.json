@@ -10,12 +10,20 @@
   "compatibility": { "minimum": "13", "verified": "13", "maximum": "13" },
   "relationships": {
     "systems": [{ "id": "skyfall", "type": "system", "compatibility": { "minimum": "1.0.1" } }],
-    "recommends": [{
-      "id": "forien-quest-log",
-      "type": "module",
-      "compatibility": { "minimum": "0.9.0" },
-      "manifest": "https://github.com/Forien/foundryvtt-forien-quest-log/releases/latest/download/module.json"
-    }]
+    "recommends": [
+      {
+        "id": "quedaco-personagens-skyfall-rpg",
+        "type": "module",
+        "compatibility": { "minimum": "0.1.3" },
+        "manifest": "https://github.com/yurisatelite/quedaco-personagens-skyfall-rpg/releases/latest/download/module.json"
+      },
+      {
+        "id": "forien-quest-log",
+        "type": "module",
+        "compatibility": { "minimum": "0.9.0" },
+        "manifest": "https://github.com/Forien/foundryvtt-forien-quest-log/releases/latest/download/module.json"
+      }
+    ]
   },
   "esmodules": ["src/main.mjs"],
   "styles": ["styles/creator.css", "styles/library.css"]
