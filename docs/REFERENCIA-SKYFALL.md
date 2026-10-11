@@ -146,6 +146,11 @@ Conferido no livro (v1.25, cap. 2 "Determinando seus Atributos" e cap. 1 "Atribu
   um truque mágico **ou** proficiência em perícia, à escolha. Não depende de a classe conjurar.
   (Especialista com INT +3 → 1 escolha; INT +4 → 2.) O criador implementa isso como o bloco
   "Bônus de INT" em `training.mjs`.
+- **Aptidão** (cap. 1, "Perícias"): é uma perícia com especialidade. Escolher "Aptidão" =
+  escolher **qual** (Forja, Veneno, Pescaria, Alquimia, Destilação, Cartografia, Alfaiataria,
+  Culinária, Pintura, Artesanato, Navegação, Instrumentos), e a perícia passa a se chamar
+  "Aptidão com __". Na ficha, cada uma tem chave própria (`forg`, `navi`…); o criador grava a
+  chave específica, não `apti`.
 
 ## Compêndios de Actor instalados (conferir a cada versão nova do sistema/mundo)
 
