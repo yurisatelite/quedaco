@@ -134,6 +134,19 @@ Lido em `skyfall.mjs` 1.0.1 em 11/10/2026 (não conferido numa ficha rodando). U
   e pra preencher buraco).
 - **A lixeira da linha de nível apaga o Item classe inteiro**, sem confirmação.
 
+## Regras de criação que parecem exceção mas valem para todo mundo
+
+Conferido no livro (v1.25, cap. 2 "Determinando seus Atributos" e cap. 1 "Atributos"), 11/10/2026:
+
+- **"+1 em um atributo" (valores fixos):** vale para **qualquer** personagem que use o método
+  de valores fixos (+3, +2, +1, +1, 0, −1), não é bônus de legado. Nenhum atributo passa de +3
+  nessa distribuição, então o +1 não pode ir no atributo que já recebeu o +3. Nos métodos de
+  rolagem não existe esse +1.
+- **Truque ou perícia por INT:** **toda** classe ganha, **para cada 2 pontos positivos de INT**,
+  um truque mágico **ou** proficiência em perícia, à escolha. Não depende de a classe conjurar.
+  (Especialista com INT +3 → 1 escolha; INT +4 → 2.) O criador implementa isso como o bloco
+  "Bônus de INT" em `training.mjs`.
+
 ## Compêndios de Actor instalados (conferir a cada versão nova do sistema/mundo)
 
 `skyfall-core.creation`, `skyfall-core.enemies`, `skyfall-fastplay.characters`.
