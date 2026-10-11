@@ -150,6 +150,18 @@ Lido em `skyfall.mjs` 1.0.1 em 11/10/2026 (não conferido numa ficha rodando). U
 - O QUEDAÇO só conta hexágonos revelados pra mostrar; nunca escreve. Código em
   `src/world-explorer.mjs`, com formato estranho = `null` (a contagem some, a tela segue).
 
+### ConversationHUD (`conversation-hud`, Saervicus) — conferido em 11/10/2026, v6.0.0
+
+- É um **painel de retratos** (quem está na conversa, quem fala). **Não tem** texto de fala,
+  escolhas nem ramificação — não serve como motor de diálogo. Análise completa e decisão
+  em `docs/T28-DIALOGO-DE-VENDA.md`.
+- Foundry 13 apenas; dependências obrigatórias: `lib-wrapper`, `socketlib`,
+  `lib-dfreds-ui-extender`. Última release 16/10/2025. Licença MIT.
+- **API não documentada** (wiki: "Coming Soon") e **quebrada na 6.0.0**. Alcança-se por
+  `game.ConversationHud` (global), não por `game.modules.get(...).api`.
+- Se um dia houver ponte, tratar como o World Explorer: só ligar se o módulo estiver ativo,
+  e dado fora do formato esperado = recurso some, nunca erro.
+
 ## Como reconferir isto (se o Foundry/Skyfall subir de versão)
 
 ```
