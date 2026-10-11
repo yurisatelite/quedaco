@@ -106,6 +106,34 @@ system.rolls.<id>.{label,type:'attack'|'damage',terms:[{expression:'@str'},{expr
 ```
 Dano fixo, sem dado — a mesa rola atributo + proficiência, não um d20+dado de dano.
 
+## Progressão do personagem (`character`): como o nível é guardado
+
+Lido em `skyfall.mjs` 1.0.1 em 11/10/2026 (não conferido numa ficha rodando). Usado pela
+[T27 — Ficha V2](T27-FICHA-V2.md).
+
+- **Nível do personagem** = soma de `system.level` de todos os Itens `class`
+  (`level.value`, ~5953). Não existe campo próprio.
+- **Qual nível do personagem é de qual classe** mora em `system.origin` de cada classe:
+  lista de `class-01`…`class-12`, ordenada. A posição na lista é o nível **da classe**:
+  `origin.indexOf('class-10') + 1`. A classe inicial tem `system.initial: true`.
+- `system.level` da classe deveria ser `origin.filter(startsWith('class-')).length`. Só o
+  `Class.levelUp` (~7720) mantém isso; o "Excluir" do menu do nível (~13655) **não**
+  mantém. Se os dois discordarem, a ficha trava a subida (ver T27).
+- **Benefícios da classe:** `system.benefits[]` com `{_id, level, type: feature|grant, uuid
+  | granting+query+quantity}`. `level` é nível **da classe**. Os `_id` vêm do compêndio e
+  são fixos.
+- **Item ganho num nível** (pelo `BenefitsDialog`) recebe `system.origin = [<_id do
+  benefício>]`. Para saber o nível do personagem: benefício → `level` (da classe) →
+  `classe.system.origin[level-1]` → `class-XX`. Item com `origin` vazio ou apontando pra
+  algo que não existe aparece em "Bônus" (é o "solto").
+- Raízes fixas da árvore (`_progression`, ~6226): `legacy`, `curse`, `background`,
+  `class-01..12`, `guild`, `bonus`; `path-01` entra depois de `class-02`, `path-02` depois do
+  7º nível de uma classe, `feat-mc` depois do 2º nível de uma classe inicial.
+- **Subir de nível:** arrastar a classe já existente chama `levelUp(level.value + 1)`; o
+  clique direito em "Nível X" chama `levelUp(X)` da classe escolhida (serve pra multiclasse
+  e pra preencher buraco).
+- **A lixeira da linha de nível apaga o Item classe inteiro**, sem confirmação.
+
 ## Compêndios de Actor instalados (conferir a cada versão nova do sistema/mundo)
 
 `skyfall-core.creation`, `skyfall-core.enemies`, `skyfall-fastplay.characters`.
