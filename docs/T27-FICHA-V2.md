@@ -31,7 +31,7 @@ nada. Pegar a classe por `CONFIG.Actor.sheetClasses.character["skyfall.SkyfallCh
 | Etapa | O quê | Modelo | Estado |
 |---|---|---|---|
 | 0 | Yuri manda o erro do console do nível 10–12 (F12 → aba Console, print da linha vermelha) e o nome da classe/personagem | — | ⬜ |
-| 1 | Esqueleto: `src/sheet-v2.mjs` registra "QUEDAÇO — Ficha V2" para `character`, herdando a ficha do sistema; nada muda ainda | Sonnet | ⬜ |
+| 1 | Esqueleto: `src/sheet-v2.mjs` registra "QUEDAÇO — Ficha V2" para `character` como ficha **padrão**, herdando a do sistema; nada muda visualmente. Testes em `tests/sheet-v2.test.mjs`. Falta conferir dentro do Foundry | Sonnet | ✅ código / ⬜ Foundry |
 | 2 | Função pura `levelMap(actor)` em `src/level-map.mjs`: para cada nível 1–12, qual classe, quais itens vieram dele (benefício → nível da classe → `origin[nivel-1]`) e quais itens estão soltos. Com testes em `tests/` | Opus | ⬜ |
 | 3 | Lixeira por nível: na V2, a lixeira da linha de nível remove **só aquele nível** (tira `class-XX`, recalcula `system.level`) e pergunta antes. Apagar a classe inteira vira ação separada, com aviso de quantos itens ficam soltos | Sonnet | ⬜ |
 | 4 | Subir de nível sem buraco: arrastar a classe preenche o **primeiro** nível vazio, não `nível+1`; "Excluir" do menu também atualiza `system.level` | Sonnet | ⬜ |
@@ -65,3 +65,4 @@ dependem do print.
 ## Diário
 
 - 11/10/2026 — Causas 1–4 lidas no código do sistema; causa 5 pendente do print.
+- 11/10/2026 — Etapa 1 feita no repositório (262 testes ok, pacote ok). Registrada como padrão: todo personagem sem ficha escolhida passa a abrir na V2; dá pra voltar pela engrenagem "Ficha". Nota do Yuri: apagar nível 7 apaga só o 7, mas o 10 apaga tudo — provável que no 7 a lixeira seja a do item escolhido (trilha), e no 10 a da linha da classe. Reproduzir na etapa 3.
