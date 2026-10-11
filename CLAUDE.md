@@ -93,7 +93,7 @@ O pacote resultante fica em `dist/quedaco-<versão>/quedaco`. `npm run release` 
 ## Quem está executando
 
 Desde 15/09/2026 a fila é executada pelo **Codex**: o Claude estrutura, o Codex executa,
-o Yuri confirma. A rodada atual é **`docs/COMANDO-CODEX-11.md`** (montar os mapas — especificação em `docs/T26-MONTAR-MAPAS.md`): regras, tarefas em ordem, o que fica com o Yuri e o diário do que foi executado (seção 4) — **leia-o antes de retomar qualquer coisa**. As rodadas 8, 9 e 10 (`COMANDO-CODEX-8.md` a `COMANDO-CODEX-10.md`) estão encerradas e ficam como histórico.
+o Yuri confirma. A rodada atual é **`docs/COMANDO-CODEX-12.md`** (Conversa: diálogo do vendedor e conversa de cena — especificação em `docs/T28-DIALOGO-DE-VENDA.md`). A 11 (`COMANDO-CODEX-11.md`, montar os mapas — `docs/T26-MONTAR-MAPAS.md`) segue aberta, em pausa na Tarefa 3: regras, tarefas em ordem, o que fica com o Yuri e o diário do que foi executado (seção 4) — **leia-o antes de retomar qualquer coisa**. As rodadas 8, 9 e 10 (`COMANDO-CODEX-8.md` a `COMANDO-CODEX-10.md`) estão encerradas e ficam como histórico.
 
 ## Entrega de uma mudança
 

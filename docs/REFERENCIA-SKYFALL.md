@@ -138,6 +138,23 @@ Lido em `skyfall.mjs` 1.0.1 em 11/10/2026 (não conferido numa ficha rodando). U
 
 `skyfall-core.creation`, `skyfall-core.enemies`, `skyfall-fastplay.characters`.
 
+## Foundry 13.351 (núcleo) — clique em token por quem não é o dono
+
+Conferido em 11/10/2026 no código instalado (`client/canvas/placeables/token.mjs` e
+`placeable-object.mjs`). Importa pra qualquer recurso "o jogador clica no NPC".
+
+- **Clique simples (`clickLeft`)** exige `_canControl`, que pede `document.canUserModify(user,"update")`.
+  **Jogador não controla token de NPC**, então `Token#_onClickLeft` nunca é chamado pra ele —
+  interceptar esse método não adianta.
+- **Duplo clique (`clickLeft2` → `_onClickLeft2`)** exige `_canView`: permissão **LIMITED** no ator.
+  É o que abre a ficha hoje. Funciona pra NPC liberado (o QUEDAÇO dá LIMITED ao salvar o NPC).
+- **Hover** (`hoverIn`) funciona pra qualquer usuário.
+- Não existe hook `clickToken` no núcleo; os hooks de token são `controlToken`, `targetToken`,
+  `hoverToken`, `refreshToken`, `updateToken` etc. Os módulos que reagem a clique usam `libWrapper`.
+- **Sincronizar sem socket:** setting de mundo (só o GM grava; `onChange` chega em todos) +
+  flag no próprio usuário (`user.setFlag`; o jogador grava a dele). Já usado em `sceneAtlas`,
+  `sharedContent` e nas tags `npcRoles2`. Hora comum entre clientes: `game.time.serverTime`.
+
 ## Módulos de terceiros que o QUEDAÇO lê (sem depender)
 
 ### World Explorer (`world-explorer`, CarlosFdez) — conferido em 17/09/2026, v2.2.1

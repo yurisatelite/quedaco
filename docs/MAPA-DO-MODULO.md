@@ -28,7 +28,7 @@ por atitude, condições do livro e pechincha.
 | Visual | `styles/library.css` — bloco do cartão de item, carrinho, tira do GM |
 | Testes | [adapter.test.mjs](../tests/adapter.test.mjs), [negotiation.test.mjs](../tests/negotiation.test.mjs) — compra debita e reduz estoque, insuficiente não altera nada, falha na entrega devolve a moeda, carrinho é tudo-ou-nada, venda paga metade do livro e credita a bolsa, venda parcial, quantidade maior que a ficha recusa |
 | Doc original do pedido | `docs/T17-VENDINHAS-FASE2.md` |
-| Falta conhecido | **diálogo do vendedor** (o NPC "falar", com escolhas) — pesquisa e recomendação em [T28-DIALOGO-DE-VENDA.md](T28-DIALOGO-DE-VENDA.md), esperando decisão do Yuri. De resto, nada: foi a última coisa fechada antes da 0.8.0. Se for melhorar, comece lendo a tabela de condições de desconto do livro em `negotiation.mjs` antes de mudar a conta. |
+| Falta conhecido | **diálogo do vendedor** (o NPC "falar", com escolhas) — pesquisa e recomendação em [T28-DIALOGO-DE-VENDA.md](T28-DIALOGO-DE-VENDA.md), decidido em 11/10/2026 e especificado; handoff em [COMANDO-CODEX-12.md](COMANDO-CODEX-12.md). De resto, nada: foi a última coisa fechada antes da 0.8.0. Se for melhorar, comece lendo a tabela de condições de desconto do livro em `negotiation.mjs` antes de mudar a conta. |
 
 **Pra melhorar a loja amanhã:** já dá pra abrir direto `negotiation.mjs` (a conta) e
 `library.mjs` na linha 1146 (a tela) sem precisar re-explorar nada.

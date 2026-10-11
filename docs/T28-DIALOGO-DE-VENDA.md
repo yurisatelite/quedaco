@@ -1,174 +1,262 @@
-# T28 — Diálogo dos NPCs de venda: integrar com o Conversation HUD ou recriar?
+# T28 — Conversa: diálogo do vendedor e conversa de cena
 
-> Pedido do Yuri, 11/10/2026: "existe um módulo chamado Conversation HUD. Ou a gente vai
-> integrar com ele pra criar um diálogo pros NPCs de venda ou a gente vai recriar ele
-> pra adicionar nos NPCs de venda. Verifica isso."
+> Pedido do Yuri, 11/10/2026. Ele já testou o Conversation HUD na mesa, mandou 26 prints
+> de como ele funciona por dentro e descreveu o que quer: **a estética e o fluxo dele,
+> dentro do QUEDAÇO, em dois modos** (conversa de venda com o jogador; conversa de cena
+> controlada pelo Mestre, com um modo "coletivo" onde os jogadores pedem a fala).
 >
-> **Estado: pesquisa feita, decisão do Yuri pendente.** Nada foi codado. Este documento
-> é o que o Codex (ou qualquer modelo) precisa ler antes de começar — e o que o Yuri
-> precisa ler pra decidir.
+> **Estado: decidido e especificado. Nada codado.** Handoff para o Codex em
+> `docs/COMANDO-CODEX-12.md`.
 
-## 0. Resposta curta
+## 0. Decisão
 
-**O Conversation HUD não faz diálogo.** Ele é um painel de retratos: mostra na tela de
-todo mundo quem está numa conversa e destaca quem está falando. Não tem texto de fala,
-não tem escolhas, não tem ramificação, não tem ligação com loja ou preço. Então as duas
-opções do pedido se desfazem num ponto: **a parte "diálogo" (falas, escolhas, reação à
-pechincha) vai ter que ser nossa de qualquer jeito.** A pergunta real é só se o
-*retrato na tela de todos* vem dele ou da gente.
+**Recriar dentro do QUEDAÇO, copiando a interface e o fluxo do Conversation HUD. Não
+depender dele.** O Yuri disse "pode copiar igual tá ali" e mandou os prints pra isso.
 
-**Recomendação: recriar a versão leve (caminho B), e deixar uma ponte opcional com o
-Conversation HUD pra depois (caminho C).** Motivos na seção 4.
+Por quê, em uma linha cada:
 
-## 1. O que o Conversation HUD é — conferido em 11/10/2026
+- O que ele quer **não existe** no Conversation HUD: o modo **Coletivo** (cada jogador
+  clica pra falar) aparece **desligado** na tela de criação ("em desenvolvimento"), e não
+  há texto de fala, escolhas nem ligação com a loja.
+- Depender dele seria 3 módulos extras (`lib-wrapper`, `socketlib`,
+  `lib-dfreds-ui-extender`), uma API sem documentação quebrada na 6.0.0 e só Foundry 13
+  (ver `docs/REFERENCIA-SKYFALL.md`, "ConversationHUD").
+- O QUEDAÇO já tem o que a venda usa: atitude, pechincha, carrinho, retrato do NPC.
 
-Fonte: código do GitHub (`CristianVasile23/conversation-hud`, lido pela API do GitHub),
-página do pacote no Foundry e changelog. Onde digo "não confirmei", é porque não achei.
+**Crédito e licença:** o Conversation HUD é MIT. A gente escreve código próprio inspirado
+na interface dele (não copia arquivo). Se algum trecho for copiado, manter o aviso de
+copyright MIT junto. Colocar uma linha de crédito ("interface inspirada no
+ConversationHUD, de Saervicus") na documentação do módulo.
 
-| Fato | Valor |
-|---|---|
-| Autor / licença | Saervicus (Cristian Vasile) · **MIT** |
-| Versão atual | **6.0.0**, publicada em **16/10/2025** (quase um ano atrás); último push no repositório em 13/03/2026 |
-| Compatibilidade | **Foundry 13 apenas** (`minimum/verified/maximum = 13` no `module.json`). A 6.0.0 abandonou o 12 e inferiores |
-| Dependências obrigatórias | **3**: `lib-wrapper`, `socketlib` e `lib-dfreds-ui-extender` |
-| Atividade | 26 issues abertas, 20 estrelas — módulo de um autor só, pequeno |
-| O que faz | Janela com os retratos dos participantes; destaca o "participante ativo"; conversas salvas em Diário; vínculo de conversa a cena; facções; fundo da conversa |
-| O que **não** faz | Texto de fala, escolhas do jogador, ramificação, estado de loja/preço/atitude |
-| API pública | **Não documentada.** A wiki lista "API Reference — Coming Soon". A 6.0.0 *quebrou* a API de macros ("it is very likely that some of your macros might no longer work") |
-| Como se alcança por código | `game.ConversationHud` (objeto global, não `game.modules.get(...).api`), com `startConversationFromData(data, visibility)`, `createConversation`, `removeConversation`, `setConversationVisibility`, e eventos `ConversationEvents.Created/Removed/Updated` |
-| Formato dos dados | `{type, background, conversation:{defaultActiveParticipant, participants:[{name, displayName, img, imgScale, portraitAnchor, faction, linkedActor, linkedJournal}]}}` — **os tipos no código estão marcados `[TODO: Complete JSDoc]`**, e não confirmei se o `main` é idêntico ao da release 6.0.0 |
-| Tipo de conversa | Só a "controlada pelo Mestre" está ligada; a "coletiva" está "em desenvolvimento" |
+## 1. O que os prints do Yuri mostram (o desenho a copiar)
 
-## 2. O que um diálogo de venda precisaria
+**Criar conversa.** Um botão "Create Conversation" abre a escolha de tipo:
 
-Hoje a loja do QUEDAÇO é uma tela de compra: o jogador abre o cartão do NPC vendedor,
-vê o estoque, monta o carrinho (`openShop`, `cartBlock`, `npcSellCard` em
-`src/library.mjs`), a atitude é escolhida pela Mestra (`ATTITUDES` em
-`src/negotiation.mjs`) e a pechincha é um teste de CAR (`haggle`). Não existe cena de
-conversa — o NPC não "fala".
-
-| Necessidade de um diálogo de venda | Conversation HUD | Precisa ser nosso |
+| Tipo | Texto original | No módulo dele |
 |---|---|---|
-| Retrato do vendedor na tela dos jogadores | ✔ | — |
-| Destacar quem fala | ✔ | — |
-| Fala do NPC (saudação, reação) | ✘ | ✔ |
-| Escolhas do jogador (ver mercadorias · pechinchar · vender · sair) | ✘ | ✔ |
-| Fala muda com a atitude (hostil → aliado) | ✘ | ✔ |
-| Reação ao resultado da pechincha (aceita / recusa) | ✘ | ✔ |
-| Abrir a loja / carrinho / venda que já existem | ✘ | ✔ (reaproveita os `lib-npc-*`) |
-| Texto escrito pela Mestra por NPC | ✘ | ✔ |
+| **GM Controlled** | "Só o Mestre escolhe quem fala. Melhor para cenas em que NPCs falam ao grupo." | funciona |
+| **Collective** | "Cada jogador escolhe seu orador. Útil para cenas de grupo em que os jogadores se revezam." | **desligado** |
 
-Ou seja: do que o diálogo precisa, ele cobre as duas primeiras linhas e nada mais.
+Depois, uma janela com **fundo da conversa** (imagem opcional; sem imagem = fundo escuro
+translúcido desfocado) e a lista de **participantes**, com dois botões: "puxar
+participantes da cena" e "adicionar participante".
 
-## 3. Os três caminhos
+**Participante** (duas abas, Participante · Facção): nome, "exibir nome" (desligado mostra
+"Desconhecido"), retrato com seletor de arquivo, escala do retrato, âncora vertical e
+horizontal do retrato, diário vinculado, **ator vinculado**.
 
-### A — Integrar: o QUEDAÇO monta a conversa dentro do Conversation HUD
+**Puxar da cena:** lista com **foto + nome + caixa de marcar** de cada ator da cena, botões
+marcar todos / nenhum / inverter, e "Adicionar atores". É o fluxo que o Yuri quer ("adiciono
+todos e marco quem eu quero").
 
-- **Ganha:** retrato bonito, multi-participante, já pronto e testado pela comunidade.
-- **Perde / risco:**
-  - Exige instalar **3 módulos** (um deles, `lib-dfreds-ui-extender`, só existe pra ele).
-  - A API é **indocumentada e foi quebrada na última versão** — é a mesma situação do
-    World Explorer, só que pior: ali o dado era estável há um ano; aqui a própria
-    estrutura de dados está com `TODO`.
-  - Compatibilidade **só 13**: quando o Foundry 14 chegar, ficamos presos a um módulo de
-    um autor só, sem atualização há quase um ano.
-  - Não resolve o problema principal: as falas e as escolhas continuam por nossa conta,
-    e ainda teríamos que fazê-las conviver com a janela de outro módulo.
+**Lista de participantes:** alça de arrastar, caixa **Ativo** (quem fala agora), faixa,
+detalhes (retrato, nome, facção) e ações clonar · editar · apagar.
 
-### B — Recriar a versão leve, dentro do QUEDAÇO ✔ recomendado
+**Na mesa:** o cenário fica **desfocado**; o participante ativo aparece **grande, no
+centro**, com o nome numa barra embaixo. Barra de ferramentas: fechar · minimizar ·
+travar minimização · mostrar/ocultar · "falar como" no chat · trocar fundo · salvar.
+Minimizado, vira um retrato pequeno no canto de baixo. A lista fica numa aba da barra
+lateral, com "Fechar conversa".
 
-Não recriar o Conversation HUD inteiro (facções, conversa salva em Diário, vários
-participantes, conversa coletiva — nada disso serve pra venda). Só o que a venda usa:
-**uma janela com o retrato de um NPC, a fala dele e botões de escolha**, ligados ao que
-já existe.
+**Os três problemas que o Yuri achou usando:**
 
-- **Ganha:** zero dependência; imagem, texto e escolhas pensados pra venda; reaproveita
-  atitude, pechincha, carrinho e venda sem ponte nenhuma; não quebra com atualização de
-  terceiros; combina com o resto do painel (`DialogV2`/`ApplicationV2`, mesmo estilo).
-- **Perde:** a gente mantém o código (é pouco: uma janela, uma tabela de falas, 4 botões);
-  não herda o que o Conversation HUD tem a mais (multi-participante, facções).
+1. **"Ator vinculado" lista todo mundo só por nome** (centenas, inclusive guildas).
+2. **O participante novo entra "anônimo"** — escolher o ator vinculado **não** preenche
+   nome nem retrato. O Yuri adicionou "Jorel rabo de raposa" e ele ficou como
+   "Desconhecido".
+3. **Não distingue monstro de NPC.**
 
-### C — Híbrido: B primeiro, ponte opcional depois
+## 2. Modo 1 — Conversa de venda (o jogador, no token do vendedor)
 
-Fazer B. Depois, **só se o Yuri quiser**, um botão "Mostrar no Conversation HUD" que só
-aparece com o módulo ativo e que monta uma conversa de um participante só, **protegido
-contra erro** (mesma regra do World Explorer: dado fora do formato esperado = o botão
-some, nunca trava a tela). Custo pequeno, e só depois que o B existir.
+**Fluxo**, nas palavras do Yuri: chegamos na cidade, o mapa tem o token do NPC. Se ele é de
+venda e está habilitado, **quando o jogador clica no token, pergunta "Abrir diálogo com o
+NPC?"**. Se sim: o NPC tem **2 ou 3 falas** pro jogador ver, com a **imagem do NPC à
+esquerda e a do jogador à direita**. **Em seguida abre a loja.**
 
-## 4. Por que recomendo B
+1. **Quem é afetado:** só NPC **de venda e habilitado**. Chave nova por NPC, desligada
+   por padrão (`dialogue.enabled`), no mesmo bloco do editor onde ficam as opções da loja.
+   O jogador comum nunca vê isso em NPC que não vende.
+2. **Clique no token do vendedor** → pergunta Sim/Não ("Abrir diálogo com *Nome*?").
+   Para o Mestre nada muda (ele continua com o comportamento normal do Foundry).
+   **Atenção ao limite técnico verificado — seção 4.1.**
+3. **A janela:** cenário desfocado atrás; NPC grande à esquerda, personagem do jogador
+   (`game.user.character`, ou o avatar do usuário se não tiver) à direita; uma caixa de fala
+   embaixo com o nome de quem fala e o texto. Clique/Enter avança; "Pular" vai direto
+   pra loja.
+4. **As falas:** 2 ou 3 por NPC, escritas pela Mestra no editor do NPC. **Sem fala escrita,
+   vale um texto padrão por atitude** (hostil → aliado), pra habilitar um vendedor já
+   funcionar na hora. Textos padrão provisórios (a Mestra reescreve):
 
-1. **O núcleo do pedido é o diálogo, e ele não oferece diálogo.** Integrar não economiza
-   a parte difícil.
-2. **Fragilidade:** API sem documentação, quebrada na última versão, tipos com `TODO`,
-   três dependências, um mantenedor. Pra algo que o Yuri vai usar toda sessão com
-   vendedores, é um risco desproporcional ao que ele entrega (um retrato).
-3. **O que precisamos já existe do lado de cá:** atitude, pechincha, carrinho, venda,
-   portrait do NPC (`npcPortrait`, `ImageResolver`). O diálogo é uma *casca* em volta
-   disso.
-4. **Dá pra voltar atrás:** B não fecha a porta do C.
+   | Atitude | Fala 1 | Fala 2 | Fala 3 (opcional) |
+   |---|---|---|---|
+   | Hostil | "Ah, é você. Fale logo o que quer, não tenho o dia todo." | "Os preços são esses. Se não gostar, a porta está logo ali." | "Mexeu em algo sem pagar, e a conversa acaba." |
+   | Negativo | "Pois não… mas não espere milagres." | "Estoque é o que está à vista. Preço também." | "Olhe com cuidado e decida logo." |
+   | Indiferente | "Boas. Dê uma olhada, nada está escondido." | "Preço de tabela, sem enrolação." | "Se precisar de algo, é só chamar." |
+   | Prestativo | "Ora, bem-vindos! Entrem, entrem." | "Deixe-me ver se tenho algo que sirva ao grupo." | "Pra quem trata bem, eu trato melhor." |
+   | Aliado | "Que bom ver vocês! Chegaram na hora certa." | "Pra vocês eu guardei o que tenho de melhor." | "Hoje o preço sai bem mais em conta. Amigo é amigo." |
 
-## 5. Esboço do B — pra ser conferido com o Yuri antes de virar tarefa
+   A atitude vem de `flags.quedaco.npc.shop.attitude` (escala do livro,
+   `src/negotiation.mjs`). **A atitude continua sendo da Mestra** — o livro diz que ela
+   muda por sucesso e falha nas Cenas de Interação Social (`docs/T-NEGOCIACAO.md`).
+5. **Depois da última fala, abre a loja.** Hoje a loja do jogador mora **dentro da aba
+   NPCs do painel**, e o painel do jogador abre sempre em "Mapa" e só mostra as abas que a
+   Mestra liberou. Logo, **a loja não pode depender da aba NPCs estar liberada** — abrir
+   uma **janela de loja avulsa** só daquele NPC, reaproveitando o cartão da loja
+   (`npcSellCard`, `cartBlock`, `openShop` em `src/library.mjs`), respeitando as mesmas
+   regras de hoje (NPC liberado por localidade ou por NPC).
 
-> **Não codifique a partir deste esboço.** Falta decidir os itens da seção 6. Isto é só
-> pra o Yuri enxergar o tamanho da coisa.
+## 3. Modo 2 — Conversa de cena (o Mestre)
 
-**O jogador vê:** no cartão do NPC vendedor (aba NPCs do jogador), um botão **Conversar**.
-Abre uma janela com o retrato grande do vendedor, uma fala (ex.: *"Entre, entre. O que
-procura hoje?"*) e botões:
+Copia o Conversation HUD, com os acréscimos que o Yuri pediu.
 
-| Botão | O que faz | Reaproveita |
-|---|---|---|
-| Ver mercadorias | abre a loja/carrinho que já existe | `openShop`, `cartBlock` |
-| Pechinchar | rola o teste e o NPC reage com uma fala de "aceitou" ou "recusou" | `haggle` |
-| Vender algo | abre a venda | `npcSellCard`, `sellItem` |
-| Sair | fecha com uma fala de despedida | — |
+1. **Dois tipos**, igual à tela de escolha dele: **Controlada pelo Mestre** e **Coletiva**
+   (esta funciona de verdade).
+2. **Criar:** fundo opcional (seletor de arquivo; sem fundo = o próprio cenário
+   desfocado), e participantes.
+3. **Puxar da cena:** lista com foto + nome + caixa de marcar dos atores que têm token na
+   cena atual; marcar todos / nenhum / inverter; "Adicionar". O Mestre adiciona todos e
+   marca quem quer.
+4. **Adicionar participante** por um **seletor com foto e nome** (seção 5), ou **avulso**
+   (nome + imagem, sem ator) — pro caso do Jorel, que não tem ficha.
+5. **Nome e retrato vêm sozinhos** ao escolher o ator (problema 2 do Yuri).
+6. **Nome só da conversa:** cada participante tem um **"Nome na conversa"** editável,
+   guardado só na conversa — **a ficha nunca é alterada**. Mostra-se o nome da conversa
+   se existir, senão o do ator. A caixa "exibir nome" desligada mostra "Desconhecido" para
+   os jogadores (o Mestre vê sempre o nome verdadeiro).
+7. **Na mesa:** cenário desfocado; **quem está falando fica grande no centro**, com o
+   nome numa barra; mudar o orador troca na hora. Barra de ferramentas: fechar ·
+   minimizar · mostrar/ocultar pros jogadores · **trocar o fundo** · **liga/desliga o
+   "jogadores podem falar"** (item 8). Minimizado vira um retrato pequeno no canto.
+8. **Coletivo — o que o Yuri mais quer:** **cada jogador clica livremente pra falar.**
+   O personagem dele aparece em destaque. **Se outro jogador clica e fala, troca
+   automaticamente** (vale o clique mais recente). O Mestre tem **um botão liga/desliga**
+   pra permitir ou impedir isso. Ligado: os jogadores veem, embaixo da conversa, os
+   retratos dos participantes que **eles controlam** (ator de que são donos) e clicam.
+   Desligado: os cliques dos jogadores não fazem nada e só o Mestre escolhe o orador.
+9. **Onde o Mestre mexe:** uma área nova **Conversa** no painel da Mestra (lista de
+   participantes, caixa Ativo, clonar, editar, apagar, arrastar pra reordenar, fechar a
+   conversa). Não criar aba na barra lateral do Foundry.
 
-**A fala depende da atitude do NPC** (hostil · negativo · indiferente · prestativo ·
-aliado — escala do livro, já no módulo). Cada NPC traz um texto padrão por atitude; a
-Mestra pode sobrescrever qualquer um no editor do NPC. **A atitude continua sendo da
-Mestra**: o livro diz que ela sobe e desce por sucessos e falhas nas Cenas de Interação
-Social (`docs/T-NEGOCIACAO.md`), então o módulo não decide isso sozinho.
+## 4. Restrições técnicas verificadas
 
-**Onde fica o dado:** `flags.quedaco.npc.dialogue` — as falas por atitude, a de
-pechincha aceita/recusada e a de despedida. Mesmo lugar onde já moram `shop` e `markup`.
+Conferidas no código do Foundry **13.351** instalado nesta máquina
+(`client/canvas/placeables/token.mjs`, `placeable-object.mjs`) e no nosso código.
 
-**Código novo (estimativa):** um painel em `src/panels/` (a regra da rodada 11 é não
-engordar o `library.mjs`), uma função pura que escolhe a fala (atitude + situação) com
-teste, um bloco no editor de NPC pra escrever as falas, e CSS seguindo
-`docs/DESIGN-SISTEMA-VISUAL.md`. Tamanho: **média**. Cabe no Sonnet; a parte visual
-precisa de olho humano depois.
+### 4.1 Clique no token: o jogador **não consegue** clicar no token de um NPC alheio
 
-## 6. O que falta o Yuri decidir
+- O clique simples (`clickLeft`) só dispara se `_canControl` deixar, e isso exige poder
+  **modificar** o token (`document.canUserModify(user,"update")`). **Jogador não controla
+  token de NPC — então `Token#_onClickLeft` nunca é chamado pra ele.** Interceptar esse
+  método não funciona.
+- O **duplo clique** (`clickLeft2` → `_onClickLeft2`) **funciona** pra quem tem permissão
+  **LIMITED** no ator, e o Foundry usa isso hoje pra abrir a ficha. O QUEDAÇO já dá
+  LIMITED ao NPC quando a Mestra salva (teste "salvar NPC concede visão limitada").
+- **Hover** (`hoverIn`) funciona pra qualquer um.
 
-1. **Quem vê a conversa?** O Conversation HUD mostra na tela de **todos** na mesa. Uma
-   janela nossa abre só pra **quem clicou**. Dá pra fazer as duas coisas (a janela é de
-   quem conversa; um aviso/retrato aparece no chat pra todos), mas é uma escolha de
-   mesa: o vendedor "fala com o grupo" ou "fala com um jogador"?
-2. **Quem escreve as falas?** (a) texto padrão por atitude já vem pronto e a Mestra só
-   troca o que quiser; (b) a Mestra escreve tudo do zero; (c) o módulo gera por
-   papel/região. **Recomendo (a)** — ninguém quer preencher 5 falas pra cada um dos
-   mercadores.
-3. **Escolhas fixas ou personalizáveis?** Os 4 botões acima (recomendado, mais simples)
-   ou a Mestra poderia acrescentar escolhas próprias de um NPC (ex.: "Perguntar sobre o
-   forte")? Isso é um "diálogo ramificado" de verdade e muda o tamanho da tarefa.
-4. **Quer mesmo assim a ponte com o Conversation HUD (caminho C)?** Se ele já usa esse
-   módulo na mesa, vale; se não usa, ignoramos.
+**Então o "clique" vira uma de duas coisas, e quem implementar tem de descobrir qual
+funciona na mesa do Yuri, numa cópia do mundo, antes de construir o resto:**
 
-## 7. O que não verifiquei
+1. **Clique simples** por um ouvinte nosso no palco do canvas (acha o token sob o
+   ponteiro e ignora arrastos/panning). Melhor experiência; precisa de teste real.
+2. **Duplo clique** interceptando `_onClickLeft2` só para token de vendedor habilitado
+   (no lugar de abrir a ficha). Garantido pelo Foundry; um clique a mais.
 
-- Não abri o Conversation HUD rodando — só li o código e as páginas dele. Não sei se o
-  mundo oficial o tem instalado.
-- Não confirmei se o formato de dados do `main` é o mesmo da release 6.0.0.
-- Uma busca por "diálogo ramificado" apontou outros módulos (Visual Novel Maker,
-  yugen-merchant). **Só li a descrição das páginas deles; não avaliei nenhum.** Se a
-  decisão da seção 6, item 3 for "quero ramificação de verdade", vale uma pesquisa
-  própria antes de escrever código.
+Se o Mestre ou o jogador não tiver o diálogo habilitado, **o comportamento normal do
+Foundry nunca pode ser tirado**.
 
-## 8. Fontes (11/10/2026)
+### 4.2 Sincronizar a conversa sem socket
 
-- [ConversationHUD — Foundry](https://foundryvtt.com/packages/conversation-hud)
-- [conversation-hud — GitHub](https://github.com/CristianVasile23/conversation-hud)
-  (código lido pela API do GitHub: `js/init.js`, `js/conversation.js`, `js/types/*`,
-  `module.json`)
-- [CHANGELOG do conversation-hud](https://github.com/CristianVasile23/conversation-hud/blob/main/CHANGELOG.md)
-- [Wiki do conversation-hud](https://github.com/CristianVasile23/conversation-hud/wiki)
+O módulo hoje **não usa socket** (`module.json` sem `"socket": true`, nenhum
+`game.socket` em `src/`). Dá pra continuar sem, com os dois mecanismos que já usamos:
+
+- **Estado da conversa = um *setting* de mundo** (só o Mestre grava; `onChange` redesenha
+  em todos os clientes). Mesmo padrão de `sceneAtlas`, `sharedContent` etc.
+- **Cliques dos jogadores = uma flag no próprio usuário** (`user.setFlag`, o jogador
+  pode gravar a dele — é assim que as tags de papel dos jogadores funcionam hoje,
+  `NPC_ROLES2_FLAG` em `src/library.mjs`). Cada clique grava
+  `{conversationId, participantId, at}`; quem calcula o orador ativo é uma **função pura**
+  que pega o mais recente entre o do Mestre e os dos jogadores permitidos. Usar
+  **`game.time.serverTime`** (não `Date.now()`, que difere entre computadores).
+
+### 4.3 NPC × monstro
+
+No mundo do Yuri: NPC do módulo = ator `character` com `flags.quedaco.npc` (função
+`npcFlag`); monstro = ator `npc` do Skyfall (os convertidos têm
+`flags.quedaco.convertedFrom`); guilda = ator `guild`. Função pura
+`conversationActorKind(actor)` → `player | npc | monster | guild`, com teste.
+**Guildas ficam fora do seletor.**
+
+## 5. Seletor de ator (com foto, nome e busca)
+
+Substitui o menu de centenas de nomes. Uma janela com:
+
+- **Campo de busca** por nome.
+- **Abas ou seções: Jogadores · NPCs · Monstros** (Monstros = fichas de ameaça, com um
+  selo "Monstro" no cartão). Mostra **foto + nome**, e nos NPCs o local/papel pequeno.
+- Escolher **preenche nome e retrato sozinho** (o retrato usa o mesmo `ImageResolver` dos
+  cartões de NPC) e grava `actorUuid`.
+- Também a opção **"Participante avulso"** (nome + imagem).
+
+Seguir `docs/DESIGN-SISTEMA-VISUAL.md` (escala 4/8px, rótulo+campo com gap, cards de
+altura igual, nada de contêiner esticado sem necessidade).
+
+## 6. Dados
+
+```
+flags.quedaco.npc.dialogue = { enabled:false, lines:['','',''] }   // vazio = texto padrão da atitude
+
+setting de mundo `conversation` = {
+  id, type:'gm'|'collective', background:'', visible:true,
+  playersCanSpeak:false, activeId:null, activeAt:0,
+  participants:[{ id, actorUuid:'', kind:'player'|'npc'|'monster'|'free',
+                  name, alias:'', img, showName:true, scale:1 }]
+}
+
+user.flags.quedaco.speak = { conversationId, participantId, at }
+```
+
+Código novo: lógica pura em `src/conversation.mjs` (tipo do ator, escolha da fala, orador
+ativo, normalização do estado), telas em `src/panels/conversa.mjs` e CSS próprio
+`.sy-conv-*` (o overlay fica **fora** de `.sy-creator`). Nada disso no `library.mjs`.
+
+## 7. Etapas e progresso
+
+```
+Pesquisa e especificação  [████████████████████] 100%   (este documento)
+1 Lógica pura + testes    [░░░░░░░░░░░░░░░░░░░░]   0%
+2 Modo 1 (vendedor)       [░░░░░░░░░░░░░░░░░░░░]   0%
+3 Modo 2 (Mestre)         [░░░░░░░░░░░░░░░░░░░░]   0%
+4 Coletivo                [░░░░░░░░░░░░░░░░░░░░]   0%
+5 Conferência no Foundry  [░░░░░░░░░░░░░░░░░░░░]   0%   ← Yuri, numa cópia do mundo
+```
+
+**Esforço:** todas as etapas cabem no **Sonnet**. A única parte de risco é o experimento
+do clique (4.1); só voltar pro Opus se o experimento mostrar que nenhuma das duas formas
+serve.
+
+## 8. Decisões que escolhi por padrão (o Yuri pode trocar)
+
+1. **Falas padrão por atitude** quando o NPC não tem fala escrita (seção 2, item 4).
+2. **Orador do jogador:** só participantes de cujo ator ele é dono (`actor.isOwner`).
+3. **Fundo padrão:** o próprio cenário desfocado; trocável por imagem.
+4. **Loja avulsa** depois do diálogo, independente de a aba NPCs estar liberada.
+5. **"Falar como" no chat** e **salvar conversa em Diário** (os dois ícones da barra do
+   Conversation HUD): **fora da v1**, não foram pedidos.
+6. **Diferença NPC × monstro:** seletor em seções + selo no cartão e na lista do Mestre.
+
+## 9. Fora do escopo da v1
+
+Facções, ramificação de diálogo (escolhas do jogador dentro da fala), conversa salva em
+Diário, "falar como" no chat, integração com o Conversation HUD (ponte opcional — só se
+um dia fizer falta; seria protegida como a do World Explorer), vários vendedores falando
+ao mesmo tempo.
+
+## 10. Fontes
+
+- Prints do Yuri, 11/10/2026 (interface do Conversation HUD na mesa dele).
+- [ConversationHUD — Foundry](https://foundryvtt.com/packages/conversation-hud) ·
+  [GitHub](https://github.com/CristianVasile23/conversation-hud) (MIT) ·
+  [CHANGELOG](https://github.com/CristianVasile23/conversation-hud/blob/main/CHANGELOG.md)
+- Código do Foundry 13.351 instalado: `client/canvas/placeables/token.mjs`
+  (`_canControl`, `_canView`, `_onClickLeft`, `_onClickLeft2`) e `placeable-object.mjs`
+  (`_createInteractionManager`).
