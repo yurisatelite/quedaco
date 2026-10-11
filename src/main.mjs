@@ -1,4 +1,4 @@
-import {CreatorApp} from './app.mjs';
+import {CreatorApp as CampaignApp} from './app.mjs';
 import {MODULE_ID,assertCompatible} from './adapter.mjs';
 import {registerBranding,loadBranding} from './branding.mjs';
 import {ASK_RELEASE_ON_ACTIVATE_KEY,CampaignLibrary,NPC_LOCALITIES_KEY,REGION_SCENES_KEY,SCENES_KEY,SCENE_ATLAS_KEY,registerLibrarySettings,shouldAskReleaseOnActivate} from './library.mjs';
@@ -11,12 +11,12 @@ import {PLACES,REGIONS} from './book-world.mjs';
 let app;
 const LAST_SEEN_VERSION='lastSeenVersion';
 const escape=value=>String(value??'').replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
-function openCreator(startArea='characters',focus={}){
+function openCampaign(startArea='npcs',focus={}){
   try{
     assertCompatible(game);
-    const area=game.user.isGM?startArea:'characters';
+    const area=game.user.isGM?startArea:'map';
     if(app?.rendered){app.area=area;if(focus.npcActor)app.library.state.npcActor=focus.npcActor;app.render(false);return app.bringToFront();}
-    app=new CreatorApp();
+    app=new CampaignApp();
     app.area=area;if(focus.npcActor)app.library.state.npcActor=focus.npcActor;
     return app.start();
   }catch(error){ui.notifications.error(error.message);}
@@ -30,25 +30,20 @@ function showChangelog(entries,current){
 }
 Hooks.once('init',()=>{registerBranding();registerLibrarySettings(game,()=>{if(app?.rendered)app.render(false);});registerArcaneOverload(game);game.settings.register(MODULE_ID,LAST_SEEN_VERSION,{scope:'client',config:false,type:String,default:''});});
 Hooks.once('ready',()=>{
-  const module=game.modules.get(MODULE_ID);module.api={open:openCreator,openCampaign:()=>openCreator('npcs')};void loadBranding();
+  const module=game.modules.get(MODULE_ID);module.api={open:openCampaign,openCampaign};void loadBranding();
   const current=String(module.version??''),seen=String(game.settings.get(MODULE_ID,LAST_SEEN_VERSION)??'');
   if(seen!==current&&isNewer(current,seen)){const fresh=entriesSince(CHANGELOG,seen);if(fresh.length)showChangelog(fresh,current);}
   bindForienQuestHooks(game,()=>{if(app?.rendered&&app.area==='quests')app.render(false);});
 });
-Hooks.on('renderActorDirectory',(application,html)=>{
-  const root=html instanceof HTMLElement?html:html?.[0];if(!root||root.querySelector('[data-yuri-creator]'))return;
-  const button=document.createElement('button');button.type='button';button.dataset.yuriCreator='';button.className='sy-launch';button.textContent='QUEDAÇO · Criar personagem';button.addEventListener('click',()=>openCreator('characters'));
-  const target=root.querySelector('.directory-header')??root;target.prepend(button);
-});
-// Botão no menu lateral de controles de cena — para todos. Mestre abre o painel de campanha; jogador cai na criação de personagens.
+// Botão de campanha. Criação de personagens pertence ao módulo separado.
 Hooks.on('getSceneControlButtons',(controls)=>{
-  const tool={name:'quedaco',title:'QUEDAÇO',icon:'fa-solid fa-dragon',button:true,order:99,onClick:()=>openCreator(game.user?.isGM?'npcs':'characters')};
+  const tool={name:'quedaco',title:'QUEDAÇO',icon:'fa-solid fa-dragon',button:true,order:99,onClick:()=>openCampaign(game.user?.isGM?'npcs':'map')};
   if(Array.isArray(controls)){const group=controls.find(c=>c.name==='tokens')??controls[0];group?.tools?.push(tool);}
   else{const group=controls.tokens??Object.values(controls)[0];if(group?.tools)group.tools[tool.name]=tool;}
 });
 Hooks.on('getHeaderControlsActorSheetV2',(sheet,controls)=>{
   const actor=sheet.actor??sheet.document;if(!game.user?.isGM||!actor?.flags?.[MODULE_ID]?.npc||controls.some(control=>control.action==='quedacoNpc'))return;
-  controls.push({action:'quedacoNpc',icon:'fa-solid fa-dragon',label:'QUEDAÇO · NPC',onClick:()=>openCreator('npcs',{npcActor:actor.id})});
+  controls.push({action:'quedacoNpc',icon:'fa-solid fa-dragon',label:'QUEDAÇO · NPC',onClick:()=>openCampaign('npcs',{npcActor:actor.id})});
 });
 async function refreshOpenPanel(){
   if(!app?.rendered)return;

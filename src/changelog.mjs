@@ -1,5 +1,15 @@
 export const CHANGELOG = [
   {
+    version:'0.13.0',
+    date:'2026-10-11',
+    title:'Criador de personagens passa a ser um módulo separado',
+    notes:[
+      'O QUEDAÇO principal agora cuida somente da campanha: Mapa Imersivo, Cena Atual, NPCs, guildas, monstros, itens, imbuir e quests.',
+      'A criação de personagens saiu do Diretório de Atores e das abas do painel. Ela passa a ser oferecida exclusivamente pelo módulo “QUEDAÇO - Personagens Skyfall RPG”, no topo do Chat.',
+      'O botão de controle de cena continua abrindo o painel de campanha; para jogadores, ele abre a parte compartilhada do mapa.'
+    ]
+  },
+  {
     version:'0.12.0',
     date:'2026-10-04',
     title:'Banco de mapas reaproveita os fundos já vinculados',
