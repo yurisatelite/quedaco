@@ -49,17 +49,19 @@ de todos os cartões de uma vez (preferência só deste computador, `itemDetails
 ## O que isso muda para o resto
 
 - **Visibilidade = token no mapa.** Não existe mais "localidade liberada". O T28
-  (vendedor) usa `dialogue.enabled` + token visível — ver `docs/T28-DIALOGO-DE-VENDA.md`
-  seção 2, item 5, e `docs/COMANDO-CODEX-12.md`.
-- **`openShop` ainda checa a regra antiga** (`npcOpenToPlayers`/localidade) e **precisa ser
-  trocado** na Tarefa 2 do Codex. Sem isso o jogador não consegue comprar.
+  (vendedor) usa `dialogue.enabled` + loja pública + token visível — ver
+  `docs/T28-DIALOGO-DE-VENDA.md` seção 2, item 5, e `docs/COMANDO-CODEX-12.md`.
+- **A loja do jogador agora é o módulo independente `quedaco-npcs-de-venda`**, não mais código
+  daqui (ver `docs/T30-VENDEDORES-RECONHECIDOS.md`). O `openShop` e o carrinho antigos do
+  QUEDAÇO não são mais o caminho de compra.
 
 ## Código morto que sobrou (limpeza futura — **depois da T28**)
 
-Não apaguei porque (a) a T28 reaproveita o cartão da loja (`npcSellCard`, `cartBlock`,
-`openShop`, `purchaseItem`…), (b) ~20 testes dependem do caminho de jogador, e (c) o Codex
-está começando a T28 nos mesmos arquivos. Quando a T28 fechar, uma tarefa de limpeza
-remove:
+Não apaguei porque (a) ~20 testes dependem do caminho de jogador, (b) a loja antiga
+(`npcSellCard`, `cartBlock`, `openShop`, `purchaseItem`, `negotiation.mjs`…) agora duplica o
+módulo de vendas e **o que fazer com ela é decisão pendente do Yuri** (T30), e (c) o Codex
+está começando a T28 nos mesmos arquivos. Quando a T28 fechar e a decisão da loja sair, uma
+tarefa de limpeza remove:
 
 - o caminho `readonly` de `library.mjs` (≈60 referências): `renderNpcsPlayer`,
   `playerGuildBanner`, `npcRoleSecondaryPicker`, `npcNoteBlock`, `renderMap(true)`,

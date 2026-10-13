@@ -78,21 +78,22 @@ habilitado.**
 Depois:
 
 1. Editor do NPC: bloco **Diálogo de venda** (caixa de habilitar + 3 campos de fala,
-   vazio = texto padrão), gravando em `flags.quedaco.npc.dialogue`. Só aparece para NPC
-   de venda.
-2. Ao clicar no token de um vendedor **habilitado** (`dialogue.enabled`) cujo **token está
-   visível na cena**, para **jogador** (não para o Mestre): confirmação "Abrir diálogo com
-   *Nome*?" (`DialogV2.confirm`). **Não use `npcOpenToPlayers` nem "localidade liberada":
-   o Yuri tirou a liberação por localidade e o painel do jogador em 13/10/2026 (T29,
-   `docs/T29-PAINEL-SO-DA-MESTRA.md`).** O `openShop` ainda checa essa regra antiga — troque
-   pela de cima.
+   vazio = texto padrão), gravando em `flags.quedaco.npc.dialogue`. **Só aparece para NPC
+   reconhecido como vendedor** — use `isVendor(actor)` de `src/vendors.mjs` (T30: vendedor
+   é o que o módulo independente `quedaco-npcs-de-venda` marca em
+   `flags['quedaco-npcs-de-venda'].shop.enabled`). O QUEDAÇO **só lê** esse dado; não escreva nele.
+2. Ao clicar no token de um vendedor com `dialogue.enabled` ligado, **loja pública**
+   (`vendorShop(actor).public`) e **token visível na cena**, para **jogador** (não para o
+   Mestre): confirmação "Abrir diálogo com *Nome*?" (`DialogV2.confirm`). **Não use
+   `npcOpenToPlayers` nem "localidade liberada"** (saíram em 13/10/2026, T29).
 3. Janela do diálogo: cenário desfocado; **NPC à esquerda, personagem do jogador à
    direita** (`game.user.character`, senão o avatar do usuário); caixa de fala com nome +
    texto; clique/Enter avança; "Pular".
-4. Depois da última fala: **janela de loja avulsa** só desse NPC, reaproveitando o
-   cartão da loja (`npcSellCard`, `cartBlock`, `openShop`). **O jogador não tem mais
-   painel nem aba NPCs (T29): esta janela é a única porta de compra.** Não apague essas
-   funções ao fazer a limpeza do código de "visão do jogador".
+4. Depois da última fala: **abrir a loja do módulo de vendas** com
+   `game.modules.get('quedaco-npcs-de-venda')?.api?.open(actor)` (T30). **Não construa
+   janela de loja** e não use `npcSellCard`/`cartBlock`/`openShop` (a loja antiga do
+   QUEDAÇO). Módulo ausente ou inativo: notificação clara e fim da conversa, sem erro.
+   Compra, estoque, aprovação da Mestra e permissão de observador são do módulo dele.
 
 **Pronto quando:** testes de tela (editor, janela, sequência de falas, queda para o
 texto padrão, o jogador sem o diálogo habilitado não é interceptado); o experimento do

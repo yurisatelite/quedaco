@@ -134,6 +134,17 @@ mesmo idioma de disclosure que o resto do painel já usa (`sy-library-guide`), s
 novo. Regra: **uma ação que só faz sentido uma vez, ou raramente, não fica no primeiro
 plano da tela pra sempre** — ou sai, ou entra num menu que abre sob pedido.
 
+### 8. Não use `<header>` nem `<footer>` no conteúdo do painel
+
+Achado em 13/10/2026, olhando o quadro de vendedores: `styles/creator.css` tem
+`.sy-creator header{position:sticky;top:0;z-index:16;padding:18px 24px;background:#111116…}` —
+é o cabeçalho **do aplicativo** (o logo), mas a regra pega **qualquer** `<header>` dentro de
+`.sy-creator`. Resultado: caixa dentro de caixa e, na rolagem, a faixa grudando no topo por
+cima do conteúdo. Regra: **no conteúdo, use `<div>`** com classe própria (`sy-vendor-head`).
+Como rede de segurança, `.sy-creator .sy-library header{position:static;z-index:auto}`
+desgruda os que já existiam (Conferência da região, ligações e topo do Mapa Imersivo). Isso
+pode ser a causa do "topo descolado" do T25 §1.6 — **ainda sem conferência no Foundry**.
+
 ## Ferramenta instalada: Stylelint
 
 O projeto não tem bundler nem framework (é HTML/CSS puro injetado no Foundry) — não dá

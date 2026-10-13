@@ -17,6 +17,7 @@ Tudo do QUEDAÇO vive dentro de `E:\RPG\QUEDACO` (antes o repositório ficava so
 - `E:\RPG\QUEDACO\modulo` — **este repositório**. Abra esta pasta no Claude Code.
 - `E:\RPG\QUEDACO\quedaco` — clone de publicação (o `.git` que vai para o GitHub). Este repositório não tem `remote`.
 - `E:\RPG\QUEDACO\Versões do módulo` — pacotes já publicados.
+- `E:\RPG\QUEDACO\quedaco-npcs-de-venda` — **módulo independente do vendedor** (repositório próprio). Não edite daqui: o QUEDAÇO só lê a flag dele (`src/vendors.mjs`, `docs/T30-VENDEDORES-RECONHECIDOS.md`). Existem ainda `personagens-skyfall-rpg` (criador) e `jornal-da-queda`, também independentes.
 - `E:\RPG\QUEDACO\tokens-*`, `npcs`, `Monstros`, `*.zip` — assets da mesa, fora do git.
 - `modulo\.local` — trabalho local fora do git: macros da mesa, texto extraído do livro, índices de token, `fichas-para-casar.json`.
 

@@ -73,9 +73,13 @@ venda e está habilitado, **quando o jogador clica no token, pergunta "Abrir di�
 NPC?"**. Se sim: o NPC tem **2 ou 3 falas** pro jogador ver, com a **imagem do NPC à
 esquerda e a do jogador à direita**. **Em seguida abre a loja.**
 
-1. **Quem é afetado:** só NPC **de venda e habilitado**. Chave nova por NPC, desligada
-   por padrão (`dialogue.enabled`), no mesmo bloco do editor onde ficam as opções da loja.
-   O jogador comum nunca vê isso em NPC que não vende.
+1. **Quem é afetado:** só NPC **vendedor** — e vendedor agora é o que o **módulo
+   independente `quedaco-npcs-de-venda`** diz (T30, 13/10/2026): `flags['quedaco-npcs-de-venda']
+   .shop` com `enabled` e `public` ligados. O QUEDAÇO **reconhece** isso por
+   `src/vendors.mjs` (`vendorShop`, `isVendor`), já pronto e testado. Em cima disso, uma
+   chave **só do QUEDAÇO**, por NPC e desligada por padrão (`flags.quedaco.npc.dialogue.enabled`),
+   liga a conversa: vendedor sem a chave continua vendendo normalmente, sem diálogo. O bloco
+   do editor só aparece para NPC reconhecido como vendedor.
 2. **Clique no token do vendedor** → pergunta Sim/Não ("Abrir diálogo com *Nome*?").
    Para o Mestre nada muda (ele continua com o comportamento normal do Foundry).
    **Atenção ao limite técnico verificado — seção 4.1.**
@@ -98,15 +102,19 @@ esquerda e a do jogador à direita**. **Em seguida abre a loja.**
    A atitude vem de `flags.quedaco.npc.shop.attitude` (escala do livro,
    `src/negotiation.mjs`). **A atitude continua sendo da Mestra** — o livro diz que ela
    muda por sucesso e falha nas Cenas de Interação Social (`docs/T-NEGOCIACAO.md`).
-5. **Depois da última fala, abre a loja.** **Atualizado em 13/10/2026 (T29): o painel do
-   QUEDAÇO agora é só da Mestra — o jogador não abre mais o painel, nem a aba NPCs.** A
-   loja do jogador vai existir **só por aqui**: uma **janela de loja avulsa** só daquele
-   NPC, reaproveitando o cartão da loja (`npcSellCard`, `cartBlock`, `openShop` em
-   `src/library.mjs` — **não apagar**, são o que a T28 usa). **Quem pode comprar não é mais
-   "NPC liberado por localidade" (isso saiu): é o vendedor com `dialogue.enabled` ligado
-   e o token visível na cena.** "Se não está no mapa liberado, o jogador não vê"
-   (Yuri, 13/10/2026). O `openShop` de hoje ainda checa `npcOpenToPlayers`/localidade e
-   precisa ser trocado por essa regra.
+5. **Depois da última fala, abre a loja — a do módulo de vendas, não uma nossa.**
+   **Atualizado em 13/10/2026 (T29 + T30):** o painel do QUEDAÇO é só da Mestra e a loja
+   virou o módulo independente `quedaco-npcs-de-venda` (v0.1.0). A T28 **não constrói
+   janela de loja nenhuma**: chama a API dele,
+   `game.modules.get('quedaco-npcs-de-venda')?.api?.open(actor)`. Se o módulo não estiver
+   ativo, avisa com uma notificação e encerra a conversa — nunca erro. **Quem pode comprar
+   é problema dele:** o jogador precisa ter **observador** na ficha do vendedor e uma ficha
+   própria com moedas, e a Mestra precisa estar conectada pra aprovar cada pedido (README do
+   módulo). Isso também ajuda o clique no token: observador é mais que o LIMITED que o
+   duplo clique exige (seção 4.1). **Não use `npcOpenToPlayers`, "localidade liberada",
+   `openShop`, `npcSellCard` nem `cartBlock`** — são a loja antiga do QUEDAÇO, que agora
+   duplica o módulo novo (o que fazer com ela é decisão pendente do Yuri, ver
+   `docs/T30-VENDEDORES-RECONHECIDOS.md`).
 
 ## 3. Modo 2 — Conversa de cena (o Mestre)
 
@@ -242,7 +250,7 @@ serve.
 1. **Falas padrão por atitude** quando o NPC não tem fala escrita (seção 2, item 4).
 2. **Orador do jogador:** só participantes de cujo ator ele é dono (`actor.isOwner`).
 3. **Fundo padrão:** o próprio cenário desfocado; trocável por imagem.
-4. **Loja avulsa** depois do diálogo — é a única porta de compra do jogador (T29: o painel é só da Mestra).
+4. **Loja = a do módulo de vendas** (`api.open(actor)`), chamada depois do diálogo; o QUEDAÇO não tem mais loja própria para o jogador (T29/T30).
 5. **"Falar como" no chat** e **salvar conversa em Diário** (os dois ícones da barra do
    Conversation HUD): **fora da v1**, não foram pedidos.
 6. **Diferença NPC × monstro:** seletor em seções + selo no cartão e na lista do Mestre.

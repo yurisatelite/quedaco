@@ -127,6 +127,12 @@ inicial de `state.mapDisplay` para `'atlas'`.
 
 ### 1.6 — A parte de cima "vazando"/descolada — confirmado que é geral, não só do Mapa
 
+> **Pista nova (13/10/2026):** `.sy-creator header{position:sticky;top:0;…}` vazava para todo
+> `<header>` do conteúdo do painel e os fazia grudar no topo por cima do resto. Desgrudei
+> (`.sy-creator .sy-library header{position:static}`, ver `docs/DESIGN-SISTEMA-VISUAL.md`
+> regra 8). **Falta o Yuri conferir no Foundry** se era isso; se ainda aparecer, o print com o
+> inspetor (F12) continua sendo o que falta.
+
 **Atualização:** o Yuri confirmou que acontece **em todas as abas** (NPCs, Guildas,
 Mapa, Monstros, Itens...), não só no Mapa Imersivo. Isso muda onde procurar: **não é
 nada específico do atlas** — é algo no cabeçalho/casca compartilhados entre as abas,

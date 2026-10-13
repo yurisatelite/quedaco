@@ -173,6 +173,15 @@ Conferido em 11/10/2026 no código instalado (`client/canvas/placeables/token.mj
   flag no próprio usuário (`user.setFlag`; o jogador grava a dele). Já usado em `sceneAtlas`,
   `sharedContent` e nas tags `npcRoles2`. Hora comum entre clientes: `game.time.serverTime`.
 
+## Módulo de vendas independente (`quedaco-npcs-de-venda`) — conferido em 13/10/2026, v0.1.0
+
+É nosso, mas **outro repositório** (`E:\RPG\QUEDACO\quedaco-npcs-de-venda`) e age sozinho; o QUEDAÇO só lê.
+
+- Dado: `actor.flags['quedaco-npcs-de-venda'].shop = {enabled, public, markup, buyRate, stock:[{id,origin,source,price,qty}], note}`. `qty:null` = ilimitado; `price` em Trocados (1 P = 10 T, 1 K = 1000 T). Leia **direto de `flags`**: `getFlag` lança erro com o módulo desativado.
+- API: `game.modules.get('quedaco-npcs-de-venda')?.api?.open(actor)` e `.configure`.
+- Regras dele: jogador precisa de **observador** na ficha do vendedor + ficha própria com moedas; a **Mestra aprova cada pedido** pelo socket (tem de estar conectada); sem barganha, atitude nem restock.
+- Leitura no QUEDAÇO: `src/vendors.mjs`.
+
 ## Módulos de terceiros que o QUEDAÇO lê (sem depender)
 
 ### World Explorer (`world-explorer`, CarlosFdez) — conferido em 17/09/2026, v2.2.1

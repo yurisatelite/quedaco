@@ -12,7 +12,19 @@
 > versão "por etapas" disto, pra uma funcionalidade grande em andamento) e
 > `docs/REFERENCIA-SKYFALL.md` (o sistema por baixo, não o módulo).
 
+## Vendedores (módulo independente — o painel só reconhece)
+
+O vendedor é o módulo **`quedaco-npcs-de-venda`** (repositório próprio, `E:\RPG\QUEDACO\quedaco-npcs-de-venda`); o QUEDAÇO só **lê** a flag dele. Detalhes e decisão pendente: [T30-VENDEDORES-RECONHECIDOS.md](T30-VENDEDORES-RECONHECIDOS.md).
+
+| Peça | Onde |
+|---|---|
+| Ler a loja de um ator, distribuição por local | [vendors.mjs](../src/vendors.mjs) — `vendorShop, isVendor, vendorDistribution, vendorLabel, vendorModuleActive` |
+| Selo no cartão e quadro "Vendedores por local" | [panels/vendedores.mjs](../src/panels/vendedores.mjs); filtro em `library.mjs` (`lib-npc-vendor-filter`, `lib-npc-place-filter`) |
+| Testes | [vendedores.test.mjs](../tests/vendedores.test.mjs) |
+
 ## Loja / Vendas · exemplo completo
+
+> **Atenção (13/10/2026):** esta é a loja **antiga** do QUEDAÇO. O jogador compra pelo módulo independente de vendas; o que fazer com este código é decisão pendente do Yuri (`T30-VENDEDORES-RECONHECIDOS.md`). Não apagar sem essa decisão.
 
 **O que é:** o Mestre marca um NPC como vendedor; jogadores compram do estoque dele
 (carrinho, tudo-ou-nada) e vendem itens da própria ficha para qualquer NPC, com desconto
