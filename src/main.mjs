@@ -9,6 +9,7 @@ import {registerSheetV2} from './sheet-v2.mjs';
 import {guildLevel} from './guilds.mjs';
 import {removeAtlasScene,resolveSceneLocality} from './scene-atlas.mjs';
 import {PLACES,REGIONS} from './book-world.mjs';
+import {publicRegions,registeredNpcs} from './integration.mjs';
 let app;
 const LAST_SEEN_VERSION='lastSeenVersion';
 const escape=value=>String(value??'').replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
@@ -33,7 +34,7 @@ function showChangelog(entries,current){
 }
 Hooks.once('init',()=>{registerBranding();registerLibrarySettings(game,()=>{if(app?.rendered)app.render(false);});registerArcaneOverload(game);registerSheetV2(MODULE_ID);game.settings.register(MODULE_ID,LAST_SEEN_VERSION,{scope:'client',config:false,type:String,default:''});});
 Hooks.once('ready',()=>{
-  const module=game.modules.get(MODULE_ID);module.api={open:openCampaign,openCampaign};void loadBranding();
+  const module=game.modules.get(MODULE_ID);module.api={open:openCampaign,openCampaign};Object.assign(module.api,{listNpcs:()=>registeredNpcs(game),listRegions:publicRegions});void loadBranding();
   const current=String(module.version??''),seen=String(game.settings.get(MODULE_ID,LAST_SEEN_VERSION)??'');
   if(seen!==current&&isNewer(current,seen)){const fresh=entriesSince(CHANGELOG,seen);if(fresh.length)showChangelog(fresh,current);}
   bindForienQuestHooks(game,()=>{if(app?.rendered&&app.area==='quests')app.render(false);});

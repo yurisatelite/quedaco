@@ -1,5 +1,14 @@
 export const CHANGELOG = [
   {
+    version:'0.14.0',
+    date:'2026-10-13',
+    title:'Integração regional de NPCs com o Quedaço - Tabelas',
+    notes:[
+      'O QUEDAÇO agora oferece aos módulos satélites uma consulta somente-leitura dos NPCs e das regiões registrados.',
+      'O Quedaço - Tabelas pode montar tabelas regionais vinculadas às fichas originais, sem duplicar Actors nem alterar NPCs.'
+    ]
+  },
+  {
     version:'0.13.0',
     date:'2026-10-11',
     title:'Criador de personagens passa a ser um módulo separado',
