@@ -94,6 +94,7 @@ Atalho pra achar código (22/09/2026):
 | Filtro/facetas na tela (tipo, papel, porte, ND, região e além de Opath) | `library.mjs: monsterLocation, monsterFacetValues, monsterMatches` |
 | Região/habitat de cada monstro do mundo | macro `.local/distribuir-monstros-por-regiao.js` → `flags.quedaco.monster`; a flag prevalece sobre o índice do livro |
 | Biografia em ficha de campo (T24 §3) | `monster-convert.mjs: buildFieldSheet, alignmentPhrase, tacticsFromItems`; `toSkyfallNpc(mob,{habitat,fieldSheet})`. Temperamento sai da tendência (`mob.alignment`, lida nos 3 normalizadores), Táticas dos Itens gerados, Habitat passado por quem chama (a macro de reconversão lê `flags.quedaco.monster`). Aparência/Comportamento/O que quer/Ganchos vêm de `fieldSheet` — sem ela, "—" |
+| Auditoria e reparo de ficha convertida | `monster-convert.mjs: originalTextFromBiography, auditMonsterSheet, repairMonsterItems`. Lê a seção Original preservada na biografia, compara ataques/traços/Ataque Múltiplo aos Items atuais e gera somente as peças ausentes; não grava Actor por conta própria. |
 | Fichas de campo escritas | `.local/fichas-de-campo.json` — 44 entradas do bestiário **do livro** (não dos de D&D); nenhum código lê ainda — os do livro são fichas nativas do compêndio, não passam pelo conversor |
 | Falta conhecido | traços/magia/hierarquia/arquétipo já viram Itens (T24, passos 4–5, feito 17/09) — mas **não verificado no Foundry**; reconverter os 326 já importados (perderam dado na 1ª importação) |
 
@@ -142,6 +143,7 @@ rodar manualmente de vez em quando, é barulhento pelo estilo de override do arq
 | Perícias, proteções, idiomas | [training.mjs](../src/training.mjs) |
 | Equipamento inicial | [equipment.mjs](../src/equipment.mjs) |
 | Regras puras (atributo, vida, dinheiro, capacidade) | [rules.mjs](../src/rules.mjs) |
+| Família QUEDAÇO (registro dos módulos satélites, Protocolo v1: `quedaco:register`, `module.api.family`, aba **Módulos** da Mestra) | [family.mjs](../src/family.mjs) (registro puro), [family-view.mjs](../src/family-view.mjs) (aba), `main.mjs` (liga hook + `api.family`), teste `tests/family.test.mjs` |
 
 ---
 

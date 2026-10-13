@@ -1,5 +1,15 @@
 export const CHANGELOG = [
   {
+    version:'0.15.0',
+    date:'2026-10-13',
+    title:'Família QUEDAÇO: o painel reconhece os módulos satélites',
+    notes:[
+      'Nova aba Módulos (só da Mestra): mostra quais módulos da família QUEDAÇO estão ativos (Calendário, Explorador, Tabelas, NPCs de venda, Personagens, Jornal da Queda), o que cada um oferece e abre a interface deles.',
+      'O QUEDAÇO passa a seguir o Protocolo de Integração (contrato v1) e oferece aos satélites o catálogo de regiões/locais e a atribuição de NPCs a áreas do Explorador (checada pela Mestra).',
+      'Cada módulo continua funcionando sozinho; nada é importado de outro módulo.'
+    ]
+  },
+  {
     version:'0.14.0',
     date:'2026-10-13',
     title:'Integração regional de NPCs com o Quedaço - Tabelas',

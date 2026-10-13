@@ -9,8 +9,10 @@ import {registerSheetV2} from './sheet-v2.mjs';
 import {guildLevel} from './guilds.mjs';
 import {removeAtlasScene,resolveSceneLocality} from './scene-atlas.mjs';
 import {PLACES,REGIONS} from './book-world.mjs';
-import {publicRegions,registeredNpcs} from './integration.mjs';
+import {explorerCatalog,publicRegions,registeredNpcs,setNpcExplorerLocation} from './integration.mjs';
+import {createFamilyRegistry} from './family.mjs';
 let app;
+let family;
 const LAST_SEEN_VERSION='lastSeenVersion';
 const escape=value=>String(value??'').replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
 function openCampaign(startArea='npcs',focus={}){
@@ -21,6 +23,7 @@ function openCampaign(startArea='npcs',focus={}){
     const area=startArea;
     if(app?.rendered){app.area=area;if(focus.npcActor)app.library.state.npcActor=focus.npcActor;app.render(false);return app.bringToFront();}
     app=new CampaignApp();
+    app.family=family;
     app.area=area;if(focus.npcActor)app.library.state.npcActor=focus.npcActor;
     return app.start();
   }catch(error){ui.notifications.error(error.message);}
@@ -32,9 +35,9 @@ function showChangelog(entries,current){
   dialog.addEventListener('close',()=>{void game.settings.set(MODULE_ID,LAST_SEEN_VERSION,current);},{once:true});
   dialog.render({force:true});
 }
-Hooks.once('init',()=>{registerBranding();registerLibrarySettings(game,()=>{if(app?.rendered)app.render(false);});registerArcaneOverload(game);registerSheetV2(MODULE_ID);game.settings.register(MODULE_ID,LAST_SEEN_VERSION,{scope:'client',config:false,type:String,default:''});});
+Hooks.once('init',()=>{family=createFamilyRegistry({game,hooks:Hooks,onChange:()=>{if(app?.rendered&&app.area==='modules')app.render(false);}});registerBranding();registerLibrarySettings(game,()=>{if(app?.rendered)app.render(false);});registerArcaneOverload(game);registerSheetV2(MODULE_ID);game.settings.register(MODULE_ID,LAST_SEEN_VERSION,{scope:'client',config:false,type:String,default:''});});
 Hooks.once('ready',()=>{
-  const module=game.modules.get(MODULE_ID);module.api={open:openCampaign,openCampaign};Object.assign(module.api,{listNpcs:()=>registeredNpcs(game),listRegions:publicRegions});void loadBranding();
+  const module=game.modules.get(MODULE_ID);module.api={family:'quedaco',contractVersion:1,id:MODULE_ID,title:module.title,version:module.version,capabilities:{npcDatabase:true,regionDatabase:true,campaignPanel:true,familyRegistry:true,explorerCatalog:true,npcLocation:true},getStatus:()=>({ready:true}),open:openCampaign,openCampaign};Object.assign(module.api,{listNpcs:()=>registeredNpcs(game),listRegions:publicRegions,getExplorerCatalog:explorerCatalog,setNpcExplorerLocation:(uuid,location)=>setNpcExplorerLocation(game,uuid,location),family:{list:()=>family.scan().list(),open:id=>family.open(id),withCapability:capability=>family.withCapability(capability)}});family.scan();void loadBranding();
   const current=String(module.version??''),seen=String(game.settings.get(MODULE_ID,LAST_SEEN_VERSION)??'');
   if(seen!==current&&isNewer(current,seen)){const fresh=entriesSince(CHANGELOG,seen);if(fresh.length)showChangelog(fresh,current);}
   bindForienQuestHooks(game,()=>{if(app?.rendered&&app.area==='quests')app.render(false);});

@@ -7,6 +7,7 @@ import {buildClassEquipmentPlan,buildBackgroundEquipmentPlan,resolveEquipmentPla
 import {MODULE_ID,escapeHTML as e,safeImage,baixarArquivo,createDraft,addResolvedPlan,addInventory,refillResources,applyHitPointProgression,finalizeClassProgression,finalizePathProgression} from './adapter.mjs';
 import {classProgression,requiresSpellcasting} from './progression.mjs';
 import {clampPan,zoomToPoint} from './map-view.mjs';
+import {renderFamilyArea} from './family-view.mjs';
 const STEPS=['Conceito','Legado','Herança','Maldição','Antecedente','Classe','Progressão e benefícios','Atributos e vida','Perícias e proficiências','Dinheiro','Equipamento','Retrato e token','Revisão'];
 const TYPES={1:'legacy',2:'heritage',3:'curse',4:'background',5:'class'};
 const LABELS={legacy:'Legados',heritage:'Heranças',curse:'Maldições',background:'Antecedentes',class:'Classes',path:'Trilhas',feature:'Características',feat:'Talentos',ability:'Habilidades',spell:'Magias',weapon:'Armas',armor:'Armaduras',clothing:'Vestimentas',equipment:'Equipamentos',consumable:'Consumíveis',loot:'Outros itens',sigil:'Sigilos',seal:'Selos'};
@@ -26,8 +27,8 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   async _renderHTML(){
     const sharedAreas=game.user.isGM?[]:[...new Set([...this.library.shared.areas.filter(a=>['npcs','guilds','map','monsters','items','imbue'].includes(a)),'quests'])];
     if(!game.user.isGM&&!sharedAreas.includes(this.area))this.area=sharedAreas[0]??'quests';
-    const areaLabels={npcs:'NPCs',guilds:'Guildas',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'};
-    const areaIcons={npcs:'fa-masks-theater',guilds:'fa-shield-halved',map:'fa-map',monsters:'fa-dragon',items:'fa-box-archive',imbue:'fa-wand-sparkles',quests:'fa-scroll'};
+    const areaLabels={npcs:'NPCs',guilds:'Guildas',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests',modules:'Módulos'};
+    const areaIcons={npcs:'fa-masks-theater',guilds:'fa-shield-halved',map:'fa-map',monsters:'fa-dragon',items:'fa-box-archive',imbue:'fa-wand-sparkles',quests:'fa-scroll',modules:'fa-puzzle-piece'};
     const showStored=game.user.isGM&&this.library.showStoredTools;
     const areas=navAreaEntries(game.user.isGM?Object.entries(areaLabels):sharedAreas.map(a=>[a,areaLabels[a]]),{isGM:game.user.isGM,showStored});
     if(!areas.some(([id])=>id===this.area)&&game.user.isGM)this.area='npcs';
@@ -141,6 +142,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   }
   stepDone(i){return !this.stepIssues(i).length;}
   renderArea(){
+    if(this.area==='modules'&&game.user.isGM)return renderFamilyArea(this.family);
     if(['npcs','guilds','map','monsters','items','imbue','quests'].includes(this.area))return `${this.message?`<p class="sy-alert" role="status">${e(this.message)}</p>`:''}${this.library.render(this.area,!game.user.isGM)}`;
     const definitions={npcs:['Mercadores','Aliados','Rivais','Figurantes'],map:['Regiões','Cidades e locais','Mapas e cenas','Encontros da região'],monsters:['Aquáticos','Terrestres','Aéreos','Outros'],items:['Armas','Armaduras','Equipamentos','Consumíveis'],quests:['Disponíveis','Ativas','Concluídas']};
     const titles={npcs:'NPCs',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'},items=definitions[this.area]??[];
@@ -257,6 +259,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     if(button.dataset.op==='lib-region-carousel'){const strip=this.element?.querySelector('.sy-region-carousel');if(strip)strip.scrollBy({left:(button.dataset.id==='next'?1:-1)*240,behavior:'smooth'});return;}
     this.busy=true;button.disabled=true;this.message='';const navigation=['area','step','previous','next'].includes(button.dataset.op);this.element?.querySelector?.('.sy-shell')?.insertAdjacentHTML('beforeend','<div class="sy-busy" role="status"><span></span><strong>Carregando…</strong></div>');
     try{const {op,uuid,type,kind}=button.dataset;
+      if(op==='family-open'){const ok=await this.family?.open(button.dataset.module);if(!ok)ui.notifications.warn('Este módulo não está ativo nesta mesa.');}
       if(op==='area'){const target=button.dataset.area;if(target!=='quests'&&!game.user.isGM&&!this.library.shared.areas.includes(target))throw Error('Esta área ainda não foi liberada pelo mestre.');this.area=target;if(this.area==='monsters'&&game.user.isGM)await this.library.loadActors();if(this.area==='guilds')await this.library.loadSealImages();}
       if(op==='lib-place-img'){const raw=button.dataset.id;if(raw.endsWith(':'))await this.library.setPlaceImage(raw.slice(0,-1),'');else{const FP=foundry.applications.apps.FilePicker.implementation;new FP({type:'image',current:this.library.placeImages[raw]||'',callback:async path=>{await this.library.setPlaceImage(raw,path);this.render(true);}}).render(true);}}
       else if(op==='lib-map-bank-file'){const raw=button.dataset.id;if(raw.endsWith(':'))await this.library.setMapBankFile(raw.slice(0,-1),'');else{const FP=foundry.applications.apps.FilePicker.implementation;new FP({type:'image',current:this.library.mapBankFiles[raw]||'',callback:async path=>{await this.library.setMapBankFile(raw,path);this.render(true);}}).render(true);}}
