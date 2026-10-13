@@ -15,7 +15,9 @@ const escape=value=>String(value??'').replace(/[&<>"']/g,character=>({'&':'&amp;
 function openCampaign(startArea='npcs',focus={}){
   try{
     assertCompatible(game);
-    const area=game.user.isGM?startArea:'map';
+    // T29 (13/10/2026): o painel é uma ferramenta da Mestra. O jogador só chega ao vendedor pelo token.
+    if(!game.user.isGM)return ui.notifications.info('O painel do QUEDAÇO é uma ferramenta da Mestra.');
+    const area=startArea;
     if(app?.rendered){app.area=area;if(focus.npcActor)app.library.state.npcActor=focus.npcActor;app.render(false);return app.bringToFront();}
     app=new CampaignApp();
     app.area=area;if(focus.npcActor)app.library.state.npcActor=focus.npcActor;
@@ -38,6 +40,7 @@ Hooks.once('ready',()=>{
 });
 // Botão de campanha. Criação de personagens pertence ao módulo separado.
 Hooks.on('getSceneControlButtons',(controls)=>{
+  if(!game.user?.isGM)return;
   const tool={name:'quedaco',title:'QUEDAÇO',icon:'fa-solid fa-dragon',button:true,order:99,onClick:()=>openCampaign(game.user?.isGM?'npcs':'map')};
   if(Array.isArray(controls)){const group=controls.find(c=>c.name==='tokens')??controls[0];group?.tools?.push(tool);}
   else{const group=controls.tokens??Object.values(controls)[0];if(group?.tools)group.tools[tool.name]=tool;}
@@ -69,12 +72,6 @@ Hooks.on('updateActor',(actor,changed)=>{
   if(actor.type==='guild'&&foundry.utils.hasProperty(changed,'system.members'))void syncGuildLevels();
   else if(actor.type==='character'&&foundry.utils.hasProperty(changed,'system.level'))void syncGuildLevels();
 });
-// T6 (Mapa Imersivo): o painel da cena ativa lê a Scene ativa do canvas; ela só muda
-// depois que o canvas troca de verdade. Nada abre sozinho — só re-renderiza quem já
-// está com a janela aberta na aba Mapa.
-Hooks.on('canvasReady',()=>{
-  if(app?.rendered&&['map','activeScene'].includes(app.area)&&game.user?.isGM)app.render(false);
-});
 // A entrada é administrativa, não a Scene em si. Ao apagar a Scene no Foundry,
 // removemos somente essa entrada e mantemos as ligações para poder repará-las depois.
 Hooks.on('deleteScene',(scene)=>{
@@ -84,30 +81,4 @@ Hooks.on('deleteScene',(scene)=>{
     if(!atlas?.scenes?.[scene.id])return;
     void game.settings.set(MODULE_ID,SCENE_ATLAS_KEY,removeAtlasScene(atlas,scene.id)).catch(error=>console.error(MODULE_ID,'não foi possível atualizar o Mapa Imersivo após apagar a Scene.',error));
   }catch(error){console.error(MODULE_ID,'não foi possível ler o Mapa Imersivo após apagar a Scene.',error);}
-});
-// T7 (Mapa Imersivo): ao ativar uma cena cuja localidade ainda não foi liberada,
-// pergunta antes de liberar. Nunca libera sozinho, e uma configuração desliga a
-// pergunta. Funciona sem o painel do QUEDAÇO estar aberto — a leitura/gravação usa os
-// settings direto, e o `setNpcLocality` de uma instância descartável faz a gravação.
-Hooks.on('updateScene',(scene,changed)=>{
-  if(!game.user?.isGM||changed?.active!==true)return;
-  const askEnabled=Boolean(game.settings.get(MODULE_ID,ASK_RELEASE_ON_ACTIVATE_KEY));
-  const atlas=game.settings.get(MODULE_ID,SCENE_ATLAS_KEY);
-  const placeScenes=game.settings.get(MODULE_ID,SCENES_KEY)||{};
-  const regionScenes=game.settings.get(MODULE_ID,REGION_SCENES_KEY)||{};
-  const locality=resolveSceneLocality(atlas,scene.id,{placeScenes,regionScenes});
-  const npcLocalities=new Set(game.settings.get(MODULE_ID,NPC_LOCALITIES_KEY)||[]);
-  if(!shouldAskReleaseOnActivate({askEnabled,locality,npcLocalities}))return;
-  const place=locality.placeId?PLACES.find(p=>p.id===locality.placeId):null;
-  const region=REGIONS.find(r=>r.id===locality.regionId);
-  const nome=place?.name??region?.name??'esta localidade';
-  foundry.applications.api.DialogV2.confirm({
-    window:{title:'Liberar localidade'},
-    content:`<p>O grupo chegou em <strong>${escape(nome)}</strong>. Liberar aos jogadores?</p>`,
-    yes:{label:'Liberar',callback:async()=>{
-      const kind=locality.placeId?'place':'region';
-      await (app?.library??new CampaignLibrary(game,null)).setNpcLocality(kind,locality.placeId||locality.regionId,true);
-    }},
-    no:{label:'Agora não'}
-  });
 });

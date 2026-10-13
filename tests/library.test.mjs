@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {REGIONS,PLACES,BEYOND,COIN_FACES,coinFaces} from '../src/book-world.mjs';
 import {MONSTERS} from '../src/book-monsters.mjs';
-import {BOOK_ITEMS,CampaignLibrary,DEFAULT_GENERATOR_MACRO,findMatches,generatorMacroName,itemCategoryStyle,itemDescriptors,itemFallback,itemProperties,monsterAudit,monsterCategory,monsterFacetValues,monsterMatches,shouldAskReleaseOnActivate} from '../src/library.mjs';
+import {BOOK_ITEMS,CampaignLibrary,DEFAULT_GENERATOR_MACRO,findMatches,generatorMacroName,itemCategoryStyle,itemDescriptors,itemFallback,itemProperties,monsterAudit,monsterCategory,monsterFacetValues,monsterMatches,navAreaEntries,shouldAskReleaseOnActivate} from '../src/library.mjs';
 import {IMBUE_COSTS} from '../src/book-items.mjs';
 
 test('every region, capital and local breadcrumb resolves within the geographic index',()=>{
@@ -170,7 +170,7 @@ test('itens usam miniatura compacta e Imbuir fica em área própria',()=>{
   assert.match(gm.render('imbue'),/Prefixos 0\/2/);
   gm.modBuilder.baseId='book-item-1';
   assert.match(gm.render('imbue'),/data-op="lib-mod-tab"/);
-  assert.match(gm.render('imbue'),/Aba Imbuir visível aos jogadores/);
+  assert.doesNotMatch(gm.render('imbue'),/Aba Imbuir visível aos jogadores/,'T29: o painel é só da Mestra');
   const player=new CampaignLibrary({user:{isGM:false},settings},{items:[]});
   const readonly=player.render('imbue',true);
   assert.match(readonly,/O que é imbuir/);
@@ -746,59 +746,6 @@ test('redistribuição confirma resumo, grava NPCs e guildas em lotes de 50 e se
     const allNpcUpdates=npcBatches.flat();assert.ok(allNpcUpdates.every(update=>update['flags.quedaco.npc'].guild===''));
     const allGuildUpdates=guildBatches.flat();assert.ok(allGuildUpdates.every(update=>Array.isArray(update['system.members'])&&Number.isFinite(update['system.level'])));
   }finally{globalThis.foundry=previousFoundry;globalThis.Actor=previousActor;globalThis.ui=previousUi;}
-});
-
-test('painel da cena ativa (T13): junta NPCs, guilda, mercador e rumor na área própria',async()=>{
-  const mercador={id:'mercador',uuid:'Actor.mercador',name:'Brida',type:'character',isOwner:false,hasPlayerOwner:false,img:'brida.webp',items:[],ownership:{default:1},system:{level:{value:2}},sheet:{render(){}},
-    flags:{quedaco:{npc:{role:'merchant',regionId:'thurthur',placeId:'alberich',tokenVisible:true,note:'',shop:{markup:1,attitude:'indiferente',stock:[{uuid:'Compendium.teste.Item.espada',price:100,qty:2,qtyMax:2}]}}}}};
-  const guilda={id:'guilda',uuid:'Actor.guilda',name:'Companhia do Porto',type:'guild',img:'guilda.webp',items:[],system:{motto:'',abilities:{},members:[]},flags:{quedaco:{npc:{guildUuid:'Actor.guilda'}}}};
-  // a própria flag de guildUuid do mercador é o que o liga à guilda — guildsForPlace lê isso
-  mercador.flags.quedaco.npc.guildUuid='Actor.guilda';
-  const cenaInativa={id:'taverna',name:'Taverna do Porto',active:false};
-  const cenaAtiva={id:'praca',name:'Alberich — Praça',active:true};
-  const scenes=Object.assign([cenaAtiva,cenaInativa],{get:id=>[cenaAtiva,cenaInativa].find(s=>s.id===id)});
-  const store={
-    sceneAtlas:{schema:1,providers:{stairways:false,native:false},scenes:{praca:{parentId:'place:alberich'}},edges:{}},
-    npcLocalities:[],regionRumors:{thurthur:[{id:'r1',text:'Navios somem ao anoitecer.',shared:true}]},
-    regionRumorRoll:null,placeScenes:{},regionScenes:{}
-  };
-  const game={user:{isGM:true},actors:[mercador,guilda],users:[],packs:[],folders:[],version:'13.351',scenes,modules:{get:()=>null},
-    settings:{get:(_m,k)=>(k==='sharedContent'?{}:(store[k]??{})),set:async(_m,k,v)=>{store[k]=v;}}};
-  const library=new CampaignLibrary(game,{items:[]});
-  const painel=library.render('activeScene');
-  assert.match(painel,/CENA ATIVA/);
-  assert.match(painel,/Alberich — Praça/);
-  assert.match(painel,/Brida/); // NPC da localidade
-  assert.match(painel,/Companhia do Porto/); // guilda presente
-  assert.match(painel,/sy-active-scene-merchant/); // tira de atitude do mercador
-  assert.match(painel,/Liberar esta localidade/);
-  // T13 §1.7: árvore região → local → NPCs, com o local atual marcado e fechado de início
-  assert.match(painel,/NPCs da região por local/);
-  assert.match(painel,/data-atlas-open="npc-tree:alberich"/);
-  assert.match(painel,/você está aqui/);
-  assert.doesNotMatch(painel,/data-atlas-open="npc-tree:alberich" open/);
-  library.state.atlasOpen.add('npc-tree:alberich');
-  assert.match(library.render('activeScene'),/data-atlas-open="npc-tree:alberich" open/);
-  // mini-diagrama: sem ligação avisa; com portal, a cena vizinha aparece clicável
-  assert.match(painel,/Nenhuma cena ligada a esta ainda/);
-  store.sceneAtlas={...store.sceneAtlas,scenes:{...store.sceneAtlas.scenes,taverna:{parentId:'place:alberich'}},edges:{porta:{id:'porta',label:'Porta',bidirectional:true,from:{sceneId:'praca'},to:{sceneId:'taverna'},runtimeProvider:'none',implementations:{}}}};
-  const ligado=library.render('activeScene');
-  assert.match(ligado,/sy-puzzle-box is-scene\s+is-current/);
-  assert.match(ligado,/data-op="lib-open-scene" data-id="taverna"/);
-  assert.match(ligado,/sy-puzzle-link is-portal/);
-  // T15: sem World Explorer ativo, nada de botão
-  assert.doesNotMatch(ligado,/Mapa de exploração/);
-  // sem cena ativa nenhuma: painel não aparece
-  cenaAtiva.active=false;
-  assert.doesNotMatch(library.render('activeScene'),/CENA ATIVA/);
-  cenaAtiva.active=true;
-  // cena ativa fora do atlas: avisa e não quebra
-  store.sceneAtlas={schema:1,providers:{stairways:false,native:false},scenes:{},edges:{}};
-  const semAtlas=library.render('activeScene');
-  assert.match(semAtlas,/ainda não está no Mapa Imersivo/);
-  // jogador nunca vê o painel
-  assert.doesNotMatch(library.render('activeScene',true),/CENA ATIVA/);
-  assert.doesNotMatch(library.renderMap(false),/CENA ATIVA/);
 });
 
 test('quebra-cabeça do Mapa Imersivo (T13 §2): quadro por região, soltar cena, posição, Lista e World Explorer',async()=>{

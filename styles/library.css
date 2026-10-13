@@ -682,3 +682,16 @@
 .sy-creator .sy-npc-tree-place>summary em{color:var(--sy-cyan);font-size:11px;font-style:normal}
 .sy-creator .sy-npc-tree-body{display:flex;flex-wrap:wrap;gap:6px;padding:4px 9px 9px 16px}
 .sy-creator .sy-npc-tree-body>.sy-npc-tree-place{flex:1 1 100%}
+/* T29 (13/10/2026) — painel só da Mestra. O ⋯ no fim da barra traz de volta o Imbuir e as
+   ferramentas de manutenção guardadas; o liga/desliga de Itens abre todos os cartões. */
+.sy-creator .sy-area-nav .sy-area-more{margin-left:auto;flex:0 0 auto;padding:8px 12px;opacity:.7}
+.sy-creator .sy-area-nav .sy-area-more[aria-pressed="true"]{opacity:1;border-color:var(--sy-cyan);color:#aeedff}
+.sy-creator .sy-stored-tools{display:flex;flex:0 0 auto;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 20px 0;padding:8px 12px;border:1px dashed #314151;border-radius:8px}
+.sy-creator .sy-stored-tools>span{color:#9fc4d8;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.sy-creator .sy-stored-tools button{width:auto;margin:0;padding:8px 12px;font-size:12px}
+.sy-creator .sy-switch{display:inline-flex;align-items:center;gap:8px;width:auto;margin:0;padding:8px 12px;font-size:12px}
+.sy-creator .sy-switch-track{position:relative;flex:0 0 28px;width:28px;height:16px;border-radius:8px;background:#3a495b}
+.sy-creator .sy-switch-track i{position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#dbe6ef;transition:transform .15s}
+.sy-creator .sy-switch.is-on{border-color:var(--sy-cyan);color:#aeedff}
+.sy-creator .sy-switch.is-on .sy-switch-track{background:#2a9cb8}
+.sy-creator .sy-switch.is-on .sy-switch-track i{transform:translateX(12px)}

@@ -98,12 +98,15 @@ esquerda e a do jogador à direita**. **Em seguida abre a loja.**
    A atitude vem de `flags.quedaco.npc.shop.attitude` (escala do livro,
    `src/negotiation.mjs`). **A atitude continua sendo da Mestra** — o livro diz que ela
    muda por sucesso e falha nas Cenas de Interação Social (`docs/T-NEGOCIACAO.md`).
-5. **Depois da última fala, abre a loja.** Hoje a loja do jogador mora **dentro da aba
-   NPCs do painel**, e o painel do jogador abre sempre em "Mapa" e só mostra as abas que a
-   Mestra liberou. Logo, **a loja não pode depender da aba NPCs estar liberada** — abrir
-   uma **janela de loja avulsa** só daquele NPC, reaproveitando o cartão da loja
-   (`npcSellCard`, `cartBlock`, `openShop` em `src/library.mjs`), respeitando as mesmas
-   regras de hoje (NPC liberado por localidade ou por NPC).
+5. **Depois da última fala, abre a loja.** **Atualizado em 13/10/2026 (T29): o painel do
+   QUEDAÇO agora é só da Mestra — o jogador não abre mais o painel, nem a aba NPCs.** A
+   loja do jogador vai existir **só por aqui**: uma **janela de loja avulsa** só daquele
+   NPC, reaproveitando o cartão da loja (`npcSellCard`, `cartBlock`, `openShop` em
+   `src/library.mjs` — **não apagar**, são o que a T28 usa). **Quem pode comprar não é mais
+   "NPC liberado por localidade" (isso saiu): é o vendedor com `dialogue.enabled` ligado
+   e o token visível na cena.** "Se não está no mapa liberado, o jogador não vê"
+   (Yuri, 13/10/2026). O `openShop` de hoje ainda checa `npcOpenToPlayers`/localidade e
+   precisa ser trocado por essa regra.
 
 ## 3. Modo 2 — Conversa de cena (o Mestre)
 
@@ -239,7 +242,7 @@ serve.
 1. **Falas padrão por atitude** quando o NPC não tem fala escrita (seção 2, item 4).
 2. **Orador do jogador:** só participantes de cujo ator ele é dono (`actor.isOwner`).
 3. **Fundo padrão:** o próprio cenário desfocado; trocável por imagem.
-4. **Loja avulsa** depois do diálogo, independente de a aba NPCs estar liberada.
+4. **Loja avulsa** depois do diálogo — é a única porta de compra do jogador (T29: o painel é só da Mestra).
 5. **"Falar como" no chat** e **salvar conversa em Diário** (os dois ícones da barra do
    Conversation HUD): **fora da v1**, não foram pedidos.
 6. **Diferença NPC × monstro:** seletor em seções + selo no cartão e na lista do Mestre.

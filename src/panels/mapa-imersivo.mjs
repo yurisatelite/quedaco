@@ -56,7 +56,7 @@ export function renderSceneAtlas(lib,){
     const visibleRegionIds=new Set(lib.campaignRegions().map(region=>region.id));
     const stairModule=lib.game.modules?.get?.('stairways'),stairVersion=String(stairModule?.version??'');
     const stairAvailable=Boolean(stairModule?.active&&/^0\.11\./.test(stairVersion));
-    const nativeAvailable=Number(String(lib.game.version??globallib.game?.version??'13').split('.')[0])===13;
+    const nativeAvailable=Number(String(lib.game.version??globalThis.game?.version??'13').split('.')[0])===13;
     const toggle=(id,label,available,detail)=>{const on=atlas.providers[id];return `<button class="sy-scene-atlas-toggle ${on?'is-on':''}" data-op="lib-atlas-provider" data-id="${id}:${on?'off':'on'}" aria-pressed="${on}"><i class="fa-solid ${on?'fa-toggle-on':'fa-toggle-off'}" aria-hidden="true"></i><span>${e(label)}<small>${e(available?detail:'indisponível agora')}</small></span></button>`;};
     const focusedSceneIds=new Set(scenes.filter(scene=>visibleRegionIds.has(resolveSceneLocality(atlas,scene.id,{placeScenes:lib.placeScenes,regionScenes:lib.regionScenes})?.regionId)).map(scene=>scene.id));
     const focusOn=lib.campaignFocus.enabled;
@@ -130,66 +130,4 @@ export function renderAtlasPuzzle(lib,tree,atlas){
     const externals=puzzle.externals.length?`<p class="sy-puzzle-externals"><i class="fa-solid fa-door-open" aria-hidden="true"></i> Portais para fora desta região: ${puzzle.externals.map(link=>`${e(nodes.find(node=>node.id===link.nodeId)?.label??'')} → ${e(sceneName(link.otherSceneId))}`).join(' · ')}</p>`:'';
     const legend=`<div class="sy-puzzle-legend"><span class="is-region">Região</span><span class="is-place">Local</span><span class="is-scene">Cena</span><span class="is-portal">- - - teletransporte</span><button data-op="lib-atlas-layout-reset" data-id="${e(selected.key)}" title="Esquecer as posições desta região"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i> Reorganizar caixas</button></div>`;
     return `<section class="sy-puzzle" style="--sy-region:${e(lib.regionColor(selected.key))}">${chips}${progressBar}${bank}${adoptionPreview}${preview}${legend}<div class="sy-puzzle-scroll">${board}</div>${externals}<div class="sy-puzzle-tools">${create}${tray}</div></section>`;
-  }
-  /** T13 §1.7 — a cena ativa no centro e, em volta, as cenas ligadas a ela: portais
-   *  (tracejado), o mapa onde ela fica e os mapas internos dela (linha cheia). */
-export function activeSceneDiagram(lib,scene){
-    const {portals,parentSceneId,childSceneIds}=sceneNeighborhood(lib.sceneAtlas,scene.id);
-    const around=[...(parentSceneId?[{sceneId:parentSceneId,kind:'hierarchy',hint:'fica dentro de'}]:[]),...childSceneIds.map(sceneId=>({sceneId,kind:'hierarchy',hint:'mapa interno'})),...portals.map(portal=>({...portal,kind:'portal'}))];
-    const seen=new Set();
-    const unique=around.filter(item=>{if(item.sceneId===scene.id||seen.has(item.sceneId))return false;seen.add(item.sceneId);return true;});
-    if(!unique.length)return `<section class="sy-active-scene-diagram"><h4>Cenas ligadas</h4><p class="sy-note">Nenhuma cena ligada a esta ainda — ligue pelo Mapa Imersivo.</p></section>`;
-    const box={w:150,h:40},width=560,height=unique.length>6?300:240;
-    const cx=width/2,cy=height/2,rx=width/2-box.w/2-14,ry=height/2-box.h/2-10;
-    const nodes=[{id:`scene:${scene.id}`,key:scene.id,type:'scene',label:scene.name,current:true,x:Math.round(cx-box.w/2),y:Math.round(cy-box.h/2)}];
-    unique.forEach((item,index)=>{const angle=-Math.PI/2+index*2*Math.PI/unique.length;const target=lib.game.scenes?.get?.(item.sceneId);nodes.push({id:`scene:${item.sceneId}`,key:item.sceneId,type:'scene',label:target?.name??item.sceneId,missing:!target,x:Math.round(cx+rx*Math.cos(angle)-box.w/2),y:Math.round(cy+ry*Math.sin(angle)-box.h/2)});});
-    const links=unique.map(item=>({from:`scene:${scene.id}`,to:`scene:${item.sceneId}`,kind:item.kind,label:item.label||item.hint,bidirectional:item.direction==='both'}));
-    return `<section class="sy-active-scene-diagram"><h4>Cenas ligadas</h4><div class="sy-puzzle-scroll">${lib.puzzleBoard(nodes,links,{width,height,box,cls:'is-mini'})}</div></section>`;
-  }
-  /** T13 §1.7 — NPCs da região em árvore: região → local → sub-local → NPCs daquele
-   *  local. Os acordeões começam fechados e lembram o estado (mesmo mecanismo do atlas). */
-export function activeSceneNpcTree(lib,regionId,currentPlaceId){
-    const entries=lib.npcActors().map(actor=>{const flag=npcFlag(actor)??adoptNpcFlag(actor);return {id:actor.id,name:actor.name,img:actor.img,uuid:actor.uuid,role:flag.role,placeId:flag.placeId,regionId:flag.regionId||PLACES.find(place=>place.id===flag.placeId)?.regionId||inferRegionId(actor)};});
-    const tree=regionLocalityTree({regionId,places:PLACES,entries});
-    const npcBtn=n=>`<button class="sy-location-npc" data-op="lib-npc-open" data-id="${e(n.id)}" draggable="true" data-drag-actor="${e(n.uuid)}" title="Abrir ficha ou arrastar">${avatarFor(lib.image('npc',n.name,n.img,'icons/svg/mystery-man.svg'))}<span><strong>${e(n.name)}</strong>${npcRoleChip(n.role)}</span></button>`;
-    const renderNode=node=>{
-      if(!node.total&&node.place.id!==currentPlaceId)return '';
-      const key=`npc-tree:${node.place.id}`;
-      const current=node.place.id===currentPlaceId;
-      const inner=`${node.entries.map(npcBtn).join('')}${node.children.map(renderNode).join('')}`;
-      return `<details class="sy-npc-tree-place ${current?'is-current':''}" data-atlas-open="${e(key)}" ${lib.state.atlasOpen?.has(key)?'open':''}><summary><i class="fa-solid ${placeLayer(node.place.kind)==='cidade'?'fa-city':'fa-location-dot'}" aria-hidden="true"></i>${e(node.place.name)}${current?' <em>você está aqui</em>':''}<span>${node.total}</span></summary><div class="sy-npc-tree-body">${inner||'<small>Ninguém mora aqui ainda.</small>'}</div></details>`;
-    };
-    const places=tree.places.map(renderNode).join('');
-    const looseKey=`npc-tree:${regionId}:loose`;
-    const loose=tree.loose.length?`<details class="sy-npc-tree-place" data-atlas-open="${e(looseKey)}" ${lib.state.atlasOpen?.has(looseKey)?'open':''}><summary><i class="fa-solid fa-route" aria-hidden="true"></i>Pela região, sem local fixo<span>${tree.loose.length}</span></summary><div class="sy-npc-tree-body">${tree.loose.map(npcBtn).join('')}</div></details>`:'';
-    return `<section class="sy-npc-tree"><h4>NPCs da região por local <small>${tree.total}</small></h4>${places||loose?`${places}${loose}`:'<p class="sy-note">Nenhum NPC nesta região ainda.</p>'}</section>`;
-  }
-  /** Aba Cena Atual (Tarefa 6, reorganizada na T13 §1.7): a cena que está ativa agora,
-   *  com quem e o que tem lá, tudo junto. Reaproveita os painéis que já existem. Nada
-   *  libera nada sozinho: cada ação pede um clique. */
-export function renderActiveScenePanel(lib,){
-    if(!lib.game.user?.isGM)return '';
-    const scenes=Array.from(lib.game.scenes??[]);
-    const scene=lib.game.scenes?.active??scenes.find(s=>s.active)??null;
-    if(!scene)return `<section class="sy-active-scene sy-active-scene-empty"><p>Nenhuma cena ativa agora. Ative uma cena no Foundry para ver aqui quem e o que tem nela.</p></section>`;
-    const locality=resolveSceneLocality(lib.sceneAtlas,scene.id,{placeScenes:lib.placeScenes,regionScenes:lib.regionScenes});
-    if(!locality)return `<section class="sy-active-scene sy-active-scene-empty"><p><strong>${e(scene.name)}</strong> está ativa, mas ainda não está no Mapa Imersivo. ${button('map-display','atlas','Organizar no Mapa Imersivo')}</p></section>`;
-    const {regionId,placeId}=locality;
-    const region=REGIONS.find(r=>r.id===regionId);
-    const place=placeId?PLACES.find(p=>p.id===placeId):null;
-    const localityKey=place?`place:${place.id}`:`region:${regionId}`;
-    const liberado=lib.npcLocalities.has(localityKey);
-    const npcsAqui=lib.npcActors().filter(actor=>{const flag=npcFlag(actor)??adoptNpcFlag(actor);return placeId?flag.placeId===placeId:flag.regionId===regionId;});
-    const flags=npcsAqui.map(actor=>npcFlag(actor)??adoptNpcFlag(actor));
-    const guilds=guildsForPlace({npcs:flags,guilds:lib.guildActors(),placeId:placeId||'',regionId,places:PLACES});
-    const guildasHtml=guilds.length?`<section class="sy-active-scene-guilds"><h4>Guildas presentes</h4><div class="sy-library-tabs">${guilds.map(g=>`<button data-op="lib-guild-open" data-id="${e(g.uuid)}">${e(g.name)}</button>`).join('')}</div></section>`:'';
-    const mercadores=npcsAqui.filter(actor=>(npcFlag(actor)??{}).shop?.stock?.length);
-    const mercadoresHtml=mercadores.length?`<section class="sy-active-scene-merchants"><h4>Mercadores</h4>${mercadores.map(actor=>`<div class="sy-active-scene-merchant"><strong>${e(actor.name)}</strong>${lib.npcGmStrip(actor,npcFlag(actor)??adoptNpcFlag(actor))}</div>`).join('')}</section>`:'';
-    const roll=lib.state.regionRumorRoll&&lib.state.regionRumorRoll.regionId===regionId?lib.state.regionRumorRoll:null;
-    const rumorList=[...(lib.regionRumors[regionId]||[]),...lib.rumorSeeds(regionId)];
-    const rolados=roll?rumorList.filter(r=>roll.ids.includes(r.id)):[];
-    const rumoresHtml=`<section class="sy-active-scene-rumors">${button('region-rumor-roll',regionId,'🎲 Rumor da região')}${rolados.map(r=>`<p class="sy-rumor is-rolled">${e(r.text)}</p>`).join('')}</section>`;
-    const liberar=button('npc-locality',localityKey,liberado?'✓ Localidade liberada':'Liberar esta localidade aos jogadores',liberado?'':'sy-primary');
-    const aqui=lib.npcsForLocation(regionId,placeId,false);
-    return `<section class="sy-active-scene" style="--sy-region:${e(lib.regionColor(regionId))}"><header class="sy-active-scene-head"><small>CENA ATIVA</small><h3>${e(scene.name)} — ${e(place?.name??region?.name??'')}${place?` · ${e(region?.name??'')}`:''}</h3>${liberar}${lib.explorationButton(regionId)}</header>${lib.activeSceneDiagram(scene)}<div class="sy-active-scene-body">${aqui?`<section class="sy-active-scene-here"><h4>Aqui agora</h4>${aqui}</section>`:''}${lib.activeSceneNpcTree(regionId,placeId)}${guildasHtml}${mercadoresHtml}${rumoresHtml}</div></section>`;
   }

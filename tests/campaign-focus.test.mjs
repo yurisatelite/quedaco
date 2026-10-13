@@ -18,8 +18,12 @@ test('CampaignLibrary aplica e desliga o foco sem editar Actors',async()=>{
   const lib=new CampaignLibrary(game,{items:[]});
   assert.deepEqual(lib.npcActors().map(actor=>actor.id),['n1']);
   assert.deepEqual(lib.guildActors().map(actor=>actor.id),['g1','pipi']);
-  assert.match(lib.campaignFocusBanner(false),/Foco da campanha: Thur Thur/);
+  // T29: a faixa de foco saiu da tela; o liga/desliga mora nas ferramentas guardadas
+  assert.equal(lib.storedToolsStrip(),'','guardado fica escondido até a Mestra clicar no ⋯');
+  store.showStoredTools=true;
+  assert.match(lib.storedToolsStrip(),/Foco em Thur Thur: ligado/);
   await lib.action('lib-campaign-focus','off');
+  assert.match(lib.storedToolsStrip(),/Foco desligado · retomar Thur Thur/);
   assert.deepEqual(lib.npcActors().map(actor=>actor.id),['n1','n2']);
   assert.equal(lib.guildActors().length,3);
   assert.equal(actors.length,5);

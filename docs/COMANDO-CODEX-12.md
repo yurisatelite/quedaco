@@ -80,15 +80,19 @@ Depois:
 1. Editor do NPC: bloco **Diálogo de venda** (caixa de habilitar + 3 campos de fala,
    vazio = texto padrão), gravando em `flags.quedaco.npc.dialogue`. Só aparece para NPC
    de venda.
-2. Ao clicar no token de um vendedor **habilitado e liberado aos jogadores** (mesma regra
-   `npcOpenToPlayers`), para **jogador** (não para o Mestre): confirmação "Abrir diálogo
-   com *Nome*?" (`DialogV2.confirm`).
+2. Ao clicar no token de um vendedor **habilitado** (`dialogue.enabled`) cujo **token está
+   visível na cena**, para **jogador** (não para o Mestre): confirmação "Abrir diálogo com
+   *Nome*?" (`DialogV2.confirm`). **Não use `npcOpenToPlayers` nem "localidade liberada":
+   o Yuri tirou a liberação por localidade e o painel do jogador em 13/10/2026 (T29,
+   `docs/T29-PAINEL-SO-DA-MESTRA.md`).** O `openShop` ainda checa essa regra antiga — troque
+   pela de cima.
 3. Janela do diálogo: cenário desfocado; **NPC à esquerda, personagem do jogador à
    direita** (`game.user.character`, senão o avatar do usuário); caixa de fala com nome +
    texto; clique/Enter avança; "Pular".
 4. Depois da última fala: **janela de loja avulsa** só desse NPC, reaproveitando o
-   cartão da loja (`npcSellCard`, `cartBlock`, `openShop`). **Não depender da aba NPCs
-   estar liberada** (o painel do jogador abre sempre em "Mapa").
+   cartão da loja (`npcSellCard`, `cartBlock`, `openShop`). **O jogador não tem mais
+   painel nem aba NPCs (T29): esta janela é a única porta de compra.** Não apague essas
+   funções ao fazer a limpeza do código de "visão do jogador".
 
 **Pronto quando:** testes de tela (editor, janela, sequência de falas, queda para o
 texto padrão, o jogador sem o diálogo habilitado não é interceptado); o experimento do

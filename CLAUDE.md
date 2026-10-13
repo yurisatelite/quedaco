@@ -86,7 +86,7 @@ O pacote resultante fica em `dist/quedaco-<versão>/quedaco`. `npm run release` 
 
 - Versão do repositório: **0.10.0** (`module.json` e `package.json`), fechada em 22/09/2026. As macros de `.local/` importam do módulo **instalado** no Foundry, que pode estar atrás do repositório — confira o que está publicado antes de uma macro depender de código novo.
 - O módulo antigo está desativado no mundo oficial.
-- Jogadores veem Criação de Personagens e as abas liberadas pela Mestra; ela vê NPCs, Guildas, Mapa, Monstros, Itens, Imbuir e Quests.
+- **O painel é só da Mestra** (T29, 13/10/2026): jogadores não abrem o painel nem veem abas "liberadas" — só chegam ao vendedor pelo token no mapa (T28, `docs/T29-PAINEL-SO-DA-MESTRA.md`). A criação de personagens mora no módulo separado. Abas da Mestra: NPCs, Guildas, Mapa, Monstros, Itens, Quests; o Imbuir fica guardado atrás do ⋯.
 - A progressão 1–12 usa os benefícios registrados nos documentos do sistema. Escolhas descritas apenas em prosa ainda exigem implementação e conferência individual.
 - Canal de atualização publicado em `https://github.com/yurisatelite/quedaco`. Siga `docs/ATUALIZACOES.md`: pacote público inclui Outfit/OFL e exclui Noka. Não substitua arquivos de versões publicadas; aumente a versão e publique nova release.
 

@@ -42,7 +42,7 @@ por atitude, condições do livro e pechincha.
 | Cobertura regional (arquétipos esperados x existentes) | `npcs.mjs: npcCoverage` — **a exibição na tela some na tarefa 8** |
 | Cartão de NPC na tela | `library.mjs: npcCard` (aba NPCs, e reaproveitado em `npcsForLocation`) |
 | Geração de NPC novo | macro `.local/Skyfall-Criador-de-Conteudo.js` (fora do git) |
-| Falta conhecido | nada pendente aqui — o painel da cena ativa (T6) já reaproveita `npcsForLocation`; ver `docs/PROGRESSO-MAPA-IMERSIVO.md` |
+| Falta conhecido | nada pendente aqui (o painel da cena ativa saiu em 13/10/2026 — ver `docs/T29-PAINEL-SO-DA-MESTRA.md`) |
 
 ## Guildas e Hansas
 
@@ -68,7 +68,7 @@ Atalho pra achar código (22/09/2026):
 | Banco de mapas e seleção visual | [map-bank.mjs](../src/map-bank.mjs) (fontes, 48 recomendações, saídas planejadas); [BANCO-DE-MAPAS.md](BANCO-DE-MAPAS.md) (catálogo); `panels/mapa-imersivo.mjs: renderAtlasPuzzle` (cartões e prévia); `app.mjs` (FilePicker e aplicação). O botão **Registrar fundos das cenas vinculadas** lê somente o `background.src` real de cenas já ligadas à localidade e grava os caminhos marcados no banco, sem criar, editar ou mover Scenes. |
 | Criar cenas com mapas escolhidos | `scene-atlas.mjs: missingPlaceScenePlan` (plano puro); `library.mjs: setMapBankFile, missingMappedScenes, createMappedScenes` (setting, prévia, Scene.create e save único no atlas) |
 | Lista (árvore de `<details>`) | `library.mjs: renderSceneAtlas` com `state.atlasView='list'`; acordeões lembram estado em `state.atlasOpen` via evento `toggle` em `app.mjs` |
-| Aba Cena Atual | `panels/mapa-imersivo.mjs: renderActiveScenePanel` (área `activeScene`) + `activeSceneDiagram` (vizinhança: `scene-atlas.mjs: sceneNeighborhood`) + `activeSceneNpcTree` (`scene-atlas.mjs: regionLocalityTree`) |
+| ~~Aba Cena Atual~~ | **Removida em 13/10/2026 (T29).** Sobraram os auxiliares puros `scene-atlas.mjs: sceneNeighborhood, regionLocalityTree` (testados, sem uso na tela) e o CSS `.sy-active-scene*`, `.sy-npc-tree*` — limpar quando mexer ali. |
 | World Explorer (módulo de terceiros) | [world-explorer.mjs](../src/world-explorer.mjs) — tudo blindado; `library.mjs: explorationButton`. Formato do dado dele: `docs/REFERENCIA-SKYFALL.md`, seção "Módulos de terceiros" |
 | Hooks | `main.mjs`: `canvasReady` (re-render), `deleteScene` (limpa entrada e posição), `updateScene` (pergunta ao ativar) |
 | Testes | [scene-atlas.test.mjs](../tests/scene-atlas.test.mjs), [world-explorer.test.mjs](../tests/world-explorer.test.mjs), `library.test.mjs` ("quebra-cabeça do Mapa Imersivo", "painel da cena ativa") |

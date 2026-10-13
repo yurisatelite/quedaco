@@ -28,8 +28,8 @@ No Foundry  [███████░░░░░░░░░░░░░░░�
 | A.2 | T25 §1.6 — topo "descolado" em todas as abas | ❌ | — | precisa de print com F12 do Yuri | 0% |
 | B | Teletransporte automático (Stairways ou Regions nativas) | ✅ | ✅ | ❌ ainda não testado | 70% |
 | C | **Conferir A e B no Foundry** (roteiro pronto) | — | — | 🟡 A (versão antiga) visto; B pendente | 40% |
-| D | Aba **Cena Atual**: mini-diagrama das cenas ligadas + NPCs em árvore por local + guildas/mercadores/rumor/liberar | ✅ 22/09 | ✅ | ❌ | 70% |
-| E | Perguntar ao ativar cena (T7) | ✅ | ✅ | ❌ ainda não testado | 70% |
+| D | ~~Aba Cena Atual~~ — **removida em 13/10/2026** (T29: sem painel de jogador e sem liberar localidade, deixou de fazer sentido) | — | — | — | — |
+| E | ~~Perguntar ao ativar cena (T7)~~ — **removida em 13/10/2026** (T29: não há mais "liberar localidade") | — | — | — | — |
 | F | Botão do World Explorer + contagem blindada de hexágonos (T15) | ✅ 22/09 | ✅ | ❌ | 70% |
 
 **Régua desta tabela:** 70% = código + teste com dado falso. Os 30% restantes só existem

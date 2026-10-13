@@ -1,5 +1,5 @@
 import {Catalog} from './catalog.mjs';
-import {CampaignLibrary} from './library.mjs';
+import {CampaignLibrary,navAreaEntries} from './library.mjs';
 import {ABILITIES,classRules,backgroundRules,startingMoney,conventionalRoll,validateAttributes,hitPoints,wallet,carryingCapacity} from './rules.mjs';
 import {buildCharacterPlan,validateBenefitChoices,resolvedPlanItems} from './benefits.mjs';
 import {buildTrainingPlan,resolveTraining,actorTrainingUpdate} from './training.mjs';
@@ -26,11 +26,15 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   async _renderHTML(){
     const sharedAreas=game.user.isGM?[]:[...new Set([...this.library.shared.areas.filter(a=>['npcs','guilds','map','monsters','items','imbue'].includes(a)),'quests'])];
     if(!game.user.isGM&&!sharedAreas.includes(this.area))this.area=sharedAreas[0]??'quests';
-    const areaLabels={npcs:'NPCs',guilds:'Guildas',map:'Mapa',activeScene:'Cena Atual',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'};
-    const areaIcons={npcs:'fa-masks-theater',guilds:'fa-shield-halved',map:'fa-map',activeScene:'fa-tower-broadcast',monsters:'fa-dragon',items:'fa-box-archive',imbue:'fa-wand-sparkles',quests:'fa-scroll'};
-    const areas=game.user.isGM?Object.entries(areaLabels):sharedAreas.map(a=>[a,areaLabels[a]]);
-    const areaNav=areas.length>1?`<div class="sy-area-nav">${areas.map(([id,label])=>`<button class="sy-area-btn" data-op="area" data-area="${id}" aria-current="${this.area===id?'page':'false'}"><i class="fa-solid ${areaIcons[id]||'fa-circle'}" aria-hidden="true"></i><span>${label}</span></button>`).join('')}</div>`:'';
-    return `<div class="sy-shell"><header><div class="sy-brand-lockup"><img src="modules/quedaco/assets/quedaco-logo.png" alt="QUEDAÇO — por Yuri Satélite"></div></header>${areaNav}${this.renderArea()}</div>`;
+    const areaLabels={npcs:'NPCs',guilds:'Guildas',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'};
+    const areaIcons={npcs:'fa-masks-theater',guilds:'fa-shield-halved',map:'fa-map',monsters:'fa-dragon',items:'fa-box-archive',imbue:'fa-wand-sparkles',quests:'fa-scroll'};
+    const showStored=game.user.isGM&&this.library.showStoredTools;
+    const areas=navAreaEntries(game.user.isGM?Object.entries(areaLabels):sharedAreas.map(a=>[a,areaLabels[a]]),{isGM:game.user.isGM,showStored});
+    if(!areas.some(([id])=>id===this.area)&&game.user.isGM)this.area='npcs';
+    // T29: o ⋯ traz de volta a aba Imbuir e as ferramentas de manutenção guardadas
+    const more=game.user.isGM?`<button class="sy-area-btn sy-area-more" data-op="lib-stored-toggle" aria-pressed="${showStored}" title="${showStored?'Guardar de novo':'Mostrar abas e ferramentas guardadas'}"><i class="fa-solid fa-ellipsis" aria-hidden="true"></i></button>`:'';
+    const areaNav=areas.length>1||more?`<div class="sy-area-nav">${areas.map(([id,label])=>`<button class="sy-area-btn" data-op="area" data-area="${id}" aria-current="${this.area===id?'page':'false'}"><i class="fa-solid ${areaIcons[id]||'fa-circle'}" aria-hidden="true"></i><span>${label}</span></button>`).join('')}${more}</div>`:'';
+    return `<div class="sy-shell"><header><div class="sy-brand-lockup"><img src="modules/quedaco/assets/quedaco-logo.png" alt="QUEDAÇO — por Yuri Satélite"></div></header>${areaNav}${this.library.storedToolsStrip()}${this.renderArea()}</div>`;
   }
   _replaceHTML(result,content){content.innerHTML=result;this.library.filter(content);content.addEventListener('input',this._libraryInput??=(event)=>{if(event.target.name==='libraryQuery'||event.target.matches?.('[data-monster-facet]'))this.library.filter(event.currentTarget);});}
   _scroller(){return this.element?.querySelector?.('.sy-layout>main, .sy-shell>main')??this.element?.querySelector?.('.window-content')??null;}
@@ -137,7 +141,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
   }
   stepDone(i){return !this.stepIssues(i).length;}
   renderArea(){
-    if(['npcs','guilds','map','activeScene','monsters','items','imbue','quests'].includes(this.area))return `${this.message?`<p class="sy-alert" role="status">${e(this.message)}</p>`:''}${this.library.render(this.area,!game.user.isGM)}`;
+    if(['npcs','guilds','map','monsters','items','imbue','quests'].includes(this.area))return `${this.message?`<p class="sy-alert" role="status">${e(this.message)}</p>`:''}${this.library.render(this.area,!game.user.isGM)}`;
     const definitions={npcs:['Mercadores','Aliados','Rivais','Figurantes'],map:['Regiões','Cidades e locais','Mapas e cenas','Encontros da região'],monsters:['Aquáticos','Terrestres','Aéreos','Outros'],items:['Armas','Armaduras','Equipamentos','Consumíveis'],quests:['Disponíveis','Ativas','Concluídas']};
     const titles={npcs:'NPCs',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'},items=definitions[this.area]??[];
     return `<main class="sy-empty-area"><small>PAINEL HÍBRIDO DA MESTRA</small><h2>${titles[this.area]}</h2><p>Os cartões desta área serão índices do QUEDAÇO ligados aos documentos nativos da mesa.</p><div class="sy-empty-grid">${items.map(item=>`<section><span class="sy-done sy-pending">·</span><h3>${item}</h3><small>Aguardando preenchimento e vínculo com o Foundry.</small></section>`).join('')}</div></main>`;
