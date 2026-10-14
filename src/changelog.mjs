@@ -1,5 +1,16 @@
 export const CHANGELOG = [
   {
+    version:'0.17.0',
+    date:'2026-10-13',
+    title:'Protocolo de Integração QUEDAÇO v1 completo',
+    notes:[
+      'ID do módulo: quedaco. contractVersion: 1.',
+      'Capabilities publicadas: npcDatabase, regionDatabase, campaignPanel, familyRegistry, explorerCatalog e npcLocation.',
+      'Métodos públicos: open, getStatus, openCampaign, listNpcs, listRegions, getExplorerCatalog, setNpcExplorerLocation e family (list, open, withCapability).',
+      'Integrações opcionais são reconhecidas por quedaco:register. O painel de campanha, mapas, localidades e NPCs continuam disponíveis sem módulos satélites.'
+    ]
+  },
+  {
     version:'0.16.0',
     date:'2026-10-13',
     title:'Módulos QUEDAÇO independentes e teia de integrações',
