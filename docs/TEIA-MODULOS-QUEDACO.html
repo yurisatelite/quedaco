@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QUEDAÇO · Teia de módulos</title>
+  <style>
+    :root{color-scheme:dark;--bg:#07131c;--panel:#0f2430;--line:#3e7181;--cyan:#44d7f2;--gold:#e4bc61;--muted:#a9c5cc}
+    *{box-sizing:border-box}body{margin:0;padding:32px;background:radial-gradient(circle at 50% 0,#123445,#07131c 58%);color:#edfaff;font:15px/1.5 system-ui,sans-serif}main{max-width:1180px;margin:auto}header{display:flex;justify-content:space-between;align-items:end;gap:24px;margin-bottom:24px;border-bottom:1px solid var(--line);padding-bottom:18px}h1{margin:0;color:var(--cyan);font:800 clamp(28px,5vw,52px) Georgia,serif;letter-spacing:.06em}header p{max-width:580px;margin:0;color:var(--muted)}.legend{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 22px;padding:12px;background:#0b1d27;border:1px solid #2d5664;border-radius:8px}.legend span{padding:5px 9px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}.legend .core{color:var(--cyan);border-color:var(--cyan)}.legend .optional{color:var(--gold);border-color:var(--gold)}.web{position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;padding:26px;border:1px solid #315c6b;border-radius:12px;background:#081923cc;overflow:hidden}.web:before{content:"";position:absolute;inset:50% 8% auto;height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent);opacity:.8}.node{position:relative;z-index:1;display:flex;min-height:145px;flex-direction:column;gap:8px;padding:16px;color:#e9f9fc;background:linear-gradient(160deg,#153849,#0b202b);border:1px solid #3a7181;border-radius:9px;box-shadow:0 8px 22px #0004;cursor:pointer;transition:.15s}.node:hover,.node:focus-visible,.node.active{border-color:var(--cyan);box-shadow:0 0 0 2px #44d7f255,0 10px 26px #0006;outline:0}.node.core{border-color:var(--cyan);grid-column:2}.node h2{margin:0;font-size:18px;color:var(--cyan)}.node small{color:var(--gold);font-weight:700}.node p{margin:0;color:var(--muted);font-size:13px}.node ul{margin:auto 0 0;padding-left:18px;color:#d5edf2;font-size:12px}.details{min-height:110px;margin-top:18px;padding:16px;background:#0d222d;border:1px solid #315c6b;border-radius:9px}.details h2{margin:0 0 6px;color:var(--cyan);font-size:19px}.details p{margin:0;color:var(--muted)}.details code{color:#d4f5fb}.instructions{margin-top:20px;padding:16px;background:#0b1c25;border-left:3px solid var(--gold)}.instructions strong{color:var(--gold)}@media(max-width:760px){body{padding:18px}header{display:block}.web{grid-template-columns:1fr;padding:14px}.node.core{grid-column:auto}.web:before{display:none}}
+  </style>
+</head>
+<body>
+<main>
+  <header><div><h1>QUEDAÇO</h1><p>Teia de módulos e capacidades</p></div><p>Este cadastro é visual e manual. Cada módulo continua instalável e utilizável sozinho; as linhas representam integração opcional pelo Protocolo de Integração QUEDAÇO.</p></header>
+  <div class="legend"><span class="core">Núcleo de campanha</span><span>Satélite independente</span><span class="optional">Integração opcional</span><span>Contrato atual: v1</span></div>
+  <section class="web" aria-label="Módulos QUEDAÇO">
+    <button class="node" data-id="quedaco-personagens"><small>quedaco-personagens-skyfall-rpg</small><h2>Personagens Skyfall RPG</h2><p>Criação e edição de personagens.</p><ul><li>characterCreator</li><li>createActor</li></ul></button>
+    <button class="node" data-id="quedaco-calendario"><small>quedaco-calendario</small><h2>Calendário Skyfall</h2><p>Data, hora, ciclos e iluminação.</p><ul><li>calendar</li><li>currentDate</li><li>daylightControl</li></ul></button>
+    <button class="node" data-id="quedaco-tabelas"><small>quedaco-tabelas</small><h2>Tabelas</h2><p>Geradores e sorteios encadeados.</p><ul><li>tables</li><li>rollTables</li></ul></button>
+    <button class="node core" data-id="quedaco"><small>quedaco</small><h2>QUEDAÇO · Núcleo</h2><p>Campanha, NPCs, guildas, regiões, cenas e Mapa Imersivo.</p><ul><li>campaignPanel</li><li>mapAtlas</li><li>familyRegistry</li></ul></button>
+    <button class="node" data-id="quedaco-jornal"><small>quedaco-jornal-da-queda</small><h2>Jornal da Queda</h2><p>Edições, notícias, rumores e jornais compráveis.</p><ul><li>newspaper</li><li>createEdition</li></ul></button>
+    <button class="node" data-id="quedaco-quests"><small>quedaco-registro-missoes</small><h2>Registro de Missões</h2><p>Objetivos, etapas e recompensas.</p><ul><li>quests</li><li>questLog</li></ul></button>
+    <button class="node" data-id="quedaco-monstros"><small>quedaco-criador-monstros</small><h2>Criador de Monstros</h2><p>Fichas, famílias e encontros.</p><ul><li>monsterCreator</li><li>monsterDatabase</li></ul></button>
+    <button class="node" data-id="quedaco-explorador"><small>quedaco-explorador</small><h2>World Explorer</h2><p>Exploração hexagonal e descoberta.</p><ul><li>explorer</li><li>hexDiscovery</li></ul></button>
+    <button class="node" data-id="quedaco-vendedores"><small>quedaco-npcs-de-venda</small><h2>NPCs de venda</h2><p>Mercadores, estoque e compras.</p><ul><li>merchants</li><li>shop</li></ul></button>
+  </section>
+  <section class="details" id="details"><h2>Selecione um módulo</h2><p>Os detalhes da API e das integrações opcionais aparecerão aqui.</p></section>
+  <p class="instructions"><strong>Quando adicionar um módulo:</strong> inclua um novo card nesta seção, registre o id, capacidades, versão do contrato e possíveis integrações opcionais. O código do módulo deve emitir <code>Hooks.callAll("quedaco:register", descriptor)</code> no Hook <code>ready</code>.</p>
+</main>
+<script>
+  const descriptions={quedaco:['Núcleo da campanha','Reconhece os módulos pela API pública; não importa arquivos nem cria dependências internas.'], 'quedaco-personagens':['Criador de personagens','Pode ser aberto sem o núcleo e anuncia characterCreator/createActor.'], 'quedaco-calendario':['Calendário Skyfall','Fornece data, hora, ciclos e iluminação quando estiver ativo.'], 'quedaco-tabelas':['Tabelas','Oferece geradores, pesos, filtros e sorteios.'], 'quedaco-jornal':['Jornal da Queda','Cria e distribui edições; usa o calendário somente quando essa integração existir.'], 'quedaco-quests':['Registro de Missões','Mantém missões e progresso da campanha.'], 'quedaco-monstros':['Criador de Monstros','Produz fichas e dados de encontro.'], 'quedaco-explorador':['World Explorer','Cuida da exploração e descoberta hexagonal.'], 'quedaco-vendedores':['NPCs de venda','Cuida do comércio, estoque e compra.']};
+  const details=document.querySelector('#details');document.querySelectorAll('.node').forEach(node=>node.addEventListener('click',()=>{document.querySelectorAll('.node').forEach(item=>item.classList.remove('active'));node.classList.add('active');const [title,text]=descriptions[node.dataset.id]??['Módulo','Sem descrição'];details.innerHTML=`<h2>${title}</h2><p>${text}</p>`;}));
+</script>
+</body>
+</html>

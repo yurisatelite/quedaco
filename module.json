@@ -2,10 +2,10 @@
   "id": "quedaco",
   "title": "QUEDAÇO",
   "description": "Controle de campanha, mapas, NPCs, guildas e conteúdo para Skyfall RPG.",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "url": "https://github.com/yurisatelite/quedaco",
   "manifest": "https://github.com/yurisatelite/quedaco/releases/latest/download/module.json",
-  "download": "https://github.com/yurisatelite/quedaco/releases/download/v0.15.0/quedaco.zip",
+  "download": "https://github.com/yurisatelite/quedaco/releases/download/v0.16.0/quedaco.zip",
   "authors": [
     {
       "name": "Yuri"
@@ -28,55 +28,12 @@
     ],
     "recommends": [
       {
-        "id": "quedaco-personagens-skyfall-rpg",
-        "type": "module",
-        "compatibility": {
-          "minimum": "0.1.3"
-        },
-        "manifest": "https://github.com/yurisatelite/quedaco-personagens-skyfall-rpg/releases/latest/download/module.json"
-      },
-      {
         "id": "forien-quest-log",
         "type": "module",
         "compatibility": {
           "minimum": "0.9.0"
         },
         "manifest": "https://github.com/Forien/foundryvtt-forien-quest-log/releases/latest/download/module.json"
-      },
-      {
-        "id": "quedaco-calendario",
-        "type": "module",
-        "compatibility": {
-          "minimum": "0.3.1"
-        }
-      },
-      {
-        "id": "quedaco-explorador",
-        "type": "module",
-        "compatibility": {
-          "minimum": "0.3.0"
-        }
-      },
-      {
-        "id": "quedaco-tabelas",
-        "type": "module",
-        "compatibility": {
-          "minimum": "0.4.0"
-        }
-      },
-      {
-        "id": "quedaco-npcs-de-venda",
-        "type": "module",
-        "compatibility": {
-          "minimum": "0.2.0"
-        }
-      },
-      {
-        "id": "quedaco-jornal-da-queda",
-        "type": "module",
-        "compatibility": {
-          "minimum": "0.3.4"
-        }
       }
     ]
   },

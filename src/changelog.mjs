@@ -1,5 +1,15 @@
 export const CHANGELOG = [
   {
+    version:'0.16.0',
+    date:'2026-10-13',
+    title:'Módulos QUEDAÇO independentes e teia de integrações',
+    notes:[
+      'O QUEDAÇO principal não pede mais os módulos satélites como recomendações de instalação: Calendário, Explorador, Tabelas, Jornal, Personagens e outros podem funcionar sozinhos.',
+      'A documentação ganhou a Teia de Módulos QUEDAÇO, um cadastro visual para acompanhar os módulos, capacidades e integrações opcionais.',
+      'O reconhecimento continua sendo feito somente pela API pública do Protocolo de Integração QUEDAÇO, sem importar arquivos de outro módulo.'
+    ]
+  },
+  {
     version:'0.15.0',
     date:'2026-10-13',
     title:'Família QUEDAÇO: o painel reconhece os módulos satélites',
