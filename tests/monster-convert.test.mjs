@@ -379,7 +379,19 @@ test('attachCreatureRoleItems sem identificador correspondente no compêndio, se
 });
 
 // ── T24 §3 — biografia em ficha de campo ──
-import {alignmentPhrase,buildFieldSheet,tacticsFromItems} from '../src/monster-convert.mjs';
+import {alignmentPhrase,buildFieldSheet,tacticsFromItems,originalTextFromBiography,auditMonsterSheet,repairMonsterItems} from '../src/monster-convert.mjs';
+
+test('auditoria lê a seção Original da biografia e encontra ataques/traços ausentes',()=>{
+  const biography='<details><summary>Original (D&amp;D 5e) — traços e ações</summary><p>Keen Smell. The creature has advantage on smell checks.</p><p>Bite. Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 7 (2d4 + 2) piercing damage.</p></details>';
+  const actor={name:'Lobo',system:{biography},items:[{name:'Bite (Ataque Corpo a Corpo)'}]};
+  assert.match(originalTextFromBiography(biography),/Keen Smell/);
+  const audit=auditMonsterSheet(actor);
+  assert.deepEqual(audit.missing.attacks,[]);
+  assert.deepEqual(audit.missing.traits.map(item=>item.name),['Keen Smell']);
+  assert.equal(audit.complete,false);
+  const repaired=repairMonsterItems(actor);
+  assert.deepEqual(repaired.items.map(item=>item.name),['Keen Smell']);
+});
 
 test('ficha de campo: temperamento sai da tendência real do SRD, sem nome de plano ou deus',()=>{
   assert.match(alignmentPhrase('neutral good (50%) or neutral evil (50%)'),/^Metade .*ajudar.*outra metade .*cruel.*Role 1d2/);

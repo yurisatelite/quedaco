@@ -183,6 +183,41 @@ export function buildPassiveItem(name,descriptionHtml,{activation='passive'}={})
   };
 }
 
+/** Recupera o texto D&D preservado na biografia de uma ficha já importada. */
+export function originalTextFromBiography(biography=''){
+  const html=String(biography||'');
+  const match=html.match(/<details><summary>Original \(D&amp;D 5e\)[^<]*<\/summary>([\s\S]*?)<\/details>/i);
+  if(!match)return '';
+  return match[1].replace(/<br\s*\/?>/gi,'\n').replace(/<\/p>\s*<p>/gi,'\n\n').replace(/<[^>]+>/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/[ \t]+\n/g,'\n').trim();
+}
+
+/**
+ * Auditoria não destrutiva de uma ficha convertida. Ela compara os nomes que o
+ * texto original exige com os Items atuais, permitindo corrigir importações
+ * antigas sem duplicar ataques ou traços já existentes.
+ */
+export function auditMonsterSheet(actor){
+  const biography=actor?.system?.biography??actor?.system?.details?.description??'';
+  const original=originalTextFromBiography(biography);
+  const expectedAttacks=parseAttacksFromText(original);
+  const expectedTraits=parseTraitBlocks(original,{skipNames:['multiattack','innate spellcasting']});
+  const current=(actor?.items??[]).map(item=>String(item?.name??'').trim());
+  const normalized=name=>String(name).toLocaleLowerCase('pt-BR').replace(/\s*\([^)]*\)\s*$/,'').replace(/[^\p{L}\p{N}]+/gu,'');
+  const has=name=>current.some(item=>normalized(item)===normalized(name));
+  const missingAttacks=expectedAttacks.filter(item=>!has(item.name));
+  const missingTraits=expectedTraits.filter(item=>!has(item.name));
+  const hasMultiattack=/\bmultiattack\b/i.test(original)&&!current.some(item=>/ataque múltiplo/i.test(item));
+  return {name:actor?.name??'',originalFound:Boolean(original),expected:{attacks:expectedAttacks,traits:expectedTraits,multiattack:/\bmultiattack\b/i.test(original)},current,missing:{attacks:missingAttacks,traits:missingTraits,multiattack:hasMultiattack},complete:Boolean(original)&&!missingAttacks.length&&!missingTraits.length&&!hasMultiattack};
+}
+
+/** Gera somente os Items ausentes detectados por `auditMonsterSheet`. */
+export function repairMonsterItems(actor){
+  const audit=auditMonsterSheet(actor); if(!audit.originalFound)return {audit,items:[]};
+  const items=[...audit.missing.traits.map(item=>buildPassiveItem(item.name,`<p><b>Efeito:</b> ${item.description}</p>`)),...audit.missing.attacks.map(buildAttackItem)];
+  if(audit.missing.multiattack)items.push(buildMultiattackItem({text:originalTextFromBiography(actor.system?.biography??'')},audit.expected.attacks.map(item=>item.name)));
+  return {audit,items};
+}
+
 /** "Nome. Descrição." → blocos separados por parágrafo em branco (Open5e já entrega assim,
  * um `special_ability`/`action` por bloco). Não tenta separar traços colados numa linha só
  * (5e.tools às vezes junta tudo — esses ficam só na biografia, como já estava). */
