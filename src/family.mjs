@@ -9,6 +9,7 @@ export const CONTRACT_VERSION=1;
 
 /** Módulos conhecidos da família: rótulo/ícone de reserva para quando o descritor vier pobre. */
 export const KNOWN_MODULES=Object.freeze({
+  'quedaco-calendar':{icon:'fa-calendar-days',hint:'Calendário Skyfall (ID do pacote migrado)'},
   'quedaco-calendario':{icon:'fa-calendar-days',hint:'Calendário lunar/solar de Opath, integrado ao SmallTime'},
   'quedaco-explorador':{icon:'fa-compass',hint:'Exploração hexagonal e áreas do mapa'},
   'quedaco-tabelas':{icon:'fa-dice-d20',hint:'Criador visual de tabelas aleatórias'},

@@ -15,5 +15,5 @@ export function renderFamilyArea(registry,game=globalThis.game){
   </article>`).join('');
   const absent=missing.length?`<section class="sy-family-missing"><h3>Ainda não conectados</h3><ul>${missing.map(m=>`<li><i class="fa-solid ${esc(m.icon)}" aria-hidden="true"></i><span><strong>${esc(m.id)}</strong> — ${esc(m.hint)}</span><small>${m.installed?(m.active?'ativo, mas sem a API do protocolo (atualize)':'instalado, desativado'):'não instalado'}</small></li>`).join('')}</ul></section>`:'';
   return `<main class="sy-family"><small>FAMÍLIA QUEDAÇO</small><h2>Módulos</h2><p class="sy-note">Cada módulo funciona sozinho. Aqui o QUEDAÇO reconhece os que seguem o Protocolo de Integração (contrato v1) e abre a interface deles.</p>
-  <div class="sy-family-grid">${cards||'<p class="sy-note">Nenhum módulo da família está ativo e conectado ainda.</p>'}</div>${absent}</main>`;
+  <button data-op="catalog-edit"><i class="fa-solid fa-database"></i> Cadastros compartilhados</button><div class="sy-family-grid">${cards||'<p class="sy-note">Nenhum módulo da família está ativo e conectado ainda.</p>'}</div>${absent}</main>`;
 }

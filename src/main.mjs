@@ -11,6 +11,8 @@ import {removeAtlasScene,resolveSceneLocality} from './scene-atlas.mjs';
 import {PLACES,REGIONS} from './book-world.mjs';
 import {explorerCatalog,publicRegions,registeredNpcs,setNpcExplorerLocation} from './integration.mjs';
 import {createFamilyRegistry} from './family.mjs';
+import {createWorldCatalogService,registerWorldCatalog} from './world-catalog.mjs';
+let worldCatalog;
 let app;
 let family;
 const LAST_SEEN_VERSION='lastSeenVersion';
@@ -35,10 +37,10 @@ function showChangelog(entries,current){
   dialog.addEventListener('close',()=>{void game.settings.set(MODULE_ID,LAST_SEEN_VERSION,current);},{once:true});
   dialog.render({force:true});
 }
-Hooks.once('init',()=>{family=createFamilyRegistry({game,hooks:Hooks,onChange:()=>{if(app?.rendered&&app.area==='modules')app.render(false);}});registerBranding();registerLibrarySettings(game,()=>{if(app?.rendered)app.render(false);});registerArcaneOverload(game);registerSheetV2(MODULE_ID);game.settings.register(MODULE_ID,LAST_SEEN_VERSION,{scope:'client',config:false,type:String,default:''});});
+Hooks.once('init',()=>{registerWorldCatalog(game,Hooks);worldCatalog=createWorldCatalogService(game,Hooks);family=createFamilyRegistry({game,hooks:Hooks,onChange:()=>{if(app?.rendered&&app.area==='modules')app.render(false);}});registerBranding();registerLibrarySettings(game,()=>{if(app?.rendered)app.render(false);});registerArcaneOverload(game);registerSheetV2(MODULE_ID);game.settings.register(MODULE_ID,LAST_SEEN_VERSION,{scope:'client',config:false,type:String,default:''});});
 Hooks.once('ready',()=>{
   const module=game.modules.get(MODULE_ID);
-  const descriptor=Object.freeze({family:'quedaco',contractVersion:1,id:MODULE_ID,title:module.title,version:module.version,capabilities:Object.freeze({npcDatabase:true,regionDatabase:true,campaignPanel:true,familyRegistry:true,explorerCatalog:true,npcLocation:true}),getStatus:()=>({ready:true}),open:openCampaign,openCampaign,listNpcs:()=>registeredNpcs(game),listRegions:publicRegions,getExplorerCatalog:explorerCatalog,setNpcExplorerLocation:(uuid,location)=>setNpcExplorerLocation(game,uuid,location),family:Object.freeze({list:()=>family.scan().list(),open:id=>family.open(id),withCapability:capability=>family.withCapability(capability)})});
+  const descriptor=Object.freeze({family:'quedaco',contractVersion:1,id:MODULE_ID,title:module.title,version:module.version,capabilities:Object.freeze({npcDatabase:true,regionDatabase:true,campaignPanel:true,familyRegistry:true,explorerCatalog:true,npcLocation:true,worldCatalog:true,localityDatabase:true,tagDatabase:true,climateDatabase:true}),getStatus:()=>({ready:true}),open:openCampaign,openCampaign,listNpcs:()=>registeredNpcs(game),...worldCatalog,setNpcExplorerLocation:(uuid,location)=>setNpcExplorerLocation(game,uuid,location),familyRegistry:Object.freeze({list:()=>family.scan().list(),open:id=>family.open(id),withCapability:capability=>family.withCapability(capability)})});
   module.api=descriptor;family.scan();Hooks.callAll('quedaco:register',descriptor);void loadBranding();
   const current=String(module.version??''),seen=String(game.settings.get(MODULE_ID,LAST_SEEN_VERSION)??'');
   if(seen!==current&&isNewer(current,seen)){const fresh=entriesSince(CHANGELOG,seen);if(fresh.length)showChangelog(fresh,current);}
@@ -88,3 +90,5 @@ Hooks.on('deleteScene',(scene)=>{
     void game.settings.set(MODULE_ID,SCENE_ATLAS_KEY,removeAtlasScene(atlas,scene.id)).catch(error=>console.error(MODULE_ID,'não foi possível atualizar o Mapa Imersivo após apagar a Scene.',error));
   }catch(error){console.error(MODULE_ID,'não foi possível ler o Mapa Imersivo após apagar a Scene.',error);}
 });
+
+Hooks.on('quedaco:catalog-updated',()=>{if(app?.rendered)app.render(false);});

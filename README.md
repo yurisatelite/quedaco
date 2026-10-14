@@ -38,3 +38,8 @@ O projeto inclui [`CLAUDE.md`](CLAUDE.md) para uso com Claude Code. O fluxo loca
 ## Conteúdo
 
 As regras foram conferidas no Livro Básico DIGITAL 1.25 fornecido pelo usuário. O repositório não redistribui textos, ilustrações nem compêndios do livro; esses materiais são lidos no Foundry conforme as permissões da mesa.
+
+
+## Cadastros compartilhados
+
+Abra Módulos → Cadastros compartilhados para cadastrar regiões, localidades, tags e perfis de clima. Os módulos satélites consultam a API pública quando o núcleo estiver ativo. Contrato, exemplos e limitações em [docs/CADASTROS-COMPARTILHADOS.md](docs/CADASTROS-COMPARTILHADOS.md).

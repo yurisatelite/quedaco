@@ -1,13 +1,15 @@
+import {createWorldCatalogService} from './world-catalog.mjs';
 import { PLACES, REGIONS } from './book-world.mjs';
 import { NPC_ROLES, adoptNpcFlag, isGeneratedNpc, npcFlag } from './npcs.mjs';
 
 /** Contrato público e somente-leitura para módulos satélites do QUEDAÇO. */
 export function registeredNpcs(game) {
+  let regions=REGIONS,places=PLACES;try{const c=createWorldCatalogService(game).getWorldCatalog();regions=c.regions;places=c.places;}catch{}
   return Array.from(game?.actors ?? []).filter(actor => actor?.visible !== false && isGeneratedNpc(actor)).map(actor => {
     const flag = npcFlag(actor) ?? adoptNpcFlag(actor);
-    const place = PLACES.find(entry => entry.id === flag.placeId);
+    const place = places.find(entry => entry.id === flag.placeId);
     const regionId = flag.regionId || place?.regionId || '';
-    const region = REGIONS.find(entry => entry.id === regionId);
+    const region = regions.find(entry => entry.id === regionId);
     return {
       id: actor.id,
       uuid: actor.uuid ?? `Actor.${actor.id}`,
@@ -47,8 +49,9 @@ export async function setNpcExplorerLocation(game, actorUuid, location) {
   const hexId = String(location?.hexId ?? ''), sceneId = String(location?.sceneId ?? '');
   if (!hexId || hexId.length > 200 || !sceneId) throw Error('Área inválida.');
   const update = { 'flags.quedaco.npc.explorerLocation': { hexId, sceneId } };
-  if (PLACES.some(p => p.id === location.placeId)) update['flags.quedaco.npc.placeId'] = location.placeId;
-  if (REGIONS.some(r => r.id === location.regionId)) update['flags.quedaco.npc.regionId'] = location.regionId;
+  const c=createWorldCatalogService(game).getWorldCatalog();
+  if (c.places.some(p => p.id === location.placeId)) update['flags.quedaco.npc.placeId'] = location.placeId;
+  if (c.regions.some(r => r.id === location.regionId)) update['flags.quedaco.npc.regionId'] = location.regionId;
   await actor.update(update);
   return true;
 }

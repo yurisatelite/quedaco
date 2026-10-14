@@ -1,4 +1,10 @@
 export const CHANGELOG = [
+  {version:'0.18.0',date:'2026-10-14',title:'Cadastros compartilhados do mundo',notes:[
+    'A Mestra pode cadastrar e editar regiões, localidades, tags e perfis de clima na aba Módulos, preservando IDs e vínculos ao inativar entradas.',
+    'API pública de catálogo com aliases, hierarquia validada, revisão e eventos de sincronização. Os cadastros alimentam NPCs e Mapa Imersivo.',
+    'Integrações opcionais para Jornal, Tabelas e Explorador; climas são perfis configuráveis, sem efeitos mecânicos automáticos.',
+    'Corrigida a identidade do protocolo: family permanece a string quedaco e o registro passa a se chamar familyRegistry.'
+  ]},
   {
     version:'0.17.0',
     date:'2026-10-13',

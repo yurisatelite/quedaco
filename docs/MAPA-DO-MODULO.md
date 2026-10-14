@@ -155,3 +155,19 @@ rodar manualmente de vez em quando, é barulhento pelo estilo de override do arq
 4. Pra saber o que existe *no mundo agora* (quantos NPCs, quais guildas estão em jogo,
    etc.), não dá pra ler isto — isto é o código. Use o snapshot do mundo:
    **[COMO-CONSULTAR-O-MUNDO.md](COMO-CONSULTAR-O-MUNDO.md)**.
+
+
+## Cadastros compartilhados (14/10/2026)
+
+Contrato e roteiro em [CADASTROS-COMPARTILHADOS.md](CADASTROS-COMPARTILHADOS.md).
+
+| Peça | Onde |
+|---|---|
+| Catálogo público agregado, validação, revisão, aliases, perfis ambientais | src/world-catalog.mjs — baseWorldCatalog, updateCatalogRecord, createWorldCatalogService |
+| Editor da Mestra, salvo apenas por botão | src/panels/world-catalog.mjs — openWorldCatalogEditor, botão na aba Módulos |
+| API de descoberta | main.mjs — family é string; objeto passa a familyRegistry; capability worldCatalog |
+| Integração no painel | library.mjs — catalogRegions/catalogPlaces; panels/mapa-imersivo.mjs |
+| Sincronização | setting worldCatalog → quedaco:catalog-updated |
+| Testes | tests/world-catalog.test.mjs; DOM falso do editor em .local/verify-catalog-editor.mjs |
+
+Localidades personalizadas entram no Mapa Imersivo e nos seletores. O foco reversível de Thur Thur continua respeitado. O novo cadastro amplia metadados; não cria Actors, Scenes ou dados dos satélites automaticamente.

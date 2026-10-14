@@ -7,6 +7,7 @@ import {buildClassEquipmentPlan,buildBackgroundEquipmentPlan,resolveEquipmentPla
 import {MODULE_ID,escapeHTML as e,safeImage,baixarArquivo,createDraft,addResolvedPlan,addInventory,refillResources,applyHitPointProgression,finalizeClassProgression,finalizePathProgression} from './adapter.mjs';
 import {classProgression,requiresSpellcasting} from './progression.mjs';
 import {clampPan,zoomToPoint} from './map-view.mjs';
+import {openWorldCatalogEditor} from './panels/world-catalog.mjs';
 import {renderFamilyArea} from './family-view.mjs';
 const STEPS=['Conceito','Legado','Herança','Maldição','Antecedente','Classe','Progressão e benefícios','Atributos e vida','Perícias e proficiências','Dinheiro','Equipamento','Retrato e token','Revisão'];
 const TYPES={1:'legacy',2:'heritage',3:'curse',4:'background',5:'class'};
@@ -259,6 +260,7 @@ export class CreatorApp extends foundry.applications.api.ApplicationV2 {
     if(button.dataset.op==='lib-region-carousel'){const strip=this.element?.querySelector('.sy-region-carousel');if(strip)strip.scrollBy({left:(button.dataset.id==='next'?1:-1)*240,behavior:'smooth'});return;}
     this.busy=true;button.disabled=true;this.message='';const navigation=['area','step','previous','next'].includes(button.dataset.op);this.element?.querySelector?.('.sy-shell')?.insertAdjacentHTML('beforeend','<div class="sy-busy" role="status"><span></span><strong>Carregando…</strong></div>');
     try{const {op,uuid,type,kind}=button.dataset;
+      if(op==='catalog-edit')await openWorldCatalogEditor(game.modules.get('quedaco').api);
       if(op==='family-open'){const ok=await this.family?.open(button.dataset.module);if(!ok)ui.notifications.warn('Este módulo não está ativo nesta mesa.');}
       if(op==='area'){const target=button.dataset.area;if(target!=='quests'&&!game.user.isGM&&!this.library.shared.areas.includes(target))throw Error('Esta área ainda não foi liberada pelo mestre.');this.area=target;if(this.area==='monsters'&&game.user.isGM)await this.library.loadActors();if(this.area==='guilds')await this.library.loadSealImages();}
       if(op==='lib-place-img'){const raw=button.dataset.id;if(raw.endsWith(':'))await this.library.setPlaceImage(raw.slice(0,-1),'');else{const FP=foundry.applications.apps.FilePicker.implementation;new FP({type:'image',current:this.library.placeImages[raw]||'',callback:async path=>{await this.library.setPlaceImage(raw,path);this.render(true);}}).render(true);}}

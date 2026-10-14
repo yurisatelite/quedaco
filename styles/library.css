@@ -731,3 +731,7 @@
 .sy-family-missing ul{display:flex;flex-direction:column;gap:8px;margin:8px 0 0;padding:0;list-style:none}
 .sy-family-missing li{display:flex;align-items:center;gap:8px}
 .sy-family-missing small{margin-left:auto;opacity:.7}
+
+/* Editor de cadastros compartilhados: campos com espaço explícito. */
+.sy-catalog-editor{display:grid;gap:12px;max-height:65vh;overflow:auto;padding:16px}
+.sy-catalog-editor label{display:flex;flex-direction:column;gap:8px}
