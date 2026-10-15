@@ -39,11 +39,23 @@ API disponível:
 | getEnvironment(placeId) | Clima local/herdado e ID da origem, ou null |
 | getImageKey('region' ou 'place', id) | Chave canônica; não presume caminho de arquivo |
 | getMapLinks(placeId) | Cenas diretamente vinculadas e acessíveis; não revela cenas ocultas |
+| listOrganizations({regionId}) | Organizações de Ambientação acessíveis ao usuário atual |
+| getOrganization(id) | Organização ou null |
+| listAmbientNpcs({organizationId, regionId}) | Dossiês de NPC da Ambientação; não cria Actors |
 | upsertCatalogRecord(grupo, registro, {expectedRevision}) | Cria/edita pelo proprietário; somente Mestra |
 | getExplorerCatalog() | Adaptador de compatibilidade: regions, places, tags |
 | familyRegistry.list/open/withCapability | Registro da família |
 
 `family` é a string `quedaco`. O objeto de registro agora se chama `familyRegistry`, corrigindo a colisão de nomes do contrato anterior. Versão do contrato de descoberta continua 1; versão do esquema de dados é 1, independente da versão do módulo.
+
+## Ambientação
+
+O catálogo também oferece dossiês iniciais para DIPS e COPA. Organizações e
+dossiês são referências da campanha: não criam nem modificam Actors, Tokens ou
+Scenes. Por enquanto são leitura pública da API apenas para a Mestra; satélites
+devem consultar `listOrganizations`/`listAmbientNpcs` quando a capability
+`ambientDatabase` estiver ativa e usar fallback próprio quando o QUEDAÇO não
+estiver instalado.
 
 Grupos aceitos por upsertCatalogRecord: regions, places, tags, climates. Registros públicos devem informar visibility:'public'; os novos registros privados recebem visibility:'gm'. Todos os retornos são dados destacados, sem objetos Foundry ou referências mutáveis ao armazenamento. O serviço serializa gravações do mesmo cliente. expectedRevision rejeita formulários desatualizados; a fila não é uma transação distribuída entre múltiplos GMs.
 

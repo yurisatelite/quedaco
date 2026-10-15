@@ -7,6 +7,8 @@ actors.get=id=>actors.find(a=>a.id===id);
 const scenes=[{id:'s1',uuid:'Scene.s1',name:'Praça central de Alberich com um nome bastante comprido',visible:true,img:blank,background:{src:blank}}];scenes.get=id=>scenes.find(s=>s.id===id);
 globalThis.game={user:{isGM:true,id:'gm'},actors,scenes,folders:[],packs:[],items:[],journal:[],modules:new Map(),settings:{get:(_m,k)=>store[k],set:async(_m,k,v)=>{store[k]=v;}},system:{id:'skyfall'}};
 globalThis.ui={notifications:{warn(){},error(){},info(){}}};
+const {createWorldCatalogService}=await import('/src/world-catalog.mjs');
+game.modules.set('quedaco',{api:createWorldCatalogService(game)});
 const {CampaignApp}=await import('/src/app.mjs');
 const {createFamilyRegistry}=await import('/src/family.mjs');
 const app=new CampaignApp();app.loading=false;

@@ -4,6 +4,7 @@ import {MODULE_ID,escapeHTML as e} from './adapter.mjs';
 import {clampPan,zoomToPoint} from './map-view.mjs';
 import {openWorldCatalogEditor} from './panels/world-catalog.mjs';
 import {renderFamilyArea} from './family-view.mjs';
+import {renderAmbientacao} from './panels/ambientacao.mjs';
 export class CampaignApp extends foundry.applications.api.ApplicationV2 {
   static DEFAULT_OPTIONS={id:'quedaco-control',classes:['sy-creator'],tag:'section',window:{title:'QUEDAÇO',resizable:true},position:{width:1180,height:820}};
   constructor(options={}) {
@@ -13,8 +14,8 @@ export class CampaignApp extends foundry.applications.api.ApplicationV2 {
   async _renderHTML(){
     const sharedAreas=game.user.isGM?[]:[...new Set([...this.library.shared.areas.filter(a=>['npcs','guilds','map','monsters','items','imbue'].includes(a)),'quests'])];
     if(!game.user.isGM&&!sharedAreas.includes(this.area))this.area=sharedAreas[0]??'quests';
-    const areaLabels={npcs:'NPCs',guilds:'Guildas',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests',modules:'Módulos'};
-    const areaIcons={npcs:'fa-masks-theater',guilds:'fa-shield-halved',map:'fa-map',monsters:'fa-dragon',items:'fa-box-archive',imbue:'fa-wand-sparkles',quests:'fa-scroll',modules:'fa-puzzle-piece'};
+    const areaLabels={npcs:'NPCs',guilds:'Guildas',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests',ambientacao:'Ambientação',modules:'Módulos'};
+    const areaIcons={npcs:'fa-masks-theater',guilds:'fa-shield-halved',map:'fa-map',monsters:'fa-dragon',items:'fa-box-archive',imbue:'fa-wand-sparkles',quests:'fa-scroll',ambientacao:'fa-landmark',modules:'fa-puzzle-piece'};
     const showStored=game.user.isGM&&this.library.showStoredTools;
     const areas=navAreaEntries(game.user.isGM?Object.entries(areaLabels):sharedAreas.map(a=>[a,areaLabels[a]]),{isGM:game.user.isGM,showStored});
     if(!areas.some(([id])=>id===this.area)&&game.user.isGM)this.area='npcs';
@@ -113,6 +114,7 @@ export class CampaignApp extends foundry.applications.api.ApplicationV2 {
   }
   renderArea(){
     if(this.area==='modules'&&game.user.isGM)return renderFamilyArea(this.family);
+    if(this.area==='ambientacao'&&game.user.isGM)return renderAmbientacao(game.modules.get(MODULE_ID).api);
     if(['npcs','guilds','map','monsters','items','imbue','quests'].includes(this.area))return `${this.message?`<p class="sy-alert" role="status">${e(this.message)}</p>`:''}${this.library.render(this.area,!game.user.isGM)}`;
     const definitions={npcs:['Mercadores','Aliados','Rivais','Figurantes'],map:['Regiões','Cidades e locais','Mapas e cenas','Encontros da região'],monsters:['Aquáticos','Terrestres','Aéreos','Outros'],items:['Armas','Armaduras','Equipamentos','Consumíveis'],quests:['Disponíveis','Ativas','Concluídas']};
     const titles={npcs:'NPCs',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'},items=definitions[this.area]??[];

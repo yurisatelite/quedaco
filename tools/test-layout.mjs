@@ -11,7 +11,7 @@ try{
  const page=await browser.newPage();page.on('pageerror',error=>console.error('BROWSER',error.message));
  for(const [width,height] of [[1180,820],[760,640],[480,600],[360,480],[900,420]]){
   await page.setViewportSize({width,height});await page.goto(url);await page.waitForSelector('html[data-ready="true"]',{state:'attached'});
-  for(const [area,variant] of [['npcs',''],['npcs','editor'],['guilds',''],['monsters',''],['items',''],['imbue',''],['quests',''],['modules',''],['map','list'],['map',''],['map','region']]){
+  for(const [area,variant] of [['npcs',''],['npcs','editor'],['guilds',''],['monsters',''],['items',''],['imbue',''],['quests',''],['ambientacao',''],['modules',''],['map','list'],['map',''],['map','region']]){
    await page.evaluate(([a,v])=>preview.render(a,v),[area,variant]);
    const report=await page.evaluate(()=>{
     const shell=document.querySelector('.sy-shell'),body=shell.querySelector(':scope > main'),rect=shell.getBoundingClientRect();
@@ -21,7 +21,7 @@ try{
     return {overflow,sticky,bodyOverflow:body?body.scrollWidth>body.clientWidth+2:false,shellOverflow:shell.scrollWidth>shell.clientWidth+2};
    });
    reports.push({width,height,area,variant,...report});
-   if(['npcs','modules','map'].includes(area))await page.screenshot({path:path.join(output,`${width}-${height}-${area}-${variant||'default'}.png`)});
+   if(['npcs','ambientacao','modules','map'].includes(area))await page.screenshot({path:path.join(output,`${width}-${height}-${area}-${variant||'default'}.png`)});
   }
  }
  await fs.writeFile(path.join(output,'layout-report.json'),JSON.stringify(reports,null,2));

@@ -1,4 +1,9 @@
 export const CHANGELOG = [
+  {version:'0.18.3',date:'2026-10-15',title:'Ambientação: DIPS e COPA',notes:[
+    'Nova aba Ambientação da Mestra, com DIPS e COPA, suas funções, localidades e dez dossiês de NPCs para Thur Thur.',
+    'Ribs é identificado como referência do livro; os outros nove dossiês são personagens da campanha, com origem indicada. Eles não criam nem alteram Actors, Tokens ou Scenes.',
+    'A API pública do QUEDAÇO agora oferece organizações e dossiês de Ambientação para módulos satélites que optarem por consultar esse catálogo.'
+  ]},
   {version:'0.18.2',date:'2026-10-15',title:'Criação de personagens só no módulo próprio',notes:[
     'O código antigo do criador de personagens saiu do QUEDAÇO principal. A criação mora apenas no módulo QUEDAÇO - Personagens Skyfall RPG.',
     'O painel da Mestra, a API pública e as integrações continuam iguais.'
