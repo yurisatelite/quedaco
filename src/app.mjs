@@ -5,6 +5,7 @@ import {clampPan,zoomToPoint} from './map-view.mjs';
 import {openWorldCatalogEditor} from './panels/world-catalog.mjs';
 import {renderFamilyArea} from './family-view.mjs';
 import {renderAmbientacao} from './panels/ambientacao.mjs';
+import {openAmbientImporter,exportAmbientContent,createAmbientNpcModels} from './panels/ambient-import.mjs';
 export class CampaignApp extends foundry.applications.api.ApplicationV2 {
   static DEFAULT_OPTIONS={id:'quedaco-control',classes:['sy-creator'],tag:'section',window:{title:'QUEDAÇO',resizable:true},position:{width:1180,height:820}};
   constructor(options={}) {
@@ -114,7 +115,7 @@ export class CampaignApp extends foundry.applications.api.ApplicationV2 {
   }
   renderArea(){
     if(this.area==='modules'&&game.user.isGM)return renderFamilyArea(this.family);
-    if(this.area==='ambientacao'&&game.user.isGM)return renderAmbientacao(game.modules.get(MODULE_ID).api,game.actors);
+    if(this.area==='ambientacao'&&game.user.isGM)return `${this.message?`<p class="sy-alert" role="status">${e(this.message)}</p>`:''}${renderAmbientacao(game.modules.get(MODULE_ID).api,game.actors)}`;
     if(['npcs','guilds','map','monsters','items','imbue','quests'].includes(this.area))return `${this.message?`<p class="sy-alert" role="status">${e(this.message)}</p>`:''}${this.library.render(this.area,!game.user.isGM)}`;
     const definitions={npcs:['Mercadores','Aliados','Rivais','Figurantes'],map:['Regiões','Cidades e locais','Mapas e cenas','Encontros da região'],monsters:['Aquáticos','Terrestres','Aéreos','Outros'],items:['Armas','Armaduras','Equipamentos','Consumíveis'],quests:['Disponíveis','Ativas','Concluídas']};
     const titles={npcs:'NPCs',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests'},items=definitions[this.area]??[];
@@ -129,6 +130,9 @@ export class CampaignApp extends foundry.applications.api.ApplicationV2 {
     this.busy=true;button.disabled=true;this.message='';const navigation=button.dataset.op==='area';this.element?.querySelector?.('.sy-shell')?.insertAdjacentHTML('beforeend','<div class="sy-busy" role="status"><span></span><strong>Carregando…</strong></div>');
     try{const {op}=button.dataset;
       if(op==='catalog-edit')await openWorldCatalogEditor(game.modules.get('quedaco').api);
+      if(op==='ambient-import')openAmbientImporter(game.modules.get(MODULE_ID).api);
+      if(op==='ambient-export')exportAmbientContent(game.modules.get(MODULE_ID).api);
+      if(op==='ambient-create-npcs')await createAmbientNpcModels(game.modules.get(MODULE_ID).api,{organizationId:button.dataset.id||undefined});
       if(op==='family-open'){const ok=await this.family?.open(button.dataset.module);if(!ok)ui.notifications.warn('Este módulo não está ativo nesta mesa.');}
       if(op==='area'){const target=button.dataset.area;if(target!=='quests'&&!game.user.isGM&&!this.library.shared.areas.includes(target))throw Error('Esta área ainda não foi liberada pelo mestre.');this.area=target;if(this.area==='monsters'&&game.user.isGM)await this.library.loadActors();if(this.area==='guilds')await this.library.loadSealImages();}
       if(op==='lib-place-img'){const raw=button.dataset.id;if(raw.endsWith(':'))await this.library.setPlaceImage(raw.slice(0,-1),'');else{const FP=foundry.applications.apps.FilePicker.implementation;new FP({type:'image',current:this.library.placeImages[raw]||'',callback:async path=>{await this.library.setPlaceImage(raw,path);this.render(true);}}).render(true);}}

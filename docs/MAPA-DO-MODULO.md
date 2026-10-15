@@ -1,5 +1,20 @@
 # Mapa do módulo — por funcionalidade
 
+## Importação de ambientação e modelos de NPC (15/10/2026)
+
+- `src/catalog-content.mjs`: contrato v1, JSON/TXT/MD, validação estrita de perfis,
+  ambientes e modelos; não executa código nem cria Actors.
+- `src/world-catalog.mjs`: `planAmbientContent`, prévia, aplicação atômica na revisão
+  esperada, exportação e consultas. Repetição idêntica não grava.
+- `src/panels/ambient-import.mjs`: DialogV2 de prévia/Aplicar e prévia separada para
+  criar fichas; `src/panels/ambientacao.mjs` lista ambientes e modelos do catálogo.
+- `src/npc-models.mjs`: ponte opcional com API `npcTemplates` do Criador independente.
+  `src/adapter.mjs:catalogCreatedNpc` registra somente a ficha recém-criada.
+- `src/library.mjs` lê as organizações do catálogo atual no editor de NPC.
+- `tests/catalog-content.test.mjs`: dados falsos para lote, referências, repetição,
+  visibilidade, validação e ponte. Falta conferir DialogV2 e criação completa no Foundry.
+- Contrato e instruções: [CONTEUDO-AMBIENTACAO.md](CONTEUDO-AMBIENTACAO.md).
+
 > Escopo ativo: [Foco da campanha — Thur Thur](FOCO-THURTHUR.md). O filtro reversível mora em `src/campaign-focus.mjs` e usa o setting `campaignFocus`.
 
 > Índice pra achar rápido onde uma funcionalidade mora, antes de sair grepando

@@ -739,6 +739,13 @@
 
 /* Ambientação: organizações do catálogo e fichas nativas do Foundry. */
 .sy-creator .sy-ambientacao{display:grid;gap:14px}
+.sy-creator .sy-ambient-tools{display:flex;flex-wrap:wrap;gap:8px}
+.sy-creator .sy-ambient-tools button{width:auto;max-width:100%;margin:0;white-space:normal}
+.sy-creator .sy-ambient-text{white-space:pre-wrap;overflow-wrap:anywhere}
+.sy-ambient-import{display:grid;gap:12px;max-height:65vh;overflow:auto;min-width:0;padding:16px}
+.sy-ambient-import label{display:grid;gap:8px;min-width:0}
+.sy-ambient-import textarea{min-height:160px;width:100%;resize:vertical}
+.sy-ambient-import pre{white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%;font-size:12px}
 .sy-creator .sy-ambient-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:4px 0;border:0;background:transparent}
 .sy-creator .sy-ambient-head h2{margin:2px 0 4px}.sy-creator .sy-ambient-head p{margin:0;max-width:74ch}
 .sy-creator .sy-ambient-count{display:grid;grid-template-columns:auto auto;gap:2px 8px;align-items:baseline;flex:0 0 auto;color:#9fc4d8;font-size:12px}

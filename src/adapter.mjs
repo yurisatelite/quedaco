@@ -450,3 +450,7 @@ export async function setRuntimeProvider(game,edge,provider){
     throw error;
   }
 }
+/** Cataloga somente o Actor recém-criado pela ponte do Criador. */
+export async function catalogCreatedNpc(actor,model){
+  return actor.update({'flags.quedaco.npc':{role:model.role??'extra',organizationId:model.organizationId??'',regionId:model.regionId??'',placeId:model.placeId??'',tokenVisible:false,note:model.job??''}});
+}

@@ -29,7 +29,7 @@ import {ATTITUDES,DEFAULT_ATTITUDE,buyerConditions,itemKind,quote as priceQuote,
 import {HERITAGES,LEGACIES,MELANCOLIA,CLASS_STYLE,heritagesOf,legacyOfHeritage} from './book-heritages.mjs';
 import {guildKind,guildsForPlace,npcGuildLabel,cleanSeal,guildThemes,GUILD_STANCES,guildMembers,guildLevel,guildProtectionReasons,planGuildRedistribution} from './guilds.mjs';
 import {DEFAULT_CAMPAIGN_FOCUS,focusedGuilds,focusedLegacies,focusedNpcs,focusedPlaces,focusedRegions,normalizeCampaignFocus} from './campaign-focus.mjs';
-import {ORGANIZATIONS} from './ambientacao.mjs';
+
 
 export const BOOK_ITEMS=[...BASE_ITEMS,...SIGILS];
 
@@ -269,6 +269,7 @@ const CUSTOM_ARCHETYPE_LABEL={flanker:'Flanqueador',sentinel:'Sentinela',defende
 
 export class CampaignLibrary {
   get catalogRegions(){let list;try{list=createWorldCatalogService(this.game).listRegions();}catch{return REGIONS;}return list.map(r=>({...REGIONS.find(base=>base.id===r.id),...r,capital:r.capitalId,summary:REGIONS.find(base=>base.id===r.id)?.summary??'',highlights:REGIONS.find(base=>base.id===r.id)?.highlights??[],npcArchetypes:REGIONS.find(base=>base.id===r.id)?.npcArchetypes??[]}));}
+  get catalogOrganizations(){return createWorldCatalogService(this.game).listOrganizations({includeInactive:true});}
   get catalogPlaces(){let list;try{list=createWorldCatalogService(this.game).listPlaces();}catch{return PLACES;}return list.map(p=>({...PLACES.find(base=>base.id===p.id),...p,summary:PLACES.find(base=>base.id===p.id)?.summary??'',highlights:PLACES.find(base=>base.id===p.id)?.highlights??[]}));}
 
   constructor(game,catalog){this.game=game;this.catalog=catalog;this.images=new ImageResolver(game,MODULE_ID,ASSET_ROOT_KEY);this.quests=new ForienQuestIntegration(game);this.actors=[];this.failures=[];this.loaded=false;this.state={mapDisplay:'atlas',mapView:'regions',region:null,place:null,map:{scale:1,tx:0,ty:0,focus:null,layer:'auto',movingPins:false},atlasThumbnails:true,atlasOpen:new Set(),atlasView:'puzzle',atlasRegion:null,atlasSuggestions:null,mapBankPreview:null,mapBankAdoptionPreview:null,npcRole:'all',npcLink:'all',npcPlaceFilter:'all',npcLevelMin:0,npcLevelMax:12,npcDragonOnly:false,npcVendorOnly:false,npcMilitarOnly:false,npcActor:null,npcSaved:null,npcEditRole:null,npcEditRegion:null,npcEditPlace:null,monsterFacets:{},monsterCardSize:270,itemCardSize:270,guildCardSize:270,npcCardSize:270,npcPlayerRegion:null,npcLegacyFilter:'all',npcHeritageFilter:'all',npcGuildFilter:'all',localNpcRole:'all',localNpcLegacy:'all',guildFacets:{},guildTab:'ativas',questStatus:'all',regionTakeover:false,regionScene:null,regionTab:'rumores',regionRumorRoll:null,regionRumorEdit:null,regionNpcRoleFilter:'all',cart:{actorId:'',lines:[]},sellActorId:''};this.modBuilder={baseId:'',materialId:'',sigils:[],tab:'prefixo'};this.forgeBuilder={smithId:'',baseUuid:'',materialId:'',sigils:[],tab:'prefixo'};}
@@ -1095,7 +1096,7 @@ export class CampaignLibrary {
     const guildUuid=this.guildActors().some(guild=>guild.uuid===data.guildUuid)?String(data.guildUuid):'';
     const sceneId=data.scene!==undefined?(this.game.scenes?.get?.(String(data.scene))?String(data.scene):''):(current.sceneId??'');
     const requestedOrganization=data.organizationId??current.organizationId;
-    const organizationId=ORGANIZATIONS.some(org=>org.id===requestedOrganization)?requestedOrganization:'';
+    const organizationId=this.catalogOrganizations.some(org=>org.id===requestedOrganization)?requestedOrganization:'';
     const next={...current,role,regionId,placeId,sceneId,organizationId,guildUuid,guild:String(data.guild??'').trim(),note:String(data.note??''),dragon:data.dragon===undefined?Boolean(current.dragon):Boolean(data.dragon),militar:data.militar===undefined?Boolean(current.militar):Boolean(data.militar),forge:{...current.forge,enabled:Boolean(data.forgeEnabled),markup:Math.max(.1,Number(data.forgeMarkup)||1)},shop:{...current.shop,markup:Math.max(.1,Number(data.markup)||1),note:String(data.shopNote??''),attitude:ATTITUDES[data.attitude]?data.attitude:(current.shop?.attitude??DEFAULT_ATTITUDE),attitudeOverride:String(data.attitudeOverride??'').trim()===''?null:Number(data.attitudeOverride)/100}};
     const update={[`flags.${MODULE_ID}.npc`]:next};if(next.tokenVisible)update.ownership={...(actor.ownership??{}),default:Math.max(1,Number(actor.ownership?.default)||0)};
     const nome=String(data.name??'').trim();if(nome&&nome!==actor.name){update.name=nome;update['prototypeToken.name']=nome;}
@@ -1764,7 +1765,7 @@ export class CampaignLibrary {
     const sceneOptions=sceneIds.map(sid=>allScenes.find(s=>s.id===sid)).filter(Boolean).map(s=>`<option value="${e(s.id)}" ${flag.sceneId===s.id?'selected':''}>${e(mappedPlaces.filter(place=>this.placeScenes[place.id]===s.id).map(place=>place.name).join(', '))} · ${e(s.name)}</option>`).join('');
     const guilds=this.guildActors(),guildLabel=npcGuildLabel(flag,guilds);
     const guildOptions=guilds.map(guild=>`<option value="${e(guild.uuid)}" ${flag.guildUuid===guild.uuid?'selected':''}>${e(guild.name)}</option>`).join('');
-    const organizationOptions=ORGANIZATIONS.map(org=>`<option value="${e(org.id)}" ${flag.organizationId===org.id?'selected':''}>${e(org.name)}</option>`).join('');
+    const organizationOptions=this.catalogOrganizations.map(org=>`<option value="${e(org.id)}" ${flag.organizationId===org.id?'selected':''}>${e(org.name)}</option>`).join('');
     const portrait=this.image('npc',actor.name,actor.img,'icons/svg/mystery-man.svg');
     const region=this.catalogRegions.find(entry=>entry.id===regionId),regionImage=region?this.image('region',region.id,'','icons/svg/mountain.svg'):null;
     const regionIcon=region?`<span class="sy-npc-editor-region" style="--sy-region:${e(this.regionColor(regionId))}"><img src="${e(this.regionImages[region.id]||regionImage.src)}" alt="" loading="lazy"><b>${e(region.name)}</b></span>`:'';

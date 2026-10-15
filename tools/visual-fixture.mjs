@@ -8,7 +8,8 @@ actors.forEach((actor,index)=>{actor.flags.quedaco.npc.organizationId=index%2?'d
 const scenes=[{id:'s1',uuid:'Scene.s1',name:'Praça central de Alberich com um nome bastante comprido',visible:true,img:blank,background:{src:blank}}];scenes.get=id=>scenes.find(s=>s.id===id);
 globalThis.game={user:{isGM:true,id:'gm'},actors,scenes,folders:[],packs:[],items:[],journal:[],modules:new Map(),settings:{get:(_m,k)=>store[k],set:async(_m,k,v)=>{store[k]=v;}},system:{id:'skyfall'}};
 globalThis.ui={notifications:{warn(){},error(){},info(){}}};
-const {createWorldCatalogService}=await import('/src/world-catalog.mjs');
+const {createWorldCatalogService,planAmbientContent}=await import('/src/world-catalog.mjs');
+store.worldCatalog=planAmbientContent({},{format:'quedaco-ambientacao',schemaVersion:1,id:'visual',title:'Dados falsos para layout',records:{environments:[{id:'posto-visual',name:'Posto de investigação com um nome extenso para testar a quebra de linha',organizationId:'dips',regionId:'thurthur',placeId:'alberich',sections:[{id:'rotina',title:'Rotina de trabalho',text:'Descrição de ambiente fictício para testar o espaçamento entre seções.'}]}],npcModels:[{id:'modelo-visual',name:'Nome de personagem extenso para conferir os limites do cartão',organizationId:'dips',model:{name:'Personagem fictício',legacy:'Anuro',heritage:'Bufonin',characterClass:'Combatente',background:'Militar',level:2,cash:30,attributes:{str:2,dex:1,con:2,int:0,wis:1,cha:0},inventory:[]}}]}}).next;
 game.modules.set('quedaco',{api:createWorldCatalogService(game)});
 const {CampaignApp}=await import('/src/app.mjs');
 const {createFamilyRegistry}=await import('/src/family.mjs');
