@@ -1,4 +1,10 @@
 export const CHANGELOG = [
+  {version:'0.18.5',date:'2026-10-15',title:'Ambientação por arquivos e modelos de NPC',notes:[
+    'Importe organizações, ambientes e modelos de NPC por arquivo ou texto, com prévia antes de aplicar e exportação para backup. Novos conteúdos não exigem uma nova versão do módulo.',
+    'Integração opcional com Personagens Skyfall RPG 0.1.8: prepare modelos, confira a prévia e crie Actors nativos com o motor do Criador. Fichas existentes não são substituídas.',
+    'O QUEDAÇO guarda organizações e planejamento; fichas, inventários e recursos pertencem aos Actors do Foundry. A ambientação funciona sem o Criador ativo.',
+    'Validação automatizada com dados fictícios concluída. Importação e criação completa com os compêndios reais ainda precisam de conferência no Foundry.'
+  ]},
   {version:'0.18.4',date:'2026-10-15',title:'Organizações e fichas nativas do Foundry',notes:[
     'Ambientação guarda as organizações e seus perfis de campanha: uniformes, equipamentos por função, conduta, cargos e recursos de DIPS e COPA.',
     'NPCs são Actors nativos do Skyfall. A equipe de cada organização é lida das fichas do mundo, com botão para abrir a ficha e vínculo de organização no editor de NPC.',
