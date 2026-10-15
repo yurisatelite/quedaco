@@ -206,8 +206,9 @@ test('salvar NPC concede visão limitada sem rebaixar proprietários',async()=>{
   try{
     const actor={id:'a',uuid:'Actor.a',name:'Guia',type:'character',flags:{},ownership:{default:0,player1:3},async update(change){this.last=change;this.flags={quedaco:{npc:change['flags.quedaco.npc']}};}};
     const library=new CampaignLibrary({user:{isGM:true},actors:[actor]},{items:[]});
-    await library.saveNpc('a',{role:'extra',regionId:'mirmir',placeId:'',tokenVisible:true,markup:1,forgeMarkup:1});
+    await library.saveNpc('a',{role:'extra',organizationId:'dips',regionId:'mirmir',placeId:'',tokenVisible:true,markup:1,forgeMarkup:1});
     assert.equal(actor.last.ownership.default,1);assert.equal(actor.last.ownership.player1,3);assert.equal(actor.last['flags.quedaco.npc'].tokenVisible,true);
+    assert.equal(actor.last['flags.quedaco.npc'].organizationId,'dips');
   }finally{globalThis.ui=previousUi;}
 });
 test('exclusão de NPC confirma, limpa o editor e recusa Actor de jogador',async()=>{

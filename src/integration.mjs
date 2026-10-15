@@ -17,6 +17,7 @@ export function registeredNpcs(game) {
       img: actor.img,
       type: actor.type,
       role: flag.role ?? 'extra',
+      organizationId: flag.organizationId ?? '',
       regionId,
       regionName: region?.name ?? '',
       placeId: flag.placeId ?? '',

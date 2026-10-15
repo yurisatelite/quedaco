@@ -113,6 +113,9 @@ fusão: cada NPC mantém uma organização, cargo e local próprios.
   fornece, no trecho usado, ficha, aparência ou biografia suficiente para
   completar sua ficha; esses campos devem continuar “a definir”, não ser
   inventados como informação oficial.
+  Na reconferência de 15/10/2026, a ilustração está no trecho dos **Retornados**;
+  a ficha da campanha inclui essa maldição. Legado anterior, herança, classe,
+  nível, roupas, equipamento e relações da ficha são adaptações da mesa.
 
 ### COPA
 
@@ -132,7 +135,8 @@ fusão: cada NPC mantém uma organização, cargo e local próprios.
 ### O que entra primeiro no módulo
 
 1. Dois registros de organização com as relações e locais acima.
-2. Ribs como dossiê incompleto, sem criar Actor no mundo.
+2. Ribs e qualquer equipe futura como **Actors nativos do Skyfall**, vinculados
+   à organização por uma flag de catálogo; o QUEDAÇO não mantém dossiês deles.
 3. Vagas de cargo para os NPCs originais da COPA e da DIPS, para receberem os
    nomes, imagens e traços que vierem no vídeo.
 4. Uma relação “Operação Bosque da Passagem” que liga os dois órgãos, o culto

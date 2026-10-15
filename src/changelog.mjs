@@ -1,4 +1,9 @@
 export const CHANGELOG = [
+  {version:'0.18.4',date:'2026-10-15',title:'Organizações e fichas nativas do Foundry',notes:[
+    'Ambientação guarda as organizações e seus perfis de campanha: uniformes, equipamentos por função, conduta, cargos e recursos de DIPS e COPA.',
+    'NPCs são Actors nativos do Skyfall. A equipe de cada organização é lida das fichas do mundo, com botão para abrir a ficha e vínculo de organização no editor de NPC.',
+    'Removidos os dossiês paralelos de NPCs do catálogo do QUEDAÇO. A API de NPCs existentes oferece organizationId; fichas e inventários continuam pertencendo ao Foundry.'
+  ]},
   {version:'0.18.3',date:'2026-10-15',title:'Ambientação: DIPS e COPA',notes:[
     'Nova aba Ambientação da Mestra, com DIPS e COPA, suas funções, localidades e dez dossiês de NPCs para Thur Thur.',
     'Ribs é identificado como referência do livro; os outros nove dossiês são personagens da campanha, com origem indicada. Eles não criam nem alteram Actors, Tokens ou Scenes.',

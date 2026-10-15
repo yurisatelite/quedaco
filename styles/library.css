@@ -737,7 +737,7 @@
 .sy-catalog-editor{display:grid;gap:12px;max-height:65vh;overflow:auto;padding:16px}
 .sy-catalog-editor label{display:flex;flex-direction:column;gap:8px}
 
-/* Ambientação: dossiês centrais, sem transformar a lista em fichas de Actor. */
+/* Ambientação: organizações do catálogo e fichas nativas do Foundry. */
 .sy-creator .sy-ambientacao{display:grid;gap:14px}
 .sy-creator .sy-ambient-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:4px 0;border:0;background:transparent}
 .sy-creator .sy-ambient-head h2{margin:2px 0 4px}.sy-creator .sy-ambient-head p{margin:0;max-width:74ch}
@@ -751,7 +751,6 @@
 .sy-creator .sy-ambient-status,.sy-creator .sy-ambient-npc>header span{flex:0 0 auto;padding:3px 7px;border:1px solid #4c8d9e;border-radius:999px;color:#aeeeff;font-size:10px;text-transform:uppercase;letter-spacing:.04em}
 .sy-creator .sy-ambient-roster{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:8px}
 .sy-creator .sy-ambient-npc{display:grid;gap:6px;min-width:0;padding:10px;border:1px solid #314757;border-radius:8px;background:#101922}
-.sy-creator .sy-ambient-npc.is-canonical{border-color:#d4ad57}.sy-creator .sy-ambient-npc.is-canonical>header span{border-color:#d4ad57;color:#f5d897}
 .sy-creator .sy-ambient-npc strong,.sy-creator .sy-ambient-npc p{overflow-wrap:anywhere}.sy-creator .sy-ambient-npc small{color:#a9bcc9}.sy-creator .sy-ambient-npc p{margin:0;font-size:12px;line-height:1.4}
 .sy-creator .sy-ambient-pill{display:inline-flex;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @container (max-width:640px){.sy-creator .sy-ambient-head{align-items:flex-start;flex-direction:column}.sy-creator .sy-ambient-count{grid-template-columns:repeat(4,auto);gap:2px 6px}.sy-creator .sy-ambient-count b{font-size:16px;text-align:left}.sy-creator .sy-ambient-grid{grid-template-columns:1fr}.sy-creator .sy-ambient-roster{grid-template-columns:1fr}}

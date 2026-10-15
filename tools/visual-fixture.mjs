@@ -4,6 +4,7 @@ const store={campaignFocus:{enabled:false},sceneAtlas:{scenes:{s1:{parentId:'pla
 const blank='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="240" height="320"><rect width="240" height="320" fill="#234251"/><circle cx="120" cy="85" r="48" fill="#85b1bb"/><path d="M30 320V200a90 90 0 0 1 180 0v120" fill="#527b86"/></svg>');
 const actors=Array.from({length:9},(_,i)=>({id:`n${i}`,uuid:`Actor.n${i}`,name:i===0?'NomeMuitoLongoSemEspaçosParaConferirOsLimitesDoCartão':`Morador de Alberich ${i}`,type:'character',img:blank,visible:true,items:[],flags:{quedaco:{npc:{role:i%2?'merchant':'extra',regionId:'thurthur',placeId:'alberich',active:true,shop:{stock:[]}}}},system:{level:2,resources:{hp:{value:15,max:20},ep:{value:5,max:8}},biography:'Descrição fictícia para verificar o enquadramento da interface.'},getFlag(scope,key){return this.flags?.[scope]?.[key];}}));
 actors.get=id=>actors.find(a=>a.id===id);
+actors.forEach((actor,index)=>{actor.flags.quedaco.npc.organizationId=index%2?'dips':'copa';});
 const scenes=[{id:'s1',uuid:'Scene.s1',name:'Praça central de Alberich com um nome bastante comprido',visible:true,img:blank,background:{src:blank}}];scenes.get=id=>scenes.find(s=>s.id===id);
 globalThis.game={user:{isGM:true,id:'gm'},actors,scenes,folders:[],packs:[],items:[],journal:[],modules:new Map(),settings:{get:(_m,k)=>store[k],set:async(_m,k,v)=>{store[k]=v;}},system:{id:'skyfall'}};
 globalThis.ui={notifications:{warn(){},error(){},info(){}}};
@@ -23,6 +24,7 @@ globalThis.preview={app,lib,async render(area='npcs',variant=''){
  lib.state.atlasView=variant==='list'?'list':'puzzle';
  root.innerHTML=await app._renderHTML();
  if(variant==='editor')root.querySelectorAll('.sy-npc-editor details').forEach(d=>d.open=true);
+ if(area==='ambientacao'&&variant==='profiles')root.querySelectorAll('.sy-ambientacao details').forEach(d=>d.open=true);
  document.querySelectorAll('img').forEach(img=>{if(!img.src.startsWith('data:'))img.src=blank;});
  return true;
 }};

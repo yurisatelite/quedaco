@@ -108,6 +108,25 @@ Dano fixo, sem dado — a mesa rola atributo + proficiência, não um d20+dado d
 
 ## Progressão do personagem (`character`): como o nível é guardado
 
+### Itens físicos e opções de talentos (conferido em 15/10/2026)
+
+- Todo Item físico tem `system.description.value`, `quantity`, `price` e
+  `capacity`. `capacity × quantity` é a carga considerada na preparação local.
+- `armor.system.type` é `light`, `heavy` ou `shield`; não inferir proficiência
+  pelo nome ou por `descriptors`. `equipped` existe em armas, armaduras e
+  vestimentas, não em todo `equipment` ou `loot`.
+- Uma peça visual de uniforme pode ser cópia de roupa nativa com nome e
+  descrição próprios, preservando dados mecânicos. Pertences narrativos usam
+  `loot`, sem efeitos; não devem receber bônus inventado por serem institucionais.
+- `BenefitsDialog.addGrant` resolve `grant.query` separando por vírgula ou
+  ponto-e-vírgula e procurando Items do personagem cujo `type` ou
+  `system.identifier` corresponde. As opções de talento vêm de `system.feats`
+  **desses portadores**, não necessariamente do Item dono da concessão. O
+  importador privado de organizações respeita esse critério e interrompe se
+  não houver opções suficientes; o código antigo do criador não foi alterado.
+
+### Raízes e origens de nível
+
 Lido em `skyfall.mjs` 1.0.1 em 11/10/2026 (não conferido numa ficha rodando). Usado pela
 [T27 — Ficha V2](T27-FICHA-V2.md).
 

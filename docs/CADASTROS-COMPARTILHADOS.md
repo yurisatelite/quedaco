@@ -41,7 +41,6 @@ API disponível:
 | getMapLinks(placeId) | Cenas diretamente vinculadas e acessíveis; não revela cenas ocultas |
 | listOrganizations({regionId}) | Organizações de Ambientação acessíveis ao usuário atual |
 | getOrganization(id) | Organização ou null |
-| listAmbientNpcs({organizationId, regionId}) | Dossiês de NPC da Ambientação; não cria Actors |
 | upsertCatalogRecord(grupo, registro, {expectedRevision}) | Cria/edita pelo proprietário; somente Mestra |
 | getExplorerCatalog() | Adaptador de compatibilidade: regions, places, tags |
 | familyRegistry.list/open/withCapability | Registro da família |
@@ -50,12 +49,24 @@ API disponível:
 
 ## Ambientação
 
-O catálogo também oferece dossiês iniciais para DIPS e COPA. Organizações e
-dossiês são referências da campanha: não criam nem modificam Actors, Tokens ou
-Scenes. Por enquanto são leitura pública da API apenas para a Mestra; satélites
-devem consultar `listOrganizations`/`listAmbientNpcs` quando a capability
+O catálogo oferece organizações como DIPS e COPA. NPCs são exclusivamente
+**Actors nativos do sistema Skyfall**: nome, legado, herança, classe, nível,
+itens e biografia vivem na ficha do Foundry. Ao salvar um NPC pelo painel, a
+Mestra pode gravar somente `flags.quedaco.npc.organizationId`; essa referência
+faz a aba Ambientação agrupá-lo, sem copiar ou manter um dossiê paralelo.
+
+Cada organização oferece `campaignProfile`: vestuário cotidiano/de campo/formal,
+adaptações aos legados, conduta, equipamentos por função, cargos, recursos,
+limites e ganchos. `campaignProfile.source:'campaign'` distingue essas decisões
+de mesa dos fatos canônicos indicados em `source` da organização. São descrições,
+sem efeitos automáticos, criação de fichas ou distribuição de inventário.
+`listNpcs()` lê os Actors e informa também `organizationId`; os dados da ficha
+continuam no Actor, sem cópia de inventário ou biografia no catálogo.
+
+Satélites devem consultar `listOrganizations` quando a capability
 `ambientDatabase` estiver ativa e usar fallback próprio quando o QUEDAÇO não
-estiver instalado.
+estiver instalado. A API não expõe lista própria de NPCs da Ambientação; use o
+documento Actor ou a API especializada do proprietário quando precisar da ficha.
 
 Grupos aceitos por upsertCatalogRecord: regions, places, tags, climates. Registros públicos devem informar visibility:'public'; os novos registros privados recebem visibility:'gm'. Todos os retornos são dados destacados, sem objetos Foundry ou referências mutáveis ao armazenamento. O serviço serializa gravações do mesmo cliente. expectedRevision rejeita formulários desatualizados; a fila não é uma transação distribuída entre múltiplos GMs.
 

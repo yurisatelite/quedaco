@@ -1,6 +1,6 @@
 import {REGIONS, PLACES, BEYOND} from './book-world.mjs';
 import {NPC_ROLES} from './npcs.mjs';
-import {AMBIENT_NPCS, ORGANIZATIONS} from './ambientacao.mjs';
+import {ORGANIZATIONS} from './ambientacao.mjs';
 
 export const CATALOG_KEY='worldCatalog';
 export const CATALOG_SCHEMA=1;
@@ -20,7 +20,6 @@ export function baseWorldCatalog(){
     tags:[...Object.entries(NPC_ROLES).map(([id,label])=>({id:`role:${id}`,name:label,label,category:'npc-role',active:true,source:'quedaco'})),...kinds.map(name=>({id:`place:${key(name)}`,name,label:name,category:'place-kind',active:true,source:'quedaco'}))],
     climates:climateSeeds.map(([id,name])=>({id,name,description:'Perfil configurável da campanha; sem efeitos mecânicos automáticos.',active:true,source:'quedaco'})),
     organizations:ORGANIZATIONS.map(row=>({...clone(row),active:true})),
-    ambientNpcs:AMBIENT_NPCS.map(row=>({...clone(row),active:true})),
     beyond:BEYOND.map(({id,name,kind,parentId})=>({id,name,kind,parentId:parentId??'',source:'skyfall-book'}))};
 }
 
@@ -42,8 +41,6 @@ export function buildWorldCatalog(stored={}, {isGM=true,includeInactive=false}={
     const tags=new Set(result.tags.map(t=>t.id)),climates=new Set(result.climates.map(c=>c.id));
     for(const row of [...result.regions,...result.places]){row.tags=(row.tags??[]).filter(t=>tags.has(t));if(!climates.has(row.climateId))row.climateId='';}
     result.organizations=result.organizations.filter(row=>row.visibility!=='gm'&&row.active!==false);
-    const orgIds=new Set(result.organizations.map(row=>row.id));
-    result.ambientNpcs=result.ambientNpcs.filter(row=>row.active!==false&&orgIds.has(row.organizationId));
   }
   return result;
 }
@@ -96,7 +93,6 @@ export function createWorldCatalogService(game,hooks){
     getWorldCatalog:get,listRegions:options=>list('regions',options),listPlaces:options=>list('places',options),listTags:options=>list('tags',options),listClimates:options=>list('climates',options),
     listOrganizations:options=>get(options).organizations.filter(row=>!options?.regionId||row.regionIds.includes(options.regionId)),
     getOrganization:id=>get().organizations.find(row=>row.id===id)??null,
-    listAmbientNpcs:options=>get(options).ambientNpcs.filter(row=>(!options?.organizationId||row.organizationId===options.organizationId)&&(!options?.regionId||row.regionId===options.regionId)),
     getPlace:id=>list('places').find(p=>p.id===id)??null,
     getEnvironment(placeId){const c=get(),place=c.places.find(p=>p.id===placeId);if(!place)return null;const region=c.regions.find(r=>r.id===place.regionId);let climateId=place.climateId,sourceId=place.id,parent=place;const seen=new Set();while(!climateId&&parent.parentId&&!seen.has(parent.id)){seen.add(parent.id);parent=c.places.find(p=>p.id===parent.parentId);if(!parent)break;climateId=parent.climateId;sourceId=parent.id;}if(!climateId){climateId=region?.climateId;sourceId=region?.id;}return {placeId,regionId:place.regionId,climate:c.climates.find(r=>r.id===climateId)??null,sourceId:climateId?sourceId:null};},
     resolveLocality(value){const catalog=get(),needle=key(value);const exact=[...catalog.regions,...catalog.places].filter(r=>r.id===value);if(exact.length===1)return exact[0];const matches=[...catalog.regions,...catalog.places].filter(r=>[r.name,...r.aliases??[]].some(v=>key(v)===needle));return matches.length===1?matches[0]:null;},

@@ -11,7 +11,7 @@ try{
  const page=await browser.newPage();page.on('pageerror',error=>console.error('BROWSER',error.message));
  for(const [width,height] of [[1180,820],[760,640],[480,600],[360,480],[900,420]]){
   await page.setViewportSize({width,height});await page.goto(url);await page.waitForSelector('html[data-ready="true"]',{state:'attached'});
-  for(const [area,variant] of [['npcs',''],['npcs','editor'],['guilds',''],['monsters',''],['items',''],['imbue',''],['quests',''],['ambientacao',''],['modules',''],['map','list'],['map',''],['map','region']]){
+  for(const [area,variant] of [['npcs',''],['npcs','editor'],['guilds',''],['monsters',''],['items',''],['imbue',''],['quests',''],['ambientacao',''],['ambientacao','profiles'],['modules',''],['map','list'],['map',''],['map','region']]){
    await page.evaluate(([a,v])=>preview.render(a,v),[area,variant]);
    const report=await page.evaluate(()=>{
     const shell=document.querySelector('.sy-shell'),body=shell.querySelector(':scope > main'),rect=shell.getBoundingClientRect();

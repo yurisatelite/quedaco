@@ -1,29 +1,45 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {AMBIENT_NPCS, ORGANIZATIONS, ambientNpcById, organizationRoster} from '../src/ambientacao.mjs';
+import {ORGANIZATIONS} from '../src/ambientacao.mjs';
 import {baseWorldCatalog, createWorldCatalogService} from '../src/world-catalog.mjs';
+import {renderAmbientacao} from '../src/panels/ambientacao.mjs';
 
-test('DIPS e COPA têm um núcleo de dez dossiês consistentes',()=>{
+test('DIPS e COPA são cadastros de organizações, sem dossiês de NPC no QUEDAÇO',()=>{
   assert.deepEqual(ORGANIZATIONS.map(row=>row.id),['dips','copa']);
-  assert.equal(AMBIENT_NPCS.length,10);
-  assert.equal(organizationRoster('dips').length,6);
-  assert.equal(organizationRoster('copa').length,4);
-  assert.equal(ambientNpcById('ribs').canonical,true);
-  for(const npc of AMBIENT_NPCS){
-    assert.ok(ORGANIZATIONS.some(org=>org.id===npc.organizationId));
-    assert.ok(npc.legacy&&npc.heritage&&npc.characterClass&&npc.level>0);
-  }
-});
-
-test('catálogo expõe Ambientação à Mestra e não revela dossiês privados ao jogador',()=>{
   const base=baseWorldCatalog();
   assert.equal(base.organizations.length,2);
-  assert.equal(base.ambientNpcs.length,10);
+  assert.equal('ambientNpcs' in base,false);
   const game={user:{isGM:true},settings:{get:()=>({})}};
   const api=createWorldCatalogService(game);
   assert.equal(api.listOrganizations({regionId:'thurthur'}).length,2);
-  assert.equal(api.listAmbientNpcs({organizationId:'dips'}).length,6);
+  assert.equal('listAmbientNpcs' in api,false);
   game.user.isGM=false;
   assert.equal(api.listOrganizations().length,0);
-  assert.equal(api.listAmbientNpcs().length,0);
+});
+
+test('Ambientação cataloga somente Actors nativos vinculados à organização',()=>{
+  const catalog=baseWorldCatalog();
+  const api={getWorldCatalog:()=>catalog,listOrganizations:()=>catalog.organizations};
+  const actors=[
+    {id:'ribs',type:'character',name:'Ribs',flags:{quedaco:{npc:{organizationId:'dips',role:'spy',placeId:'alberich',note:'Ficha nativa.'}}}},
+    {id:'sem-vinculo',type:'character',name:'Sem vínculo',flags:{quedaco:{npc:{role:'extra'}}}}
+  ];
+  const html=renderAmbientacao(api,actors);
+  assert.match(html,/1<\/b><span>Actors catalogados/);
+  assert.match(html,/Ribs/);
+  assert.match(html,/Abrir ficha/);
+  assert.doesNotMatch(html,/Sem vínculo/);
+  assert.match(html,/Uniformes, equipamento e comportamento/);
+  assert.match(html,/Adaptações aos legados/);
+  assert.match(html,/Vestígios|custódia|prova/);
+});
+
+test('perfis institucionais são campanha; API devolve cópia independente',()=>{
+  const game={user:{isGM:true},settings:{get:()=>({})}};
+  const api=createWorldCatalogService(game);
+  const org=api.getOrganization('dips');
+  assert.equal(org.campaignProfile.source,'campaign');
+  assert.ok(org.campaignProfile.equipment.every(kit=>kit.items.length&&kit.notes));
+  org.campaignProfile.uniform.everyday='alterado';
+  assert.notEqual(api.getOrganization('dips').campaignProfile.uniform.everyday,'alterado');
 });

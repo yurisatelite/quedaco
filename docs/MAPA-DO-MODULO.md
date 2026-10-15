@@ -56,6 +56,29 @@ por atitude, condições do livro e pechincha.
 | Geração de NPC novo | macro `.local/Skyfall-Criador-de-Conteudo.js` (fora do git) |
 | Falta conhecido | nada pendente aqui (o painel da cena ativa saiu em 13/10/2026 — ver `docs/T29-PAINEL-SO-DA-MESTRA.md`) |
 
+## Ambientação
+
+| Peça | Onde |
+|---|---|
+| Organizações e seus dados de referência | [ambientacao.mjs](../src/ambientacao.mjs) — `ORGANIZATIONS` |
+| Uniformes, comportamento e equipamentos por função | [organization-profiles.mjs](../src/organization-profiles.mjs) — `campaignProfile`, material de campanha explícito, disponível na API e na aba |
+| Associação de uma ficha nativa à organização | `library.mjs: renderNpcEditor, saveNpc` — grava apenas `flags.quedaco.npc.organizationId` no Actor existente |
+| Lista de equipes | [panels/ambientacao.mjs](../src/panels/ambientacao.mjs) — lê `game.actors`; não cria nem duplica fichas |
+| Testes | [ambientacao.test.mjs](../tests/ambientacao.test.mjs) |
+
+Fichas e conteúdo privado DIPS/COPA: `.local/organizacoes/`, fora do Git e do
+pacote. `preparar.mjs` gera o documento de campanha, JSON, importador autônomo e
+comando de console com hash. O importador incorpora, na preparação local, os
+resolvedores do módulo de personagens; **não importa módulos em execução** e
+não cria dependência no manifesto. O ciclo é leitura dos compêndios → prévia e
+validação de todas as fichas → Aplicar → criação sequencial de Actors nativos.
+Não roda no init/ready. Nomes existentes são preservados, nunca adotados por
+coincidência; marcadores de importação permitem identificar retornos. Falha
+parcial interrompe o lote e deixa a ficha marcada para revisão, sem apagar
+documentos. Relações viram links `@UUID` na biografia dos Actors recém-criados.
+Conferência integrada de fichas permanece necessária; os testes privados usam
+compêndios falsos e não comprovam o conteúdo real de todas as escolhas.
+
 ## Guildas e Hansas
 
 | Peça | Onde |
