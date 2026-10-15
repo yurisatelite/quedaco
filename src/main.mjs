@@ -1,4 +1,4 @@
-import {CreatorApp as CampaignApp} from './app.mjs';
+import {CampaignApp} from './app.mjs';
 import {MODULE_ID,assertCompatible} from './adapter.mjs';
 import {registerBranding,loadBranding} from './branding.mjs';
 import {ASK_RELEASE_ON_ACTIVATE_KEY,CampaignLibrary,NPC_LOCALITIES_KEY,REGION_SCENES_KEY,SCENES_KEY,SCENE_ATLAS_KEY,registerLibrarySettings,shouldAskReleaseOnActivate} from './library.mjs';

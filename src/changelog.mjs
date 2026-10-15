@@ -1,4 +1,8 @@
 export const CHANGELOG = [
+  {version:'0.18.2',date:'2026-10-15',title:'Criação de personagens só no módulo próprio',notes:[
+    'O código antigo do criador de personagens saiu do QUEDAÇO principal. A criação mora apenas no módulo QUEDAÇO - Personagens Skyfall RPG.',
+    'O painel da Mestra, a API pública e as integrações continuam iguais.'
+  ]},
   {version:'0.18.1',date:'2026-10-15',title:'Revisão visual das janelas',notes:[
     'Corrigidas abas sobrepostas, Mapa e editor de NPC que estouravam a janela e rótulos de nível empilhados.',
     'Layout testado em larguras de janela diferentes; nenhuma regra ou função mudou.'

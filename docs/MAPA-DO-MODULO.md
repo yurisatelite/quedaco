@@ -133,16 +133,22 @@ Regras de espaçamento, chip e card em **[DESIGN-SISTEMA-VISUAL.md](DESIGN-SISTE
 não geram falso positivo) e `.stylelintrc.audit.json` (inclui `no-duplicate-selectors`,
 rodar manualmente de vez em quando, é barulhento pelo estilo de override do arquivo).
 
-## Criação de personagem (jogador)
+## Janela do painel e criação de personagem
+
+A criação de personagens **não mora mais aqui** (removida em 0.18.2, 15/10/2026): o fluxo de
+13 etapas, `benefits.mjs`, `progression.mjs`, `training.mjs`, `equipment.mjs`, as funções de
+criação do `adapter.mjs` (`createDraft`, `addResolvedPlan`, `addInventory`,
+`finalizeClassProgression`, `finalizePathProgression`, `applyHitPointProgression`,
+`refillResources`, `actorSource`, `addDocument`) e as regras de atributo/vida/dinheiro inicial
+do `rules.mjs` vivem só no módulo independente `quedaco-personagens-skyfall-rpg`
+(`E:\RPG\QUEDACO\personagens-skyfall-rpg`). Não traga código de criação de volta.
 
 | Peça | Onde |
 |---|---|
-| Interface, navegação, 13 etapas | [app.mjs](../src/app.mjs) |
-| Grafo de benefícios/escolhas | [benefits.mjs](../src/benefits.mjs) |
-| Marcos de classe 1–12 | [progression.mjs](../src/progression.mjs) |
-| Perícias, proteções, idiomas | [training.mjs](../src/training.mjs) |
-| Equipamento inicial | [equipment.mjs](../src/equipment.mjs) |
-| Regras puras (atributo, vida, dinheiro, capacidade) | [rules.mjs](../src/rules.mjs) |
+| Janela do painel (abas, mapa, quebra-cabeça, cliques e campos) | [app.mjs:CampaignApp](../src/app.mjs) |
+| Catálogo dos compêndios (usado pelo painel) | [catalog.mjs](../src/catalog.mjs), [coverage.mjs](../src/coverage.mjs) |
+| Regras puras que sobraram (modificador, moedas, preço, antecedentes) | [rules.mjs](../src/rules.mjs) |
+| Estilos-base da janela (`.sy-creator` é a classe da janela do painel, nome histórico) | [creator.css](../styles/creator.css) |
 | Família QUEDAÇO (registro dos módulos satélites, Protocolo v1: `quedaco:register`, `module.api.family`, aba **Módulos** da Mestra) | [family.mjs](../src/family.mjs) (registro puro), [family-view.mjs](../src/family-view.mjs) (aba), `main.mjs` (liga hook + `api.family`), teste `tests/family.test.mjs` |
 
 ---
@@ -175,7 +181,7 @@ Localidades personalizadas entram no Mapa Imersivo e nos seletores. O foco rever
 ## Revisão visual / teste de layout (15/10/2026)
 
 Prévia sem Foundry: `tools/visual-server.mjs` (serve `src/`, `styles/`) + `tools/visual-fixture.mjs`
-(dados falsos, renderizadores reais de `CreatorApp`). `node tools/test-layout.mjs` percorre 5
+(dados falsos, renderizadores reais de `CampaignApp`). `node tools/test-layout.mjs` percorre 5
 tamanhos de janela × 11 áreas/variantes e falha se algum botão/título/grade passar da borda do
 `.sy-shell`, se `<main>` rolar na horizontal ou houver `header/nav` sticky no conteúdo (exclui
 `.sy-area-nav` e `.sy-puzzle-scroll`, que rolam de propósito). Prints em `.local/visual-review/`.

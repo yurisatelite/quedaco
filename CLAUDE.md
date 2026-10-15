@@ -55,13 +55,9 @@ ver **[docs/COMO-CONSULTAR-O-MUNDO.md](docs/COMO-CONSULTAR-O-MUNDO.md)**. Pra re
 
 ## Arquitetura
 
-- `src/app.mjs`: interface ApplicationV2, navegação e fluxo de 13 etapas.
+- `src/app.mjs`: `CampaignApp`, a janela ApplicationV2 do painel da Mestra (abas, mapa, cliques). **A criação de personagens não fica aqui**: ela mora só no módulo `quedaco-personagens-skyfall-rpg` (removida do principal em 0.18.2).
 - `src/catalog.mjs`: catálogo canônico dos compêndios; itens soltos de Mundo ficam fora.
-- `src/benefits.mjs`: grafo de benefícios e escolhas até o nível de destino.
-- `src/progression.mjs`: marcos de classe dos níveis 1–12.
-- `src/training.mjs`: perícias, proteções, idiomas, proficiências e especialidade.
-- `src/equipment.mjs`: equipamento inicial, compras, quantidades e volume.
-- `src/rules.mjs`: regras puras de atributos, vida, dinheiro e capacidade.
+- `src/rules.mjs`: regras puras que o painel usa (modificador, moedas, preço, antecedentes).
 - `src/adapter.mjs`: único ponto que cria ou atualiza documentos do Foundry.
 - `src/library.mjs`: painel da Mestra (NPCs, Guildas, Mapa, Monstros, Itens, Imbuir, Quests). Arquivo grande; toda ação da interface passa por `CampaignLibrary.action(op,id,data)`, e `openOps` lista o que o jogador pode disparar.
 - `src/npcs.mjs`: flag `flags.quedaco.npc`, papéis, visibilidade e vínculos entre NPCs.
