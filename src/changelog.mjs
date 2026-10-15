@@ -1,4 +1,8 @@
 export const CHANGELOG = [
+  {version:'0.18.1',date:'2026-10-15',title:'Revisão visual das janelas',notes:[
+    'Corrigidas abas sobrepostas, Mapa e editor de NPC que estouravam a janela e rótulos de nível empilhados.',
+    'Layout testado em larguras de janela diferentes; nenhuma regra ou função mudou.'
+  ]},
   {version:'0.18.0',date:'2026-10-14',title:'Cadastros compartilhados do mundo',notes:[
     'A Mestra pode cadastrar e editar regiões, localidades, tags e perfis de clima na aba Módulos, preservando IDs e vínculos ao inativar entradas.',
     'API pública de catálogo com aliases, hierarquia validada, revisão e eventos de sincronização. Os cadastros alimentam NPCs e Mapa Imersivo.',

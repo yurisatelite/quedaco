@@ -50,7 +50,8 @@
 .sy-creator .sy-panel-filter-select{width:auto;margin:0}.sy-creator .sy-panel-filter-select select{margin:0}
 @media(max-width:700px){.sy-creator .sy-panel-header-top{align-items:flex-start}.sy-creator .sy-panel-header-actions{margin-left:0;flex-basis:100%;justify-content:flex-start}.sy-creator .sy-panel-search>strong,.sy-creator .sy-panel-filter>strong{flex-basis:100%}}
 .sy-creator .sy-library-detail,.sy-creator .sy-library-guide{position:relative;padding:18px;border:1px solid #4da1b4;border-radius:9px;background:#182630;margin:14px 0}
-.sy-creator .sy-library-detail h3{font-size:27px}
+.sy-creator .sy-library-detail{min-width:0}
+.sy-creator .sy-library-detail h3{font-size:27px;overflow-wrap:anywhere}
 .sy-creator .sy-library-detail p{line-height:1.65;max-width:100ch}
 .sy-creator .sy-library h4{font-weight:600;color:#9ae8ff;margin:18px 0 8px;font-size:16px}
 .sy-creator .sy-library-chips{display:flex;flex-wrap:wrap;gap:5px;margin:12px 0}
@@ -109,7 +110,7 @@
 .sy-creator .sy-npc-filters{display:flex;align-items:center;gap:16px 20px;flex-wrap:wrap;padding-top:14px;margin-top:2px;border-top:1px solid #263341}
 .sy-creator .sy-npc-filters label{display:flex;flex-direction:column;gap:5px;width:auto;max-width:220px;margin:0;font-size:11px;color:#9fc4d8}
 .sy-creator .sy-npc-filters select{width:auto;max-width:220px;min-width:150px;margin:0}
-.sy-creator .sy-npc-level-range{display:flex;align-items:center;gap:14px;padding-left:12px;border-left:1px solid #314151}.sy-creator .sy-npc-level-range label{display:inline-flex;align-items:center;gap:6px;min-width:0;margin:0;white-space:nowrap}.sy-creator .sy-npc-level-range input{width:56px;margin:0}
+.sy-creator .sy-npc-level-range{display:flex;align-items:center;gap:14px;padding-left:12px;border-left:1px solid #314151}.sy-creator .sy-npc-level-range label{display:flex;flex-direction:row;align-items:center;gap:6px;min-width:0;margin:0;white-space:nowrap}.sy-creator .sy-npc-level-range input{width:56px;margin:0}
 /* T27 (23/09/2026): Sortear níveis/Taguear/Gerar avulsos eram 4-5 botões soltos disputando espaço com os seletores — agora moram atrás de um "Ações em lote", igual a um accordion comum do painel (details/summary), sem JS novo. */
 .sy-creator .sy-npc-bulk-menu{width:auto;margin:0;align-self:center}
 .sy-creator .sy-npc-bulk-menu>summary{width:auto;list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid #435567;border-radius:6px;background:#202b39;color:#e9f3ff;font-size:12px;font-weight:600}
@@ -581,7 +582,7 @@
 
 /* ── Atlas de cenas: região → local → mapas internos, e as ligações entre eles ── */
 .sy-creator .sy-map-display{margin:4px 0 12px}
-.sy-creator .sy-scene-atlas{display:grid;gap:12px}
+.sy-creator .sy-scene-atlas{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
 .sy-creator .sy-scene-atlas-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:10px}
 .sy-creator .sy-scene-atlas-head h2{margin:2px 0}
 .sy-creator .sy-scene-atlas-head p{margin:4px 0;max-width:70ch;color:#b9cbdb}

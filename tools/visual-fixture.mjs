@@ -1,0 +1,29 @@
+// Prévia com dados falsos: usa os renderizadores reais; não conecta ao Foundry.
+globalThis.foundry={applications:{api:{ApplicationV2:class{}}}};
+const store={campaignFocus:{enabled:false},sceneAtlas:{scenes:{s1:{parentId:'place:alberich'}},edges:[]},regionScenes:{thurthur:['s1']}};
+const blank='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="240" height="320"><rect width="240" height="320" fill="#234251"/><circle cx="120" cy="85" r="48" fill="#85b1bb"/><path d="M30 320V200a90 90 0 0 1 180 0v120" fill="#527b86"/></svg>');
+const actors=Array.from({length:9},(_,i)=>({id:`n${i}`,uuid:`Actor.n${i}`,name:i===0?'NomeMuitoLongoSemEspaçosParaConferirOsLimitesDoCartão':`Morador de Alberich ${i}`,type:'character',img:blank,visible:true,items:[],flags:{quedaco:{npc:{role:i%2?'merchant':'extra',regionId:'thurthur',placeId:'alberich',active:true,shop:{stock:[]}}}},system:{level:2,resources:{hp:{value:15,max:20},ep:{value:5,max:8}},biography:'Descrição fictícia para verificar o enquadramento da interface.'},getFlag(scope,key){return this.flags?.[scope]?.[key];}}));
+actors.get=id=>actors.find(a=>a.id===id);
+const scenes=[{id:'s1',uuid:'Scene.s1',name:'Praça central de Alberich com um nome bastante comprido',visible:true,img:blank,background:{src:blank}}];scenes.get=id=>scenes.find(s=>s.id===id);
+globalThis.game={user:{isGM:true,id:'gm'},actors,scenes,folders:[],packs:[],items:[],journal:[],modules:new Map(),settings:{get:(_m,k)=>store[k],set:async(_m,k,v)=>{store[k]=v;}},system:{id:'skyfall'}};
+globalThis.ui={notifications:{warn(){},error(){},info(){}}};
+const {CreatorApp}=await import('/src/app.mjs');
+const {createFamilyRegistry}=await import('/src/family.mjs');
+const app=new CreatorApp();app.loading=false;
+app.family=createFamilyRegistry({game,hooks:{on(){}}});
+app.family.register({family:'quedaco',contractVersion:1,id:'quedaco-tabelas',title:'Tabelas com nome extenso para validar o cartão de integração',version:'0.4.2',capabilities:{tables:true},getStatus:()=>({ready:true}),open(){}});
+const lib=app.library;await lib.loadActors();
+lib.state.atlasRegion='thurthur';lib.images.resolve=()=>({src:blank,fallbacks:[]});
+const root=document.querySelector('.window-content');
+globalThis.preview={app,lib,async render(area='npcs',variant=''){
+ app.area=area;lib.state.npcActor=variant==='editor'?'n0':null;
+ lib.state.regionTakeover=variant==='region';lib.state.region=variant==='region'?'thurthur':null;
+ lib.state.atlasView=variant==='list'?'list':'puzzle';
+ root.innerHTML=await app._renderHTML();
+ if(variant==='editor')root.querySelectorAll('.sy-npc-editor details').forEach(d=>d.open=true);
+ document.querySelectorAll('img').forEach(img=>{if(!img.src.startsWith('data:'))img.src=blank;});
+ return true;
+}};
+await preview.render();
+document.addEventListener('click',async event=>{const b=event.target.closest('[data-op]');if(b?.dataset.op==='area')await preview.render(b.dataset.area);});
+document.documentElement.dataset.ready='true';

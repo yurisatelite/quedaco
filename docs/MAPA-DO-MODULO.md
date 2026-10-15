@@ -171,3 +171,27 @@ Contrato e roteiro em [CADASTROS-COMPARTILHADOS.md](CADASTROS-COMPARTILHADOS.md)
 | Testes | tests/world-catalog.test.mjs; DOM falso do editor em .local/verify-catalog-editor.mjs |
 
 Localidades personalizadas entram no Mapa Imersivo e nos seletores. O foco reversível de Thur Thur continua respeitado. O novo cadastro amplia metadados; não cria Actors, Scenes ou dados dos satélites automaticamente.
+
+## Revisão visual / teste de layout (15/10/2026)
+
+Prévia sem Foundry: `tools/visual-server.mjs` (serve `src/`, `styles/`) + `tools/visual-fixture.mjs`
+(dados falsos, renderizadores reais de `CreatorApp`). `node tools/test-layout.mjs` percorre 5
+tamanhos de janela × 11 áreas/variantes e falha se algum botão/título/grade passar da borda do
+`.sy-shell`, se `<main>` rolar na horizontal ou houver `header/nav` sticky no conteúdo (exclui
+`.sy-area-nav` e `.sy-puzzle-scroll`, que rolam de propósito). Prints em `.local/visual-review/`.
+`node tools/probe-layout.mjs <área> <variante|-> <largura> [altura]` lista quais elementos
+estouram o `<main>` — use pra achar a causa antes de mexer no CSS. Requer Chrome
+(`QUEDACO_BROWSER_PATH` pra mudar o caminho) e `playwright-core`.
+
+Causas reais achadas e corrigidas:
+- `.sy-area-nav button` sem `flex:0 0 auto;width:auto`: o `button{width:100%}` do Foundry espremia
+  as abas de área até sobrepor umas às outras (`styles/creator.css`).
+- `.sy-scene-atlas{display:grid}` sem coluna: o quadro do Mapa (min-content ~1070px) alargava a
+  coluna implícita e a tela inteira passava da janela. Agora `grid-template-columns:minmax(0,1fr)`.
+- Título do editor de NPC com nome longo sem espaço alargava o grid inteiro: `.sy-library-detail`
+  com `min-width:0` e `h3` com `overflow-wrap:anywhere`.
+- `.sy-npc-level-range label` herdava `flex-direction:column` de `.sy-npc-filters label`
+  (display inline-flex vira flex dentro de flex, e a direção não era redefinida).
+
+Lição geral: todo `display:grid` sem `grid-template-columns` e todo item de grid/flex com texto
+longo precisa de `minmax(0,1fr)`/`min-width:0` — é a causa nº 1 de estouro neste módulo.
