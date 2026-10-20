@@ -746,6 +746,10 @@
 .sy-ambient-import label{display:grid;gap:8px;min-width:0}
 .sy-ambient-import textarea{min-height:160px;width:100%;resize:vertical}
 .sy-ambient-import pre{white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%;font-size:12px}
+.sy-npc-requests[open]{display:grid;gap:12px;min-width:0}
+.sy-npc-requests [data-npc-request-list]{display:grid;gap:8px}
+.sy-npc-requests [data-npc-request-list] label span{display:flex;align-items:center;gap:8px}
+.sy-npc-requests [data-npc-request-list] input[type="checkbox"]{width:auto;flex:0 0 auto;margin:0}
 .sy-creator .sy-ambient-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:4px 0;border:0;background:transparent}
 .sy-creator .sy-ambient-head h2{margin:2px 0 4px}.sy-creator .sy-ambient-head p{margin:0;max-width:74ch}
 .sy-creator .sy-ambient-count{display:grid;grid-template-columns:auto auto;gap:2px 8px;align-items:baseline;flex:0 0 auto;color:#9fc4d8;font-size:12px}

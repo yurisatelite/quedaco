@@ -1,5 +1,32 @@
 # Fila da próxima atualização — QUEDAÇO
 
+## Grupos por texto/código e acesso de jogadores — 20/10/2026
+
+- [x] QUEDAÇO 0.20.0: contrato consultável populationEngine, documento JSON para preparar grupo inteiro e criar Actors pelo Criador, sem cliques por integrante.
+- [x] Planejamento regional recorrente com seed, quantidade/níveis/pesos e perfis explícitos; exemplo de ladrões de Maruma e perfil Ladrão como proposta editável.
+- [x] Criador 0.3.0: botão liga/desliga de jogadores, validação na criação e restauração somente das permissões nativas acrescentadas.
+- [ ] Instalar e conferir grupos e uma ficha de jogador no Foundry real. Não publicado nem aplicado ao servidor nesta entrega.
+
+Guia de referência para qualquer IA/módulo: [GRUPOS-NPCS-PARA-IA.md](GRUPOS-NPCS-PARA-IA.md).
+
+## NPCs por descrição, ânima dos gnomos e fila preparada (20/10/2026)
+
+Pedido do Yuri: permitir que descrições preparadas por ele ou por outro módulo
+fiquem pendentes no Cadastro, com botão para revisar e criar somente o lote
+selecionado. Ânima e aspectos do animal precisam orientar as escolhas dos gnomos;
+não completar essas decisões por ordenação automática.
+
+Texto de referência, limites atuais, contrato proposto e critérios de entrega:
+[PROXIMA-ATUALIZACAO-NPCS-POR-DESCRICAO.md](PROXIMA-ATUALIZACAO-NPCS-POR-DESCRICAO.md).
+**Implementação inicial em 0.19.0 / Criador 0.2.0.** Motor local por perfis,
+fila privada, propostas de ânima, revisão e criação selecionada implementados.
+Guia: [MOTOR-NPCS-POR-DESCRICAO.md](MOTOR-NPCS-POR-DESCRICAO.md).
+Faltam alimentação regional e conferência no Foundry real; não é IA geral.
+
+## Itens com efeitos — avaliação conjunta (17/10/2026)
+
+Por pedido posterior do Yuri, as automações de Tocha e dos itens V2 foram transferidas para `E:/CODEX-RPG/quedaco-monstros`, agora **QUEDAÇO - GERADOR**, versão 0.2.0. Código, configuração de carregamento e API saíram deste módulo principal para evitar execução duplicada. A documentação atual está no repositório do GERADOR; os levantamentos locais anteriores ficam apenas como histórico. A mesa é o FoundryServer online, sem alteração da instalação local.
+
 Levantada com o Yuri em 12/09/2026. Base: `0.4.33` publicada + commits já feitos
 depois dela (monstros na aba Monstros, regulador de miniaturas, cartão/editor de NPC).
 `npm test` + `npm run package` antes de dar qualquer item por pronto.

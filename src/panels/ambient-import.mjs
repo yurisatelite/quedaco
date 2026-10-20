@@ -1,5 +1,7 @@
 import {escapeHTML as e,baixarArquivo} from '../adapter.mjs';
 import {npcModelActor,npcTemplateCreator} from '../npc-models.mjs';
+import {getNpcBatchInstructions} from '../npc-batch-content.mjs';
+import {npcRequestControlsHTML,bindNpcRequestControls} from './npc-request-controls.mjs';
 
 export function exportAmbientContent(api){
   return baixarArquivo(JSON.stringify(api.exportAmbientContent(),null,2),'application/json','quedaco-ambientacao.json');
@@ -9,13 +11,16 @@ export function exportAmbientContent(api){
 export function openAmbientImporter(api){
   if(!game.user?.isGM)throw Error('Somente a Mestra pode importar ambientação.');
   let preview=null,previewText='';
-  const content='<div class="sy-ambient-import"><p>Importe organizações, ambientes e modelos de NPC sem atualizar o módulo. O arquivo contém dados, não comandos JavaScript. Alterações de ficha são uma etapa separada pelo Criador.</p><label>Arquivo de conteúdo<input type="file" accept=".json,.txt,.md,application/json,text/plain,text/markdown" name="ambientFile"></label><label>Ou cole o conteúdo<textarea name="ambientText" rows="10" placeholder="Cole o pacote JSON ou o texto no formato QUEDACO-AMBIENTACAO 1"></textarea></label><button type="button" data-preview-ambient>Gerar prévia</button><div data-ambient-preview role="status">Selecione um arquivo ou cole o conteúdo.</div></div>';
+  const guide=getNpcBatchInstructions();
+  const content=`<div class="sy-ambient-import"><p>Importe organizações, ambientes e modelos de NPC. Depois de aplicar o documento, use Criar fichas dos modelos na Ambientação.</p><details><summary>Como preparar um lote de NPCs</summary><p>${e(guide.instructions)}</p><pre>${e(guide.example)}</pre></details><label>Arquivo de conteúdo<input type="file" accept=".json,.txt,.md,application/json,text/plain,text/markdown" name="ambientFile"></label><label>Ou cole o conteúdo<textarea name="ambientText" rows="10" placeholder="Cole JSON, QUEDACO-NPCS 1 ou QUEDACO-AMBIENTACAO 1"></textarea></label><button type="button" data-preview-ambient>Gerar prévia</button><div data-ambient-preview role="status">Selecione um arquivo ou cole o conteúdo.</div></div>`;
+  const requestContent=typeof api.stageNpcRequests==='function'?npcRequestControlsHTML():'';
   class AmbientImportDialog extends foundry.applications.api.DialogV2{
     _onRender(context,options){
       super._onRender(context,options);
       const root=this.element,text=root.querySelector('[name="ambientText"]'),file=root.querySelector('[name="ambientFile"]'),output=root.querySelector('[data-ambient-preview]'),apply=root.querySelector('[data-action="apply"]');
       const reset=()=>{preview=null;previewText='';if(apply)apply.disabled=true;output.textContent='Conteúdo alterado. Gere uma nova prévia.';};
       if(apply)apply.disabled=true;
+      bindNpcRequestControls(root,api);
       text.addEventListener('input',reset);
       file.addEventListener('change',async()=>{
         reset();const selected=file.files?.[0];if(!selected)return;
@@ -30,7 +35,7 @@ export function openAmbientImporter(api){
       });
     }
   }
-  return new AmbientImportDialog({window:{title:'QUEDAÇO · importar ambientação'},position:{width:760},content,buttons:[{action:'apply',label:'Aplicar conteúdo',default:false,callback:async(_event,button,dialog)=>{
+  return new AmbientImportDialog({window:{title:'QUEDAÇO · importar ambientação'},position:{width:760},content:content.replace('<div class="sy-ambient-import">','<div class="sy-ambient-import">'+requestContent),buttons:[{action:'apply',label:'Aplicar conteúdo',default:false,callback:async(_event,button,dialog)=>{
     const text=dialog.element.querySelector('[name="ambientText"]').value;
     if(!preview||text!==previewText)throw Error('Gere uma prévia do conteúdo atual antes de aplicar.');
     const result=await api.importAmbientContent(text,{expectedRevision:preview.expectedRevision});
@@ -41,6 +46,21 @@ export function openAmbientImporter(api){
 export async function createAmbientNpcModels(api,{organizationId}={}){
   if(!game.user?.isGM)throw Error('Somente a Mestra pode criar fichas.');
   if(!npcTemplateCreator(game))throw Error('Ative uma versão do Criador de Personagens com suporte a modelos de NPC.');
+  if(npcTemplateCreator(game)?.capabilities?.npcBatch&&typeof api.previewNpcBatch==='function'){
+    const rows=api.listNpcModels({organizationId}).filter(row=>npcModelActor(game,row.id)?.flags?.['quedaco-personagens-skyfall-rpg']?.npcModel?.state!=='created');
+    if(!rows.length)return ui.notifications.info('Nenhum modelo sem ficha nessa seleção.');
+    const selection={ids:rows.map(row=>row.id)},preview=await api.previewNpcBatch(selection);
+    if(preview.errors.length){
+      new foundry.applications.api.DialogV2({window:{title:'Corrigir lote de NPCs'},content:`<p>Corrija os modelos antes de criar as fichas.</p><ul>${preview.errors.map(row=>`<li>${e(row.name??row.id)}: ${e(row.error)}</li>`).join('')}</ul>`,buttons:[{action:'close',label:'Fechar'}]}).render({force:true});
+      return preview;
+    }
+    const accepted=await foundry.applications.api.DialogV2.confirm({window:{title:'Criar lote de NPCs'},position:{width:720},content:`<p>${preview.total} fichas serão criadas pelo Criador.</p><ul>${preview.rows.map(row=>`<li><b>${e(row.name)}</b> · ${e(row.characterClass)} ${e(row.level)} · carga ${e(row.volume)}/${e(row.capacity)}<p>${e(row.inventory)}</p></li>`).join('')}</ul>`,yes:{label:'Criar fichas'},no:{label:'Cancelar'},rejectClose:false});
+    if(!accepted)return;
+    const report=await api.createNpcBatch(selection,{expectedRevision:preview.catalogRevision,expectedSignature:preview.signature});
+    const issues=[...report.results.filter(row=>['error','needs-review'].includes(row.status)).map(row=>`${row.name}: ${row.error??'ficha com pendência'}`),...(report.warnings??[]).map(row=>`${row.id}: ${row.error}`)];
+    new foundry.applications.api.DialogV2({window:{title:'Resultado do lote de NPCs'},content:`<p>${report.created} criados · ${report.existing} existentes · ${report.errors} com erro.</p><ul>${issues.map(message=>`<li>${e(message)}</li>`).join('')}</ul>`,buttons:[{action:'close',label:'Fechar'}]}).render({force:true});
+    return report;
+  }
   const rows=api.listNpcModels({organizationId}).filter(row=>!npcModelActor(game,row.id));
   if(!rows.length)return ui.notifications.info('Nenhum modelo sem ficha nessa seleção.');
   const previews=[];

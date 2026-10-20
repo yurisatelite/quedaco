@@ -13,6 +13,8 @@ import {explorerCatalog,publicRegions,registeredNpcs,setNpcExplorerLocation} fro
 import {createFamilyRegistry} from './family.mjs';
 import {createWorldCatalogService,registerWorldCatalog} from './world-catalog.mjs';
 import {createNpcModelService} from './npc-models.mjs';
+import {createNpcRequestService} from './npc-requests.mjs';
+import {createNpcPopulationService} from './npc-population.mjs';
 import {openAmbientImporter} from './panels/ambient-import.mjs';
 let worldCatalog;
 let app;
@@ -43,7 +45,9 @@ Hooks.once('init',()=>{registerWorldCatalog(game,Hooks);worldCatalog=createWorld
 Hooks.once('ready',()=>{
   const module=game.modules.get(MODULE_ID);
   const npcModels=createNpcModelService(game,worldCatalog);
-  const descriptor=Object.freeze({family:'quedaco',contractVersion:1,id:MODULE_ID,title:module.title,version:module.version,capabilities:Object.freeze({npcDatabase:true,regionDatabase:true,campaignPanel:true,familyRegistry:true,explorerCatalog:true,npcLocation:true,worldCatalog:true,localityDatabase:true,tagDatabase:true,climateDatabase:true,ambientDatabase:true,ambientContentImport:true,npcModelCatalog:true}),getStatus:()=>({ready:true}),open:openCampaign,openCampaign,listNpcs:()=>registeredNpcs(game),...worldCatalog,...npcModels,openAmbientImporter:()=>openAmbientImporter(worldCatalog),setNpcExplorerLocation:(uuid,location)=>setNpcExplorerLocation(game,uuid,location),familyRegistry:Object.freeze({list:()=>family.scan().list(),open:id=>family.open(id),withCapability:capability=>family.withCapability(capability)})});
+  const npcRequests=createNpcRequestService(game,worldCatalog);
+  const npcPopulation=createNpcPopulationService(game,worldCatalog,npcRequests);
+  const descriptor=Object.freeze({family:'quedaco',contractVersion:1,id:MODULE_ID,title:module.title,version:module.version,capabilities:Object.freeze({npcDatabase:true,regionDatabase:true,campaignPanel:true,familyRegistry:true,explorerCatalog:true,npcLocation:true,worldCatalog:true,localityDatabase:true,tagDatabase:true,climateDatabase:true,ambientDatabase:true,ambientContentImport:true,npcModelCatalog:true,npcBatch:true,npcDescriptionRequests:true,npcPopulation:true}),getStatus:()=>({ready:true}),open:openCampaign,openCampaign,listNpcs:()=>registeredNpcs(game),...worldCatalog,...npcModels,...npcRequests,...npcPopulation,openAmbientImporter:()=>openAmbientImporter({...worldCatalog,...npcModels,...npcRequests,...npcPopulation}),setNpcExplorerLocation:(uuid,location)=>setNpcExplorerLocation(game,uuid,location),familyRegistry:Object.freeze({list:()=>family.scan().list(),open:id=>family.open(id),withCapability:capability=>family.withCapability(capability)})});
   module.api=descriptor;family.scan();Hooks.callAll('quedaco:register',descriptor);void loadBranding();
   const current=String(module.version??''),seen=String(game.settings.get(MODULE_ID,LAST_SEEN_VERSION)??'');
   if(seen!==current&&isNewer(current,seen)){const fresh=entriesSince(CHANGELOG,seen);if(fresh.length)showChangelog(fresh,current);}

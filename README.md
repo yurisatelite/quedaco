@@ -42,4 +42,19 @@ As regras foram conferidas no Livro Básico DIGITAL 1.25 fornecido pelo usuário
 
 ## Cadastros compartilhados
 
+Em 0.20.0, [grupos por texto/JSON para IA e módulos](docs/GRUPOS-NPCS-PARA-IA.md):
+`api.getNpcBatchInstructions().populationEngine` é o contrato consultável.
+`prepareNpcGroup(documento)` prepara um elenco inteiro e
+`createPreparedNpcGroup(revisao)` delega os Actors ao Criador 0.3.0, sem cliques
+por NPC. Inclui sorteio regional reutilizável e exemplo de ladrões de Maruma.
+
+Novo em 0.19.0: [motor local de NPCs por descrição](docs/MOTOR-NPCS-POR-DESCRICAO.md),
+com fila privada de pedidos e perfis editáveis por propósito, ânima e região.
+[Avaliação do que alimentar no Cadastro](docs/DIAGNOSTICO-NUTRICAO-NPCS.md).
+
+NPCs em escala: [guia de lotes](docs/LOTES-DE-NPCS.md) e
+[documento de exemplo](docs/EXEMPLO-LOTE-NPCS.txt). O Cadastro recebe texto
+QUEDACO-NPCS 1 ou JSON e delega criação ao Criador de Personagens 0.1.9.
+Outros módulos consultam `api.getNpcBatchInstructions()`.
+
 Abra Módulos → Cadastros compartilhados para cadastrar regiões, localidades, tags e perfis de clima. Os módulos satélites consultam a API pública quando o núcleo estiver ativo. Contrato, exemplos e limitações em [docs/CADASTROS-COMPARTILHADOS.md](docs/CADASTROS-COMPARTILHADOS.md).

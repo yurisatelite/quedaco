@@ -1,5 +1,31 @@
 # Mapa do módulo — por funcionalidade
 
+## Grupos por código/texto e população — 0.20.0
+
+- `src/npc-population.mjs`: planNpcPopulation/stageNpcPopulation sorteiam por seed/pesos, validam escopo/legados/perfis e fixam purposeProfileId. prepareNpcGroup recebe documento JSON ou objeto e integra fila/preparação; createPreparedNpcGroup delega à criação assinada existente. Sem interface obrigatória.
+- `src/npc-batch-content.mjs`: getNpcBatchInstructions().populationEngine fornece contrato, modelos e exemplo real de Maruma (local maruma, região blurghta).
+- `src/npc-requests.mjs`: prévia rejeita nomes repetidos no grupo e Criador sem capability de perfil explícito. Os pedidos persistem em Journals privados; Actors só na chamada de criação.
+- `tests/npc-population.test.mjs`: sorteio determinístico, escopos, pesos, ânima, pendências, duplicidade, documento → fila → Actor via API, sem cliques. Navegador: tools/test-npc-batch-ui.mjs.
+- Uso: `docs/GRUPOS-NPCS-PARA-IA.md`. Sem planejamento automático de Scenes/tokens/pastas, IA interna ou demografia canônica.
+
+## Descrição e fila de NPCs — 0.19.0 (20/10/2026)
+
+- `src/npc-requests.mjs`: Journals privados, IDs/revisões, seleção por lote/origem, preparação, assinaturas, criação e diagnóstico. Sem segredos em settings.
+- `src/npc-generation-profiles.mjs`: propostas de propósito/ânima, validação de perfis e escopo por região/localidade; importados como npcGenerationProfiles pelo Cadastro.
+- `src/panels/npc-request-controls.mjs`: formulário/seleção no importador de Ambientação existente, revisão das decisões e ação de criação.
+- `src/world-catalog.mjs`: preserva descrições locais, comércio, governo e pistas regionais; valida escopos dos perfis.
+- `tests/npc-requests.test.mjs`: persistência/privacidade/revisão, criação selecionada, repetição e erros. `tools/test-npc-batch-ui.mjs`: teste de interface no navegador com mocks.
+- Guia e diagnóstico: `docs/MOTOR-NPCS-POR-DESCRICAO.md`, `docs/DIAGNOSTICO-NUTRICAO-NPCS.md`.
+
+## Lotes de NPCs (17/10/2026)
+
+- `src/npc-batch-content.mjs`: formato QUEDACO-NPCS 1, conversão de texto/JSON para pacote de Ambientação, exemplo e instruções consultáveis em `api.getNpcBatchInstructions()`.
+- `src/catalog-content.mjs`: parser unificado e validação dos modelos com equipe, tags, descrição, imagens e módulo de origem.
+- `src/npc-models.mjs`: `previewNpcBatch` e `createNpcBatch` selecionam modelos do Cadastro por IDs/organização/ambiente e delegam ao Criador 0.1.9. Revisão do Cadastro e assinatura acompanham a criação.
+- `src/panels/ambient-import.mjs`: instruções no importador existente, prévia de lote, confirmação e relatório. Fallback individual permanece para Criadores antigos.
+- `tests/npc-batch.test.mjs`: documento -> Cadastro -> API do Criador, seleção/revisão e dados de equipe.
+- Uso e contrato: `docs/LOTES-DE-NPCS.md`. O módulo não interpreta prosa arbitrária com IA; o assistente prepara o documento conforme o guia.
+
 ## Importação de ambientação e modelos de NPC (15/10/2026)
 
 - `src/catalog-content.mjs`: contrato v1, JSON/TXT/MD, validação estrita de perfis,

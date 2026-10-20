@@ -1,0 +1,34 @@
+/** Propostas editáveis de campanha. Conteúdo mecânico sempre validado no Criador. */
+export const NPC_GENERATION_PROFILES=[
+  {id:'navegante',name:'Navegante',kind:'purpose',terms:['marinheiro','marinheira','navegante','barqueiro','barqueira','pescador','pescadora'],characterClass:'Combatente',background:'Navegante',attributes:{str:2,dex:3,con:2,int:0,wis:1,cha:-1},skillPriority:['navi','natu','perc','fitn'],inventory:[{name:'Adaga',quantity:1}],keywords:['agua','mar','navegacao','defesa'],names:['Tavi','Nara','Maro'],clothes:'Roupa resistente ao sal e à umidade.',behavior:'Observa o tempo e as rotas antes de agir.',desire:'Proteger sua comunidade e manter sua rota segura.'},
+  {id:'lutador',name:'Lutador',kind:'purpose',terms:['lutador','lutadora','guarda','soldado','combatente','gladiador','gladiadora'],characterClass:'Combatente',background:'Militar',attributes:{str:3,dex:1,con:2,int:0,wis:2,cha:-1},skillPriority:['fitn','perc','inti','natu'],inventory:[{name:'Adaga',quantity:1}],keywords:['combate','arma','defesa','escudo'],names:['Varek','Iara','Saren'],behavior:'Avalia as ameaças e protege seu grupo.',desire:'Provar seu valor sem abandonar os companheiros.'},
+  {id:'mercador',name:'Mercador',kind:'purpose',terms:['mercador','mercadora','comerciante','vendedor','vendedora','apostador','apostadora'],characterClass:'Especialista',background:'Comerciante',attributes:{str:-1,dex:1,con:1,int:2,wis:1,cha:3},skillPriority:['dipl','mani','insi','perc','rogu'],inventory:[{name:'Adaga',quantity:1}],keywords:['negocio','diplomacia','comercio','persuasao'],names:['Selan','Mira','Teren'],behavior:'Busca interesses em comum antes de propor um acordo.',desire:'Construir uma rede duradoura de clientes e aliados.'},
+  {id:'batedor',name:'Batedor',kind:'purpose',terms:['batedor','batedora','cacador','cacadora','espiao','espia','furtivo','furtiva'],characterClass:'Combatente',background:'Caçador',attributes:{str:1,dex:3,con:2,int:0,wis:2,cha:-1},skillPriority:['stea','natu','perc','insi'],inventory:[{name:'Adaga',quantity:1}],keywords:['furtividade','percepcao','caca','movimento'],names:['Ravi','Neri','Sila'],behavior:'Observa de longe e evita chamar atenção.',desire:'Conhecer os perigos antes que alcancem seu grupo.'},
+  {id:'erudito',name:'Erudito',kind:'purpose',terms:['erudito','erudita','pesquisador','pesquisadora','estudioso','estudiosa'],characterClass:'Especialista',background:'Erudito',attributes:{str:-1,dex:1,con:1,int:3,wis:2,cha:1},skillPriority:['cult','arca','perc','insi','doct'],inventory:[],keywords:['conhecimento','historia','pesquisa'],names:['Eren','Lira','Tamo'],behavior:'Registra detalhes e procura evidências.',desire:'Preservar uma descoberta importante para sua comunidade.'},
+  {id:'ladrao',name:'Ladrão',kind:'purpose',terms:['ladrão','ladra','ladrões','ladras','gatuno','gatuna','assaltante'],characterClass:'Especialista',background:'Procurado',attributes:{str:0,dex:3,con:1,int:2,wis:1,cha:-1},skillPriority:['stea','rogu','perc','insi','mani'],inventory:[{name:'Adaga',quantity:1}],keywords:['furtividade','ladinagem','engano','fuga'],names:['Neri','Tavi','Mira'],clothes:'Vestuário discreto e resistente, adaptado ao local conforme a descrição do pedido.',behavior:'Observa rotas de fuga e evita revelar informações sobre seus cúmplices.',desire:'Conseguir recursos sem entregar seu grupo.'},
+  {id:'anima-cobra',name:'Ânima de cobra',kind:'animal',terms:['cobra','serpente'],heritage:'1 Herança Maior e 2 Menores',choicePriority:['Dentes Afiados','Camuflagem','Escalador'],keywords:['furtividade','escala','dentes']},
+  {id:'anima-gato',name:'Ânima de gato',kind:'animal',terms:['gato','gata','felino'],heritage:'1 Herança Maior e 2 Menores',choicePriority:['Predador','Escalador','Camuflagem'],keywords:['caca','escala','furtividade']},
+  {id:'anima-gaviao',name:'Ânima de gavião',kind:'animal',terms:['gaviao','aguia'],heritage:'1 Herança Maior e 2 Menores',choicePriority:['Predador','Corredor','Oportunista'],keywords:['caca','movimento','reacao']}
+].map(profile=>normalizeGenerationProfile({...profile,terms:[...profile.terms,...({navegante:['navegar','pescar'],lutador:['proteger','vigiar','lutar'],mercador:['negociar','vender','apostar'],batedor:['explorar','cacar','espionar'],erudito:['pesquisar','estudar','ensinar']}[profile.id]??[])],cash:0,active:true,visibility:'gm',source:'campaign-proposal'}));
+
+export function normalizeGenerationProfile(value){
+  const allowed=['id','name','kind','terms','regionIds','placeIds','characterClass','background','heritage','attributes','inventory','keywords','choicePriority','skillPriority','languagePriority','names','clothes','behavior','desire','cash','possessions','spellcasting','active','visibility','source'];
+  for(const field of Object.keys(value))if(!allowed.includes(field))throw Error(`Perfil de geração: campo não aceito ${field}.`);
+  if(!['purpose','animal'].includes(value.kind)||typeof value.name!=='string'||!value.name.trim())throw Error('Perfil precisa de tipo e nome.');
+  const profile=structuredClone(value);
+  if(profile.active!==undefined&&typeof profile.active!=='boolean')throw Error('Disponibilidade do perfil inválida.');
+  for(const field of ['terms','regionIds','placeIds','keywords','choicePriority','skillPriority','languagePriority','names','possessions']){
+    profile[field]??=[];
+    if(!Array.isArray(profile[field])||profile[field].length>100||profile[field].some(text=>typeof text!=='string'||text.length>500))throw Error(`Perfil: ${field} precisa de uma lista de textos.`);
+  }
+  if(!profile.terms.length)throw Error('Perfil precisa dos termos que o identificam.');
+  if(profile.kind==='purpose'){
+    if(['characterClass','background'].some(field=>typeof profile[field]!=='string'||!profile[field].trim()))throw Error('Perfil de propósito precisa de classe e antecedente.');
+    if(Object.keys(profile.attributes??{}).sort().join(',')!=='cha,con,dex,int,str,wis'||Object.values(profile.attributes).some(number=>!Number.isInteger(number)||number< -4||number>4))throw Error('Perfil precisa dos seis atributos válidos.');
+  }
+  for(const field of ['characterClass','background','heritage','clothes','behavior','desire','spellcasting'])if(profile[field]!==undefined&&(typeof profile[field]!=='string'||profile[field].length>24000))throw Error(`Perfil: ${field} deve ser texto.`);
+  profile.cash??=0;if(!Number.isSafeInteger(profile.cash)||profile.cash<0)throw Error('Bolsa do perfil inválida.');
+  profile.inventory??=[];
+  if(!Array.isArray(profile.inventory)||profile.inventory.length>100||profile.inventory.some(item=>!item||typeof item.name!=='string'||!Number.isInteger(item.quantity)||item.quantity<1||item.quantity>999||Object.keys(item).some(key=>!['name','quantity','equipped','rename','uniform'].includes(key))))throw Error('Inventário do perfil inválido.');
+  profile.visibility='gm';return profile;
+}

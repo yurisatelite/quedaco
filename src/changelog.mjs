@@ -1,4 +1,21 @@
 export const CHANGELOG = [
+  {version:'0.20.0',date:'2026-10-20',title:'Grupos de NPCs por documento e população reutilizável',notes:[
+    'Contrato consultável para IA e módulos: um documento JSON prepara um grupo inteiro; a API manda criar Actors pelo Criador sem cliques por integrante.',
+    'Planejador regional com quantidade, níveis, pesos por localidade, propósito e legado; semente para repetir ou gerar outro elenco. Perfis ausentes não são substituídos silenciosamente.',
+    'Modelo para IA no início do formulário de NPCs. Pedidos privados, revisão assinada, proteção contra nomes repetidos e reenvio sem duplicação.',
+    'Personagens Skyfall RPG 0.3.0 acrescenta liga/desliga da criação para jogadores no Diretório de Atores. Testes simulados; instalação e validação nativa pendentes.'
+  ]},
+  {version:'0.19.0',date:'2026-10-20',title:'NPCs por descrição e pedidos preparados',notes:[
+    'Descreva legado, local, nível e propósito na importação de Ambientação. Pedidos ficam em Journals privados da Mestra e podem ser enviados por outros módulos.',
+    'Motor local do Criador 0.2.0 propõe escolhas com base nos perfis de propósito/ânima e nos compêndios autorizados. Conceitos não reconhecidos produzem pendências.',
+    'Perfis de campanha editáveis, inclusive por região/localidade, diagnóstico de informações faltantes e prévia antes de criar somente os pedidos selecionados.',
+    'Descrições culturais, comércio e governo da base regional passam a alimentar a consulta compartilhada. Validação automatizada com dados simulados; falta conferir fichas no Foundry real.'
+  ]},
+  {version:'0.18.6',date:'2026-10-17',title:'Motor de lotes de NPCs pelo Cadastro',notes:[
+    'Documentos QUEDACO-NPCS 1 e lotes JSON entram pela importação de Ambientação. Descrição, equipe, tags, retrato e origem do módulo acompanham os modelos.',
+    'O Cadastro oferece instruções consultáveis por outros módulos e delega prévia e criação em escala ao Criador de Personagens 0.1.9.',
+    'Prévia assinada, revisão do Cadastro e relatório individual de resultados. IDs estáveis evitam recriar fichas; fichas com pendência exigem revisão.'
+  ]},
   {version:'0.18.5',date:'2026-10-15',title:'Ambientação por arquivos e modelos de NPC',notes:[
     'Importe organizações, ambientes e modelos de NPC por arquivo ou texto, com prévia antes de aplicar e exportação para backup. Novos conteúdos não exigem uma nova versão do módulo.',
     'Integração opcional com Personagens Skyfall RPG 0.1.8: prepare modelos, confira a prévia e crie Actors nativos com o motor do Criador. Fichas existentes não são substituídas.',

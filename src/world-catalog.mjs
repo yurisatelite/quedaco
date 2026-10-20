@@ -1,6 +1,7 @@
 import {REGIONS, PLACES, BEYOND} from './book-world.mjs';
 import {NPC_ROLES} from './npcs.mjs';
 import {ORGANIZATIONS} from './ambientacao.mjs';
+import {NPC_GENERATION_PROFILES,normalizeGenerationProfile} from './npc-generation-profiles.mjs';
 import {CONTENT_FORMAT,CONTENT_SCHEMA,CONTENT_GROUPS,allowedKeys,assertContentPackage,contentNpcModel,contentProfile,contentSections,contentStrings,contentText,parseContentPackage,sameContent} from './catalog-content.mjs';
 
 export const CATALOG_KEY='worldCatalog';
@@ -16,13 +17,14 @@ const climateSeeds=[['temperado','Temperado'],['frio','Frio'],['arido','Árido']
 export function baseWorldCatalog(){
   const kinds=[...new Set(PLACES.map(p=>p.kind))];
   return {schemaVersion:CATALOG_SCHEMA,revision:0,
-    regions:REGIONS.map(r=>({id:r.id,name:r.name,color:r.color,capitalId:r.capital??'',aliases:[],tags:[],climateId:'',active:true,source:'skyfall-book',imageKey:`region:${r.id}`})),
-    places:PLACES.map(p=>({id:p.id,name:p.name,regionId:p.regionId,parentId:p.parentId??'',kind:p.kind,aliases:[],tags:[],climateId:'',active:true,source:'skyfall-book',imageKey:`place:${p.id}`})),
+    regions:REGIONS.map(r=>({id:r.id,name:r.name,description:r.summary??'',generationHints:r.npcArchetypes??[],trade:r.trade??'',government:r.government??'',color:r.color,capitalId:r.capital??'',aliases:[],tags:[],climateId:'',active:true,source:'skyfall-book',imageKey:`region:${r.id}`})),
+    places:PLACES.map(p=>({id:p.id,name:p.name,description:p.summary??'',regionId:p.regionId,parentId:p.parentId??'',kind:p.kind,aliases:[],tags:[],climateId:'',active:true,source:'skyfall-book',imageKey:`place:${p.id}`})),
     tags:[...Object.entries(NPC_ROLES).map(([id,label])=>({id:`role:${id}`,name:label,label,category:'npc-role',active:true,source:'quedaco'})),...kinds.map(name=>({id:`place:${key(name)}`,name,label:name,category:'place-kind',active:true,source:'quedaco'}))],
     climates:climateSeeds.map(([id,name])=>({id,name,description:'Perfil configurável da campanha; sem efeitos mecânicos automáticos.',active:true,source:'quedaco'})),
     organizations:ORGANIZATIONS.map(row=>({...clone(row),active:true})),
     environments:[],
     npcModels:[],
+    npcGenerationProfiles:clone(NPC_GENERATION_PROFILES),
     beyond:BEYOND.map(({id,name,kind,parentId})=>({id,name,kind,parentId:parentId??'',source:'skyfall-book'}))};
 }
 
@@ -50,6 +52,7 @@ export function buildWorldCatalog(stored={}, {isGM=true,includeInactive=false}={
     const environmentIds=new Set(environments.map(row=>row.id));
     result.environments=environments.map(row=>({...row,connections:(row.connections??[]).filter(id=>environmentIds.has(id))}));
     result.npcModels=[];
+    result.npcGenerationProfiles=[];
   }
   return result;
 }
@@ -57,6 +60,10 @@ export function buildWorldCatalog(stored={}, {isGM=true,includeInactive=false}={
 function validate(catalog){
   const ids=group=>new Set(catalog[group].map(r=>r.id));
   const regions=ids('regions'),places=ids('places'),tags=ids('tags'),climates=ids('climates');
+  for(const profile of catalog.npcGenerationProfiles){
+    if((profile.regionIds??[]).some(id=>!regions.has(id)))throw Error('Perfil de geração com região não cadastrada.');
+    if((profile.placeIds??[]).some(id=>!places.has(id)))throw Error('Perfil de geração com localidade não cadastrada.');
+  }
   for(const row of [...catalog.regions,...catalog.places]){
     if(row.climateId&&!climates.has(row.climateId))throw Error('Clima não cadastrado.');
     if((row.tags??[]).some(t=>!tags.has(t)))throw Error('Tag não cadastrada.');
@@ -91,7 +98,16 @@ function validate(catalog){
 /** Atualização imutável: ID estável, lista de campos permitidos e sem exclusão. */
 export function updateCatalogRecord(stored,group,input,{deferValidation=false}={}){
   if(!GROUPS.includes(group))throw Error('Cadastro inválido.');
-  allowedKeys(input,['id','name','active','visibility','source','imageKey','label','regionId','parentId','kind','capitalId','climateId','category','description','color','aliases','tags',...(['organizations','environments'].includes(group)?['status','regionIds','placeIds','headquartersPlaceId','functions','npcRoles','campaignProfile','sections','organizationId','placeId','parentEnvironmentId','connections']:[]),...(group==='npcModels'?['organizationId','environmentId','model']:[])],'Registro');
+  if(group==='npcGenerationProfiles'){
+    const before=buildWorldCatalog(stored,{includeInactive:true}).npcGenerationProfiles.find(profile=>profile.id===input.id);
+    const profile=normalizeGenerationProfile({...before,...input});
+    if(!/^[a-z0-9][a-z0-9:-]{0,99}$/.test(profile.id??'')||['constructor','prototype','__proto__'].includes(profile.id))throw Error('ID do perfil inválido.');
+    const next={...clone(stored),revision:(stored.revision??0)+1};
+    next[group]=[...(next[group]??[]).filter(row=>row.id!==profile.id),profile];
+    if(!deferValidation)validate(buildWorldCatalog(next,{includeInactive:true}));
+    return next;
+  }
+  allowedKeys(input,['id','name','active','visibility','source','imageKey','label','regionId','parentId','kind','capitalId','climateId','category','description','color','aliases','tags',...(['regions','places'].includes(group)?['generationHints','trade','government']:[]),...(['organizations','environments'].includes(group)?['status','regionIds','placeIds','headquartersPlaceId','functions','npcRoles','campaignProfile','sections','organizationId','placeId','parentEnvironmentId','connections']:[]),...(group==='npcModels'?['organizationId','environmentId','model']:[])],'Registro');
   const id=text(input?.id);
   if(!/^[a-z0-9][a-z0-9:-]{0,99}$/.test(id)||['constructor','prototype','__proto__'].includes(id))throw Error('Use um ID estável em letras minúsculas, números, hífen ou dois-pontos.');
   const catalog=buildWorldCatalog(stored,{includeInactive:true});
@@ -103,6 +119,10 @@ export function updateCatalogRecord(stored,group,input,{deferValidation=false}={
   for(const field of ['regionId','parentId','kind','capitalId','climateId','category','description','color'])if(input[field]!==undefined)row[field]=text(input[field]);
   if(row.color&&!/^#[0-9a-f]{6}$/i.test(row.color))throw Error('Cor inválida.');
   for(const field of ['aliases','tags'])if(input[field]!==undefined)row[field]=strings(input[field]);
+  if(['regions','places'].includes(group)){
+    for(const field of ['description','trade','government'])if(input[field]!==undefined)row[field]=contentText(input[field],field);
+    if(input.generationHints!==undefined)row.generationHints=contentStrings(input.generationHints,'Pistas de geração');
+  }
   if(['organizations','environments'].includes(group)){
     for(const field of ['description'])if(input[field]!==undefined)row[field]=contentText(input[field],field);
     for(const field of ['status','organizationId','placeId','parentEnvironmentId','headquartersPlaceId'])if(input[field]!==undefined)row[field]=contentText(input[field],field,200);

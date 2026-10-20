@@ -1,7 +1,8 @@
 /** Contrato de conteúdo: dados de mundo, sem JavaScript nem documentos Actor. */
+import {npcBatchContent} from './npc-batch-content.mjs';
 export const CONTENT_FORMAT='quedaco-ambientacao';
 export const CONTENT_SCHEMA=1;
-export const CONTENT_GROUPS=['regions','places','tags','climates','organizations','environments','npcModels'];
+export const CONTENT_GROUPS=['regions','places','tags','climates','organizations','environments','npcModels','npcGenerationProfiles'];
 const forbidden=new Set(['__proto__','prototype','constructor']);
 export function assertContentObject(value){
   if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Esperado um objeto de conteúdo.');
@@ -62,8 +63,11 @@ export function contentProfile(value,before={}){
 
 /** Modelo de entrada do Criador; não é uma ficha nem contém código executável. */
 export function contentNpcModel(value){
-  allowedKeys(value,['name','legacy','heritage','curse','characterClass','background','level','attributes','cash','spellcasting','path','role','job','regionId','placeId','appearance','clothes','behavior','voice','routine','desire','fear','secret','hook','tactics','possessions','skillPriority','languagePriority','featPriority','inventory','relations'],'Modelo de NPC');
+  allowedKeys(value,['name','legacy','heritage','curse','characterClass','background','level','attributes','cash','spellcasting','path','role','job','regionId','placeId','appearance','clothes','behavior','voice','routine','desire','fear','secret','hook','tactics','possessions','skillPriority','languagePriority','featPriority','inventory','relations','description','teamId','tags','sourceModule','context','portrait','token','anima','benefitChoices'],'Modelo de NPC');
   const result={};
+  for(const field of ['description','teamId','sourceModule','context','portrait','token','anima'])if(value[field]!==undefined)result[field]=contentText(value[field],field);
+  if(value.benefitChoices!==undefined){assertContentObject(value.benefitChoices);result.benefitChoices=Object.fromEntries(Object.entries(value.benefitChoices).map(([key,values])=>[contentText(key,'Grupo de escolha',500),contentStrings(values,'UUIDs de escolhas')]));}
+  result.tags=contentStrings(value.tags??[],'Tags do NPC');
   for(const field of ['name','legacy','heritage','characterClass','background']){result[field]=contentText(value[field],field,200);if(!result[field])throw Error(`Modelo: falta ${field}.`);}
   for(const field of ['curse','spellcasting','path','role','job','regionId','placeId','appearance','clothes','behavior','voice','routine','desire','fear','secret','hook','tactics'])if(value[field]!==undefined)result[field]=contentText(value[field],field);
   if(!Number.isInteger(value.level)||value.level<1||value.level>12)throw Error('Modelo: nível deve estar entre 1 e 12.');
@@ -86,6 +90,8 @@ export function contentNpcModel(value){
 
 /** .json e .txt aceitam o pacote JSON; .md/.txt também aceitam o cabeçalho abaixo. */
 export function parseContentPackage(input){
+  if(typeof input==='string'&&new TextEncoder().encode(input).byteLength>2_000_000)throw Error('Arquivo de conteúdo maior que 2 MB.');
+  input=npcBatchContent(input);
   if(typeof input!=='string')return structuredClone(assertContentObject(input));
   if(new TextEncoder().encode(input).byteLength>2_000_000)throw Error('Arquivo de conteúdo maior que 2 MB.');
   const text=input.replace(/^\uFEFF/,'').trim();
