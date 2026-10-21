@@ -13,7 +13,7 @@ export class CampaignApp extends foundry.applications.api.ApplicationV2 {
   }
   async start(){await this.render(true);try{await Promise.all([this.catalog.load(),this.library.images.load()]);}catch(err){this.message=err.message;}this.loading=false;return this.render(true);}
   async _renderHTML(){
-    const sharedAreas=game.user.isGM?[]:[...new Set([...this.library.shared.areas.filter(a=>['npcs','guilds','map','monsters','items','imbue'].includes(a)),'quests'])];
+    const sharedAreas=game.user.isGM?[]:[...new Set(['npcs',...this.library.shared.areas.filter(a=>['guilds','map','monsters','items','imbue'].includes(a)),'quests'])];
     if(!game.user.isGM&&!sharedAreas.includes(this.area))this.area=sharedAreas[0]??'quests';
     const areaLabels={npcs:'NPCs',guilds:'Guildas',map:'Mapa',monsters:'Monstros',items:'Itens',imbue:'Imbuir',quests:'Quests',ambientacao:'Ambientação',modules:'Módulos'};
     const areaIcons={npcs:'fa-masks-theater',guilds:'fa-shield-halved',map:'fa-map',monsters:'fa-dragon',items:'fa-box-archive',imbue:'fa-wand-sparkles',quests:'fa-scroll',ambientacao:'fa-landmark',modules:'fa-puzzle-piece'};

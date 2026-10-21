@@ -24,8 +24,10 @@ const escape=value=>String(value??'').replace(/[&<>"']/g,character=>({'&':'&amp;
 function openCampaign(startArea='npcs',focus={}){
   try{
     assertCompatible(game);
-    // T29 (13/10/2026): o painel é uma ferramenta da Mestra. O jogador só chega ao vendedor pelo token.
-    if(!game.user.isGM)return ui.notifications.info('O painel do QUEDAÇO é uma ferramenta da Mestra.');
+    // Jogadores podem abrir somente o índice público de NPCs para consultar
+    // comerciantes e usar a ação de venda. As demais áreas continuam restritas
+    // à Mestra e o painel permanece somente leitura para eles.
+    if(!game.user.isGM&&startArea!=='npcs')return ui.notifications.info('Esta área do QUEDAÇO é exclusiva da Mestra.');
     const area=startArea;
     if(app?.rendered){app.area=area;if(focus.npcActor)app.library.state.npcActor=focus.npcActor;app.render(false);return app.bringToFront();}
     app=new CampaignApp();
@@ -55,8 +57,8 @@ Hooks.once('ready',()=>{
 });
 // Botão de campanha. Criação de personagens pertence ao módulo separado.
 Hooks.on('getSceneControlButtons',(controls)=>{
-  if(!game.user?.isGM)return;
   const tool={name:'quedaco',title:'QUEDAÇO',icon:'fa-solid fa-dragon',button:true,order:99,onClick:()=>openCampaign(game.user?.isGM?'npcs':'map')};
+  if(!game.user?.isGM)tool.onClick=()=>openCampaign('npcs');
   if(Array.isArray(controls)){const group=controls.find(c=>c.name==='tokens')??controls[0];group?.tools?.push(tool);}
   else{const group=controls.tokens??Object.values(controls)[0];if(group?.tools)group.tools[tool.name]=tool;}
 });
