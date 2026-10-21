@@ -1,4 +1,9 @@
 export const CHANGELOG = [
+  {version:'0.20.4',date:'2026-10-21',title:'Painel exclusivo da Mestra e lojas independentes',notes:[
+    'O painel principal e seu botão continuam exclusivos da Mestra. Jogadores acessam as lojas pelo token do negociante usando NPCs de venda 0.2.2.',
+    'Os módulos continuam independentes. Nenhuma ficha, permissão de Actor ou configuração de loja é alterada pela atualização.',
+    '283 testes automatizados passaram. A abertura da loja com usuário jogador ainda precisa ser conferida no Foundry.'
+  ]},
   {version:'0.20.3',date:'2026-10-21',title:'Organizações e pastas regionais de NPCs',notes:[
     'Ambientação amplia o catálogo para 21 organizações, com gavetas compactas, símbolos e representantes vinculados aos Actors nativos.',
     'Organização de pastas por região e localidade, reutilizando pastas existentes e preservando personagens de jogadores.',
