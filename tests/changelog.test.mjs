@@ -12,7 +12,7 @@ test('comparação semver identifica somente versões posteriores',()=>{
 test('changelog retorna a faixa nova e limita primeira instalação à mais recente',()=>{
   const after408=entriesSince(CHANGELOG,'0.4.8').map(entry=>entry.version);
   const after409=entriesSince(CHANGELOG,'0.4.9').map(entry=>entry.version);
-  assert.deepEqual(after408.slice(0,6),['0.20.2','0.20.0','0.19.0','0.18.6','0.18.5','0.18.4']);
+  assert.deepEqual(after408.slice(0,6),['0.20.3','0.20.2','0.20.0','0.19.0','0.18.6','0.18.5']);
   assert.equal(after408.at(-1),'0.4.9');
   assert.deepEqual(after409,after408.slice(0,-1));
   assert.equal(entriesSince(CHANGELOG,'').length,1);

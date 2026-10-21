@@ -1,4 +1,9 @@
 export const CHANGELOG = [
+  {version:'0.20.3',date:'2026-10-21',title:'Organizações e pastas regionais de NPCs',notes:[
+    'Ambientação amplia o catálogo para 21 organizações, com gavetas compactas, símbolos e representantes vinculados aos Actors nativos.',
+    'Organização de pastas por região e localidade, reutilizando pastas existentes e preservando personagens de jogadores.',
+    'Validação automatizada concluída. Interface e movimentação de fichas ainda precisam de conferência dentro do Foundry.'
+  ]},
   {version:'0.20.2',date:'2026-10-21',title:'Cadastro alinhado ao Criador 0.3.3',notes:[
     'Lotes de modelos verificam a capacidade de resolução corrigida do Criador 0.3.3 e orientam a atualização quando necessário.',
     'Integração opcional preserva classes, trilhas e escolhas explícitas. Os módulos continuam independentes.',
