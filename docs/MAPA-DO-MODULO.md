@@ -267,6 +267,6 @@ Lição geral: todo `display:grid` sem `grid-template-columns` e todo item de gr
 longo precisa de `minmax(0,1fr)`/`min-width:0` — é a causa nº 1 de estouro neste módulo.
 
 
-## Integração de lotes — 0.20.1 (21/10/2026)
+## Integração de lotes — 0.20.2 (21/10/2026)
 
-Em src/npc-models.mjs, batchSelection verifica a capability opcional npcTemplateResolution do Criador 0.3.1 antes de preparar/criar lotes. Falta da capability informa a atualização necessária, sem dependência obrigatória. Regressão em tests/npc-batch.test.mjs. A prévia privada dos 37 modelos de Thur Thur passou com estrutura dos compêndios reais; criação completa ainda precisa ser conferida depois da instalação.
+Em src/npc-models.mjs, batchSelection verifica a capability opcional npcTemplateResolution do Criador 0.3.3 antes de preparar/criar lotes. Falta da capability informa a atualização necessária, sem dependência obrigatória. Regressão em tests/npc-batch.test.mjs. A prévia privada dos 37 modelos de Thur Thur passou com estrutura dos compêndios reais; criação completa ainda precisa ser conferida depois da instalação.

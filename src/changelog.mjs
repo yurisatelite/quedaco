@@ -1,6 +1,6 @@
 export const CHANGELOG = [
-  {version:'0.20.1',date:'2026-10-21',title:'Cadastro alinhado ao Criador 0.3.1',notes:[
-    'Lotes de modelos verificam a capacidade de resolução corrigida do Criador 0.3.1 e orientam a atualização quando necessário.',
+  {version:'0.20.2',date:'2026-10-21',title:'Cadastro alinhado ao Criador 0.3.3',notes:[
+    'Lotes de modelos verificam a capacidade de resolução corrigida do Criador 0.3.3 e orientam a atualização quando necessário.',
     'Integração opcional preserva classes, trilhas e escolhas explícitas. Os módulos continuam independentes.',
     'Testes automatizados e prévia dos 37 modelos de Thur Thur com estrutura dos compêndios reais. Criação completa no Foundry ainda requer conferência.'
   ]},

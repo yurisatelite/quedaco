@@ -16,7 +16,7 @@ export function createNpcModelService(game,catalog){
     if(!game.user?.isGM)throw Error('Somente a Mestra pode criar lotes de NPCs.');
     const api=npcTemplateCreator(game);
     if(!api?.capabilities?.npcBatch||typeof api.prepareNpcBatch!=='function'||typeof api.createNpcBatch!=='function')throw Error('Ative o Criador 0.1.9 ou superior com suporte a lotes de NPCs.');
-    if(api.capabilities.npcTemplateResolution!==true)throw Error('Atualize QUEDAÇO - Personagens Skyfall RPG para 0.3.1 ou superior: esta criação em lote precisa da resolução corrigida de trilhas, talentos e façanhas. O Cadastro funciona sem o Criador.');
+    if(api.capabilities.npcTemplateResolution!==true)throw Error('Atualize QUEDAÇO - Personagens Skyfall RPG para 0.3.3 ou superior: esta criação em lote precisa da resolução corrigida de trilhas, talentos e façanhas. O Cadastro funciona sem o Criador.');
     if(selection.ids!==undefined&&(!Array.isArray(selection.ids)||!selection.ids.length||new Set(selection.ids).size!==selection.ids.length))throw Error('Informe uma lista de IDs sem repetição.');
     const rows=catalog.listNpcModels(selection).filter(row=>!selection.ids||selection.ids.includes(row.id));
     if(selection.ids&&rows.length!==selection.ids.length)throw Error('Um modelo selecionado não existe ou está inativo.');

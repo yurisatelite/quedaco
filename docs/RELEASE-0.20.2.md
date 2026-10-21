@@ -1,7 +1,7 @@
-# v0.20.1 — Cadastro alinhado ao Criador 0.3.1
+# v0.20.2 — Cadastro alinhado ao Criador 0.3.3
 
 A preparação de lotes pelo Cadastro exige a capacidade opcional
-`npcTemplateResolution` do Criador 0.3.1+. Se a versão instalada for anterior,
+`npcTemplateResolution` do Criador 0.3.3+. Se a versão instalada for anterior,
 o Cadastro informa qual módulo atualizar antes de iniciar a criação.
 
 O formato de modelos, os IDs e as escolhas explícitas são preservados. Nenhuma
