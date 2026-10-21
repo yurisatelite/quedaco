@@ -280,4 +280,8 @@ longo precisa de `minmax(0,1fr)`/`min-width:0` — é a causa nº 1 de estouro n
 
 ## Integração de lotes — 0.20.2 (21/10/2026)
 
+### Acesso às lojas por jogadores (21/10/2026)
+
+O painel principal e seu botão são exclusivos da Mestra (`src/main.mjs`, `openCampaign` e `getSceneControlButtons`). Jogadores abrem lojas pelo token, no módulo independente `quedaco-npcs-de-venda`: `src/token-shop.mjs`, registrado pelos hooks de canvas em `src/main.mjs`. O Cadastro apenas reconhece a flag do vendedor e não administra essa janela. Testes de clique usam dados falsos; a interação real com usuário jogador precisa ser conferida no Foundry 13.
+
 Em src/npc-models.mjs, batchSelection verifica a capability opcional npcTemplateResolution do Criador 0.3.3 antes de preparar/criar lotes. Falta da capability informa a atualização necessária, sem dependência obrigatória. Regressão em tests/npc-batch.test.mjs. A prévia privada dos 37 modelos de Thur Thur passou com estrutura dos compêndios reais; criação completa ainda precisa ser conferida depois da instalação.
