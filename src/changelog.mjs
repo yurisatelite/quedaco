@@ -1,4 +1,9 @@
 export const CHANGELOG = [
+  {version:'0.20.1',date:'2026-10-21',title:'Cadastro alinhado ao Criador 0.3.1',notes:[
+    'Lotes de modelos verificam a capacidade de resolução corrigida do Criador 0.3.1 e orientam a atualização quando necessário.',
+    'Integração opcional preserva classes, trilhas e escolhas explícitas. Os módulos continuam independentes.',
+    'Testes automatizados e prévia dos 37 modelos de Thur Thur com estrutura dos compêndios reais. Criação completa no Foundry ainda requer conferência.'
+  ]},
   {version:'0.20.0',date:'2026-10-20',title:'Grupos de NPCs por documento e população reutilizável',notes:[
     'Contrato consultável para IA e módulos: um documento JSON prepara um grupo inteiro; a API manda criar Actors pelo Criador sem cliques por integrante.',
     'Planejador regional com quantidade, níveis, pesos por localidade, propósito e legado; semente para repetir ou gerar outro elenco. Perfis ausentes não são substituídos silenciosamente.',

@@ -44,6 +44,8 @@ test('Cadastro importa documento, prepara lote e delega fichas ao Criador com re
   assert.equal(writes,1);assert.equal(creates,0);
   await assert.rejects(service.previewNpcBatch(),/Ative/);
   game.modules.set(CREATOR_ID,{active:true,api:{family:'quedaco',contractVersion:1,capabilities:{npcTemplates:true,npcBatch:true},prepareNpcTemplate(){},createNpcFromTemplate(){},async prepareNpcBatch(batch){assert.equal(batch.npcs[0].teamId,'arquibancada-norte');return {signature:'signed',errors:[],rows:[]};},async createNpcBatch(batch,options){assert.equal(options.expectedSignature,'signed');assert.equal(batch.npcs[0].id,'teatro:mara');creates++;game.actors.push(actor);return {created:1,results:[{id:'teatro:mara',status:'created',actorUuid:actor.uuid}]};}}});
+  await assert.rejects(service.previewNpcBatch({ids:['teatro:mara']}),/Atualize.*0\.3\.1/);
+  game.modules.get(CREATOR_ID).api.capabilities.npcTemplateResolution=true;
   const preview=await service.previewNpcBatch({ids:['teatro:mara']});
   assert.equal(preview.catalogRevision,1);
   await assert.rejects(service.createNpcBatch({ids:preview.ids},{expectedRevision:0,expectedSignature:preview.signature}),/mudou/);
