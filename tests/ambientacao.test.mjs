@@ -5,13 +5,14 @@ import {baseWorldCatalog, createWorldCatalogService} from '../src/world-catalog.
 import {renderAmbientacao} from '../src/panels/ambientacao.mjs';
 
 test('DIPS e COPA são cadastros de organizações, sem dossiês de NPC no QUEDAÇO',()=>{
-  assert.deepEqual(ORGANIZATIONS.map(row=>row.id),['dips','copa']);
+  assert.deepEqual(ORGANIZATIONS.slice(0,2).map(row=>row.id),['dips','copa']);
+  assert.ok(ORGANIZATIONS.length>=20);
   const base=baseWorldCatalog();
-  assert.equal(base.organizations.length,2);
+  assert.equal(base.organizations.length,ORGANIZATIONS.length);
   assert.equal('ambientNpcs' in base,false);
   const game={user:{isGM:true},settings:{get:()=>({})}};
   const api=createWorldCatalogService(game);
-  assert.equal(api.listOrganizations({regionId:'thurthur'}).length,2);
+  assert.equal(api.listOrganizations({regionId:'thurthur'}).length,4);
   assert.equal('listAmbientNpcs' in api,false);
   game.user.isGM=false;
   assert.equal(api.listOrganizations().length,0);

@@ -107,6 +107,17 @@ por atitude, condições do livro e pechincha.
 | Lista de equipes | [panels/ambientacao.mjs](../src/panels/ambientacao.mjs) — lê `game.actors`; não cria nem duplica fichas |
 | Testes | [ambientacao.test.mjs](../tests/ambientacao.test.mjs) |
 
+Os cards de organizações são gavetas compactas: o resumo mostra um símbolo, tipo,
+status e contagem de Actors; a abertura mostra funções, localidade e representantes
+já vinculados. A lista inicial inclui DIPS, COPA e as organizações catalogadas em
+`docs/INVENTARIO-AMBIENTACAO-SKYFALL.md`. Registros com região ainda não existente
+no índice local permanecem com status `a conferir`, sem inventar uma referência.
+
+`src/npc-folders.mjs` monta a prévia pura da organização de Actors nativos na árvore
+`NPCs por Região → Região → Localidade`. A aplicação reutiliza pastas e cria somente
+as ausentes; exige ação explícita da Mestra, não remove pastas, ignora personagens
+com jogador e não toca na P.I.P.I.
+
 Fichas e conteúdo privado DIPS/COPA: `.local/organizacoes/`, fora do Git e do
 pacote. `preparar.mjs` gera o documento de campanha, JSON, importador autônomo e
 comando de console com hash. O importador incorpora, na preparação local, os

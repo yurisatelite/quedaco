@@ -132,6 +132,11 @@ export class CampaignApp extends foundry.applications.api.ApplicationV2 {
       if(op==='catalog-edit')await openWorldCatalogEditor(game.modules.get('quedaco').api);
       if(op==='ambient-import')openAmbientImporter(game.modules.get(MODULE_ID).api);
       if(op==='ambient-export')exportAmbientContent(game.modules.get(MODULE_ID).api);
+      if(op==='ambient-organize-folders'){
+        const api=game.modules.get(MODULE_ID).api,plan=api.npcFolderPlan?.();
+        if(!plan?.rows?.length)ui.notifications.info('As pastas dos NPCs já estão organizadas.');
+        else if(globalThis.Dialog?.confirm)await Dialog.confirm({title:'Organizar NPCs por região',content:`<p>Serão movidos <strong>${plan.rows.length}</strong> Actors NPC para as pastas regionais e de localidade correspondentes.</p><p>Pastas existentes serão reutilizadas. Jogadores e a P.I.P.I. ficam fora.</p>`,yes:async()=>{const result=await api.applyNpcFolderOrganization();ui.notifications.info(`${result.rows.length} NPC(s) organizados em pastas.`);await this.render(true);},no:()=>{}});
+      }
       if(op==='ambient-create-npcs')await createAmbientNpcModels(game.modules.get(MODULE_ID).api,{organizationId:button.dataset.id||undefined});
       if(op==='family-open'){const ok=await this.family?.open(button.dataset.module);if(!ok)ui.notifications.warn('Este módulo não está ativo nesta mesa.');}
       if(op==='area'){const target=button.dataset.area;if(target!=='quests'&&!game.user.isGM&&!this.library.shared.areas.includes(target))throw Error('Esta área ainda não foi liberada pelo mestre.');this.area=target;if(this.area==='monsters'&&game.user.isGM)await this.library.loadActors();if(this.area==='guilds')await this.library.loadSealImages();}
