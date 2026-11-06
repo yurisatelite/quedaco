@@ -1,4 +1,8 @@
 export const CHANGELOG = [
+  {version:'0.20.5',date:'2026-11-06',title:'Azul, cinza e cobre',notes:[
+    'Paleta comum da família QUEDAÇO: ciano nas ações, cinza nas superfícies e cobre levemente avermelhado nos detalhes.',
+    'Atualização visual sobre a versão publicada; preserva funcionalidades, Actors, regras e permissões. O Atlas 2.0 em desenvolvimento não está incluído.'
+  ]},
   {version:'0.20.4',date:'2026-10-21',title:'Painel exclusivo da Mestra e lojas independentes',notes:[
     'O painel principal e seu botão continuam exclusivos da Mestra. Jogadores acessam as lojas pelo token do negociante usando NPCs de venda 0.2.2.',
     'Os módulos continuam independentes. Nenhuma ficha, permissão de Actor ou configuração de loja é alterada pela atualização.',
