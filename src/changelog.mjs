@@ -1,4 +1,9 @@
 export const CHANGELOG = [
+  {version:'0.20.6',date:'2026-11-06',title:'Ampulheta compartilhada e preparação de caçadas',notes:[
+    'Ampulheta de tempo real: iniciar para todos, pausar, retomar e encerrar. Botão com ícone de ampulheta nos controles de tokens da Mestra.',
+    'Preparação por prévia das fichas de ameaças Chefes e Complexas; Simples ficam excluídas. Perfil de investigação e biografia com backup, sem alterar estatísticas.',
+    'O sistema completo de Caçadas continua em desenvolvimento. Nenhum Actor é atualizado automaticamente ao instalar.'
+  ]},
   {version:'0.20.5',date:'2026-11-06',title:'Azul, cinza e cobre',notes:[
     'Paleta comum da família QUEDAÇO: ciano nas ações, cinza nas superfícies e cobre levemente avermelhado nos detalhes.',
     'Atualização visual sobre a versão publicada; preserva funcionalidades, Actors, regras e permissões. O Atlas 2.0 em desenvolvimento não está incluído.'
